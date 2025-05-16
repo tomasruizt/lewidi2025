@@ -1,2 +1,15 @@
 # lewidi2025
-# lewidi2025
+
+Start the vLLM server:
+
+```shell
+vllm serve Qwen/Qwen3-0.6B \
+    --dtype auto \
+    --enable-reasoning \
+    --reasoning-parser deepseek_r1 \
+    --task generate \
+    --disable-log-requests \
+    --max-model-len 8192 \
+    --gpu-memory-utilization 0.8
+```
+
