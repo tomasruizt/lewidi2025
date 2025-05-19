@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../../datasets/dss_home/lewidi-data"
+		},
+		{
+			"path": "../llm_app"
+		}
+	],
+	"settings": {}
+}

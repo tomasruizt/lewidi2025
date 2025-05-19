@@ -1,18 +1,39 @@
+import datetime
 import json
+import uuid
 from llmlib.vllm_model import ModelvLLM
 from llmlib.base_llm import Message
 import logging
-
+from pydantic import Field
+from tqdm import tqdm
 from lewidi_lib.src.funcs import load_dataset, enable_logging
-
+from pydantic_settings import BaseSettings
 
 enable_logging()
 
 logger = logging.getLogger(__name__)
 
-df = load_dataset(dataset_name="CSC")
 
-model = ModelvLLM(model_id="Qwen/Qwen3-0.6B", remote_call_concurrency=16, temperature=0.7)
+class Args(BaseSettings, cli_parse_args=True):
+    model_id: str = "Qwen/Qwen3-0.6B"
+    temperature: float = 0.7
+    dataset_name: str = "CSC"
+    run_id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    n_examples: int = 10
+    max_tokens: int = 5000
+    remote_call_concurrency: int = 16
+    run_start: datetime.datetime = Field(default_factory=datetime.datetime.now)
+
+
+args = Args()
+
+df = load_dataset(dataset_name=args.dataset_name)
+
+model = ModelvLLM(
+    remote_call_concurrency=args.remote_call_concurrency,
+    model_id=args.model_id,
+    temperature=args.temperature,
+)
 
 template = """
 Your task is to estimate the distribution of labels that annotators will assign in the task.
@@ -33,11 +54,16 @@ Try to be concise in your reasoning.
 {text}
 """
 
-prompts = (template.format(text=t) for t in df.head(5)["text"])
+fixed_data = args.model_dump()
+
+prompts = (template.format(text=t) for t in df.head(args.n_examples)["text"])
 batchof_convos = ([Message.from_prompt(p)] for p in prompts)
-responses = model.complete_batch(batch=batchof_convos, max_tokens=5000)
+responses = model.complete_batch(batch=batchof_convos, max_tokens=args.max_tokens)
 tgt_file = "responses.jsonl"
-for response in responses:
+for response in tqdm(responses, total=args.n_examples):
+    data = fixed_data | response
+    data["timestamp"] = datetime.datetime.now().isoformat()
+
     with open(tgt_file, "a") as f:
-        f.write(json.dumps(response) + "\n")
-    logger.info("Wrote response to file %s", tgt_file)
+        json_str = json.dumps(data, default=str)
+        f.write(json_str + "\n")
