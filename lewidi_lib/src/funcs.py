@@ -13,7 +13,7 @@ def load_dataset(dataset_name: str) -> pd.DataFrame:
         / dataset_name
     )
     ds = root / f"{dataset_name}_train.json"
-    assert ds.exists()
+    assert ds.exists(), ds.absolute()
 
     possible_answers = {"CSC": list(range(1, 7))}
 
