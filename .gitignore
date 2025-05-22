@@ -1,6 +1,7 @@
 parquets/
 backups/
 responses.jsonl
+*.jsonl
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
