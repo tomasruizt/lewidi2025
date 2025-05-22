@@ -13,8 +13,23 @@ logger = logging.getLogger(__name__)
 
 
 class Args(BaseSettings, cli_parse_args=True):
+    """
+    Qwen3 thinking:
+        temperature=0.6
+        top_p=0.95
+    Qwen3 non-thinking:
+        temperature=0.7
+        top_p=0.8
+    For both:
+        top_k=20
+        presence_penalty=1.5
+    """
+
     model_id: str = "Qwen/Qwen3-0.6B"
     temperature: float = 0.7
+    top_p: float = 0.8
+    # top_k: int = 20
+    presence_penalty: float = 1.5
     dataset_name: str = "CSC"
     n_examples: int = 10
     max_tokens: int = 5000
@@ -49,9 +64,17 @@ def run_inference(
     fixed_data["run_id"] = uuid.uuid4()
     fixed_data["run_start"] = datetime.datetime.now().isoformat()
 
+    generation_kwargs = dict(
+        max_tokens=args.max_tokens,
+        temperature=args.temperature,
+        top_p=args.top_p,
+        # top_k=args.top_k,
+        presence_penalty=args.presence_penalty,
+    )
+
     prompts = (template.format(text=t) for t in df.head(args.n_examples)["text"])
     batchof_convos = ([Message.from_prompt(p)] for p in prompts)
-    responses = model.complete_batch(batch=batchof_convos, max_tokens=args.max_tokens)
+    responses = model.complete_batch(batch=batchof_convos, **generation_kwargs)
     for response in tqdm(responses, total=args.n_examples):
         data = fixed_data | response
         data["timestamp"] = datetime.datetime.now().isoformat()
