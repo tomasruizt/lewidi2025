@@ -17,7 +17,7 @@ enroot start --rw --root \
     --env DSS_HOME=$DSS_HOME \
     --env HF_TOKEN=$HF_TOKEN \
     --env HF_HOME=$HF_HOME \
-    my_custom_pt /root/ptvenv/bin/python /workspace/code/lewidi2025/inference.py \
+    my_custom_pt . /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/inference.py \
     --model_id {MODEL_ID} \
     --gen_kwargs {GEN_KWARGS} \
     --dataset {DATASET} \
