@@ -31,30 +31,11 @@ class Args(BaseSettings, cli_parse_args=True):
     # top_k: int = 20
     presence_penalty: float = 1.5
     dataset_name: str = "CSC"
+    template_id: str = "00"
     n_examples: int = 10
     max_tokens: int = 5000
     remote_call_concurrency: int = 16
     n_loops: int = 1
-
-
-template = """
-Your task is to estimate the distribution of labels that annotators will assign in the task.
-They annotators rate the level of sarcasm in the 'response' ranging from 1 to 6, where 1 is least sarcastic and 6 is most sarcastic.
-
-Output the probability of each label as a JSON object like this:
-{{
-    "1": p1,
-    "2": p2,
-    "3": p3,
-    "4": p4,
-    "5": p5,
-    "6": p6
-}}
-
-Try to be concise in your reasoning.
-
-{text}
-"""
 
 
 def run_inference(
@@ -89,6 +70,9 @@ if __name__ == "__main__":
     args = Args()
 
     df = load_dataset(dataset_name=args.dataset_name)
+    template = load_template(
+        dataset_name=args.dataset_name, template_id=args.template_id
+    )
 
     model = ModelvLLM(
         remote_call_concurrency=args.remote_call_concurrency,
