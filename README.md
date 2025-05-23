@@ -28,3 +28,17 @@ vllm serve Qwen/Qwen3-32B \
     --gpu-memory-utilization 0.95 \
     --enable-chunked-prefill
 ```
+
+Start the server and run the inference:
+
+```shell
+python inference.py \
+    --model_id Qwen/Qwen3-4B \
+    --gen_kwargs nonthinking \
+    --dataset MP \
+    --n_examples 100 \
+    --remote_call_concurrency 256 \
+    --n_loops 3 \
+    --vllm_port 8000 \
+    --vllm_start_server=True
+```
