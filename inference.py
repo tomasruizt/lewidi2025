@@ -34,7 +34,7 @@ class Args(BaseSettings, cli_parse_args=True):
     template_id: str = "00"
     n_examples: int = 10
     max_tokens: int = 5000
-    remote_call_concurrency: int = 16
+    remote_call_concurrency: int = 64
     n_loops: int = 1
 
 

@@ -1,0 +1,14 @@
+Dataset Description:
+The MultiPico dataset (MP)
+The MP dataset is a multilingual perspectivist corpus consisting of short exchanges from Twitter and Reddit. Each entry in the corpus represents a post-reply pair. Crowdsourced workers had to determine whether the reply was ironic given the post (binary label). The corpus includes 11 languages: Arabic, Dutch, English, French, German, Hindi, Italian, Portuguese, and Spanish. It also contains sociodemographic information about the annotators, including gender, age, nationality, race, and student or employment status. While the statistics may vary slightly across languages, each post-reply pair is typically annotated by an average of 5 workers.
+
+Task:
+Your task is to estimate the distribution of labels that human annotators will assign in their task.
+
+Format:
+Output the probability of each label as a JSON object like this:
+
+{{ "0": p0, "1": p1 }}
+
+Text:
+{text}
