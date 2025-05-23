@@ -6,7 +6,7 @@ from llmlib.base_llm import Message
 import logging
 import pandas as pd
 from tqdm import tqdm, trange
-from lewidi_lib.src.funcs import load_dataset, enable_logging
+from lewidi_lib import load_dataset, enable_logging, load_template
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
