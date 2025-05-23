@@ -7,7 +7,7 @@
 #SBATCH --time 0:30:00
 
 # Create the container
-enroot create --name my_custom_pt /dss/dsshome1/0D/di38bec/my_custom_pt.sqsh
+enroot create --name my_custom_pt /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/tomasruiz/my_custom_pt.sqsh
 
 # Start the container with necessary mounts and environment variables
 enroot start --rw --root \
