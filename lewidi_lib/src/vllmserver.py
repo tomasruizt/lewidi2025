@@ -1,3 +1,4 @@
+from pathlib import Path
 import subprocess
 import time
 import requests
@@ -36,7 +37,9 @@ class VLLMServer:
         if self.use_reasoning_args:
             cmd.extend(["--enable-reasoning", "--reasoning-parser=deepseek_r1"])
         else:
-            cmd.extend(["--chat-template=./qwen3_nonthinking.jinja"])
+            chat_template = "qwen3_nonthinking.jinja"
+            abs_fpath = (Path(__file__).parent / chat_template).absolute()
+            cmd.extend([f"--chat-template={str(abs_fpath)}"])
 
         logger.info(f"Starting vLLM server with command: {' '.join(cmd)}")
         self.process = subprocess.Popen(cmd)
