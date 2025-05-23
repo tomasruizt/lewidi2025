@@ -30,7 +30,7 @@ class Args(BaseSettings, cli_parse_args=True):
     top_p: float = 0.8
     # top_k: int = 20
     presence_penalty: float = 1.5
-    dataset_name: str = "CSC"
+    dataset: str = "CSC"
     template_id: str = "00"
     n_examples: int = 10
     max_tokens: int = 5000
@@ -69,10 +69,8 @@ if __name__ == "__main__":
     enable_logging()
     args = Args()
 
-    df = load_dataset(dataset_name=args.dataset_name)
-    template = load_template(
-        dataset_name=args.dataset_name, template_id=args.template_id
-    )
+    df = load_dataset(dataset=args.dataset)
+    template = load_template(dataset=args.dataset, template_id=args.template_id)
 
     model = ModelvLLM(
         remote_call_concurrency=args.remote_call_concurrency,

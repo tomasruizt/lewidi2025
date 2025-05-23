@@ -5,17 +5,14 @@ import logging
 import os
 from pathlib import Path
 
-DatasetName = Literal["CSC", "MP", "Paraphrase", "VariErrNLI"]
+Dataset = Literal["CSC", "MP", "Paraphrase", "VariErrNLI"]
 
 
-def load_dataset(dataset_name: DatasetName) -> pd.DataFrame:
+def load_dataset(dataset: Dataset) -> pd.DataFrame:
     root = (
-        Path(os.environ["DSS_HOME"])
-        / "lewidi-data"
-        / "data_practice_phase"
-        / dataset_name
+        Path(os.environ["DSS_HOME"]) / "lewidi-data" / "data_practice_phase" / dataset
     )
-    ds = root / f"{dataset_name}_train.json"
+    ds = root / f"{dataset}_train.json"
     assert ds.exists(), ds.absolute()
 
     df = pd.read_json(ds, orient="index")
@@ -23,9 +20,9 @@ def load_dataset(dataset_name: DatasetName) -> pd.DataFrame:
     return df
 
 
-def load_template(dataset_name: DatasetName, template_id: str) -> str:
+def load_template(dataset: Dataset, template_id: str) -> str:
     root = Path(__file__).parent / "prompt_templates"
-    template = root / f"{dataset_name}_{template_id}.txt"
+    template = root / f"{dataset}_{template_id}.txt"
     assert template.exists(), template.absolute()
     with open(template, "r") as f:
         return f.read()
