@@ -36,6 +36,7 @@ class Args(BaseSettings, cli_parse_args=True):
     max_tokens: int = 5000
     remote_call_concurrency: int = 64
     n_loops: int = 1
+    vllm_port: int = 8000
 
 
 def run_inference(
@@ -76,6 +77,7 @@ if __name__ == "__main__":
         remote_call_concurrency=args.remote_call_concurrency,
         model_id=args.model_id,
         temperature=args.temperature,
+        port=args.vllm_port,
     )
 
     tgt_file = "responses.jsonl"
