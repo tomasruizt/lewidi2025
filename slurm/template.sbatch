@@ -26,5 +26,5 @@ enroot start --rw --root \
     --remote_call_concurrency 256 \
     --n_loops 3 \
     --vllm_port {VLLM_PORT} \
-    --vllm_start_server=True" \
-    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{JOB_NAME}/responses.jsonl
+    --vllm_start_server True \
+    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{JOB_NAME}/responses.jsonl"
