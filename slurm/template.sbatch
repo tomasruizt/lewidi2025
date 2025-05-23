@@ -6,6 +6,9 @@
 #SBATCH --job-name {JOB_NAME}
 #SBATCH --time 0:30:00
 
+# Create the container
+enroot create --name my_custom_pt /dss/dsshome1/0D/di38bec/my_custom_pt.sqsh
+
 # Start the container with necessary mounts and environment variables
 enroot start --rw --root \
     --mount /dss/dsshome1/0D/di38bec/code:/workspace/code \
