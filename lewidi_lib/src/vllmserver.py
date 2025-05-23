@@ -20,7 +20,7 @@ class VLLMServer:
         """
         Start the vLLM server and wait for it to be ready.
         Raises RuntimeError if the server process dies unexpectedly.
-        Raises TimeoutError if the server fails to start after 5 minutes.
+        Raises TimeoutError if the server fails to start after 10 minutes.
         """
         cmd = [
             "vllm",
@@ -45,8 +45,8 @@ class VLLMServer:
         self.process = subprocess.Popen(cmd)
 
         # Wait for server to be ready
-        max_attempts = 60  # 5 minutes total
-        wait_time = 5  # seconds between attempts
+        max_attempts = 40  # 10 minutes total (40 * 15s = 600s = 10min)
+        wait_time = 15  # seconds between attempts
 
         for attempt in range(max_attempts):
             if not self.is_running():
@@ -61,12 +61,12 @@ class VLLMServer:
                 pass
 
             logger.info(
-                f"Attempt {attempt + 1}/{max_attempts}: Server not ready yet, waiting {wait_time}s..."
+                f"Attempt {attempt + 1}/{max_attempts}: Server not ready yet, waiting {wait_time}s... ({(attempt + 1) * wait_time}s elapsed)"
             )
             time.sleep(wait_time)
 
         raise TimeoutError(
-            f"Server failed to start after {max_attempts} attempts (5min timeout)"
+            f"Server failed to start after {max_attempts} attempts (10min timeout)"
         )
 
     def is_running(self) -> bool:
