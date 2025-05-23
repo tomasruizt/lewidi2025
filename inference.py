@@ -1,5 +1,6 @@
 import datetime
 import json
+from pathlib import Path
 from typing import Literal
 import uuid
 from llmlib.vllm_model import ModelvLLM
@@ -38,11 +39,13 @@ class Args(BaseSettings, cli_parse_args=True):
     n_loops: int = 1
     vllm_port: int = 8000
     vllm_start_server: bool = False
+    tgt_file: str = "responses.jsonl"
 
 
-def run_inference(
-    args: Args, df: pd.DataFrame, model: ModelvLLM, template: str, tgt_file: str
-):
+def run_inference(args: Args, df: pd.DataFrame, model: ModelvLLM, template: str):
+    # Ensure the target directory exists
+    Path(args.tgt_file).parent.mkdir(parents=True, exist_ok=True)
+
     fixed_data = args.model_dump()
     fixed_data["run_id"] = uuid.uuid4()
     fixed_data["run_start"] = datetime.datetime.now().isoformat()
@@ -60,7 +63,7 @@ def run_inference(
         data = fixed_data | response
         data["timestamp"] = datetime.datetime.now().isoformat()
 
-        with open(tgt_file, "a") as f:
+        with open(args.tgt_file, "at") as f:
             json_str = json.dumps(data, default=str)
             f.write(json_str + "\n")
 
@@ -74,9 +77,8 @@ def run_multiple_inferences(args: Args) -> None:
         port=args.vllm_port,
     )
 
-    tgt_file = "responses.jsonl"
     for _ in trange(args.n_loops):
-        run_inference(args, df, model, template, tgt_file)
+        run_inference(args, df, model, template)
 
 
 if __name__ == "__main__":
