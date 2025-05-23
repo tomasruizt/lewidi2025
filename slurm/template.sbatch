@@ -6,7 +6,8 @@
 #SBATCH --job-name {JOB_NAME}
 #SBATCH --time 0:30:00
 
-# Create the container
+# Delete, and recreate the container from the worker node if it exists. Ok if not
+enroot remove --force my_custom_pt || true
 enroot create --name my_custom_pt /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/tomasruiz/my_custom_pt.sqsh
 
 # Start the container with necessary mounts and environment variables
@@ -17,7 +18,7 @@ enroot start --rw --root \
     --env DSS_HOME=$DSS_HOME \
     --env HF_TOKEN=$HF_TOKEN \
     --env HF_HOME=$HF_HOME \
-    my_custom_pt . /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/inference.py \
+    my_custom_pt bash -c "source /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/inference.py \
     --model_id {MODEL_ID} \
     --gen_kwargs {GEN_KWARGS} \
     --dataset {DATASET} \
@@ -25,4 +26,4 @@ enroot start --rw --root \
     --remote_call_concurrency 256 \
     --n_loops 3 \
     --vllm_port {VLLM_PORT} \
-    --vllm_start_server=True 
+    --vllm_start_server=True" 
