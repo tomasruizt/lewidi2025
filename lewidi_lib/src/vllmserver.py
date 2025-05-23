@@ -29,7 +29,7 @@ class VLLMServer:
             "--task=generate",
             "--disable-log-requests",
             "--max-model-len=8192",
-            "--gpu-memory-utilization=0.8",
+            "--gpu-memory-utilization=0.95",
             f"--port={self.port}",
         ]
 
