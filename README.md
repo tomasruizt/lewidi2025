@@ -42,3 +42,23 @@ python inference.py \
     --vllm_port 8000 \
     --vllm_start_server=True
 ```
+# SLURM
+Create the sbatch files:
+
+```bash
+cd lewidi2025/slurm
+python create_sbatch_files.py
+```
+
+submit all those jobs:
+
+```bash
+cd slurm_scripts/
+ls | xargs -n 1 sbatch
+```
+
+Check the status of the jobs:
+
+```bash
+squeue -u $USER
+```
