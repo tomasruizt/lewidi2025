@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -p lrz-hgx-h100-94x4
 #SBATCH --gres=gpu:1
-#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/sbatch/%u/%x/out.logs
-#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/sbatch/%u/%x/err.logs
+#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/out.logs
+#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/err.logs
 #SBATCH --job-name {JOB_NAME}
 #SBATCH --time 0:30:00
 
