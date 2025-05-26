@@ -25,19 +25,13 @@ def load_dataset(dataset: Dataset, split: Split) -> pd.DataFrame:
     df = pd.read_json(ds, orient="index")
     df.reset_index(inplace=True)
     df["request_idx"] = range(len(df))
-    df["target"] = df["soft_label"].apply(
-        soft_label_to_nparray, n_classes=n_classes(dataset)
-    )
+    df["target"] = df["soft_label"].apply(parse_soft_label, dataset=dataset)
     df["dataset_name"] = dataset
     return df
 
 
 def n_classes(dataset: Dataset) -> int:
-    mapping = {
-        "CSC": 6,
-        "MP": 2,
-    }
-    return mapping[dataset]
+    return len(soft_label_mapping[dataset])
 
 
 def assign_n_classes(df: pd.DataFrame) -> pd.DataFrame:
@@ -58,11 +52,55 @@ def soft_label_to_nparray(d: dict | Any, n_classes: int) -> np.ndarray:
             k = 1
 
         try:
-            array[int(k) - 1] = v
+            array[int(k)] = v
         except ValueError:
             logger.warning("Invalid key: '%s'", k)
             return pd.NA
     return array
+
+
+def parse_soft_label(d: dict, dataset: Dataset, do_recurse: bool = True) -> np.ndarray:
+    if dataset == "VariErrNLI" and do_recurse:
+        return {k: parse_soft_label(v, dataset, do_recurse=False) for k, v in d.items()}
+    mapping = soft_label_mapping[dataset]
+    array = np.zeros(len(mapping))
+    for k, v in d.items():
+        array[mapping[k]] = v
+    return array
+
+
+soft_label_mapping = {
+    "CSC": {
+        "0": 0,
+        "1": 1,
+        "2": 2,
+        "3": 3,
+        "4": 4,
+        "5": 5,
+        "6": 6,
+    },
+    "MP": {
+        "0.0": 0,
+        "1.0": 1,
+    },
+    "Paraphrase": {
+        "-5": 0,
+        "-4": 1,
+        "-3": 2,
+        "-2": 3,
+        "-1": 4,
+        "0": 5,
+        "1": 6,
+        "2": 7,
+        "3": 8,
+        "4": 9,
+        "5": 10,
+    },
+    "VariErrNLI": {
+        "0": 0,
+        "1": 1,
+    },
+}
 
 
 def load_template(dataset: Dataset, template_id: str) -> str:
