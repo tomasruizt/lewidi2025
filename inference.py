@@ -21,10 +21,11 @@ qwen3_thinking_gen_kwargs = dict(
 )
 qwen3_nonthinking_gen_kwargs = dict(
     temperature=0.7,
+    top_p=0.8,
+    presence_penalty=1.5,
 )
 qwen3_common_gen_kwargs = dict(
-    # top_k=20,
-    presence_penalty=1.5,
+    top_k=20,
 )
 
 

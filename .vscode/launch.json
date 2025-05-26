@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": false,
-            // "args": ["--vllm_start_server=True"]
+            // "args": ["--vllm_start_server=True", "--gen_kwargs=thinking"]
         }
     ]
 }
