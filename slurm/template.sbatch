@@ -7,8 +7,19 @@
 #SBATCH --time 0:30:00
 
 # Delete, and recreate the container from the worker node if it exists. Ok if not
-enroot remove --force my_custom_pt || true
-enroot create --name my_custom_pt /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/tomasruiz/my_custom_pt.sqsh
+# enroot remove --force my_custom_pt || true
+
+# Check if container exists and print info
+echo "Checking for existing container..."
+enroot list | grep my_custom_pt || echo "Container not found"
+
+# Create container if it doesn't exist
+if ! enroot list | grep -q my_custom_pt; then
+    echo "Creating new container..."
+    enroot create --name my_custom_pt /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/tomasruiz/my_custom_pt.sqsh
+else
+    echo "Container already exists"
+fi
 
 # Start the container with necessary mounts and environment variables
 enroot start --rw --root \
@@ -22,6 +33,7 @@ enroot start --rw --root \
     --model_id {MODEL_ID} \
     --gen_kwargs {GEN_KWARGS} \
     --dataset {DATASET} \
+    --split {SPLIT} \
     --n_examples 1000 \
     --remote_call_concurrency 256 \
     --n_loops 3 \
