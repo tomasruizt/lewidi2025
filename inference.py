@@ -8,7 +8,7 @@ from llmlib.base_llm import Message
 import logging
 import pandas as pd
 from tqdm import tqdm, trange
-from lewidi_lib import load_dataset, enable_logging, load_template
+from lewidi_lib import Split, load_dataset, enable_logging, load_template
 from vllmserver import spinup_vllm_server
 from pydantic_settings import BaseSettings
 
@@ -33,13 +33,14 @@ class Args(BaseSettings, cli_parse_args=True):
     model_id: str = "Qwen/Qwen3-0.6B"
     gen_kwargs: Literal["thinking", "nonthinking"] = "nonthinking"
     dataset: str = "CSC"
+    split: Split = "train"
     template_id: str = "00"
     n_examples: int = 10
     max_tokens: int = 5000
     remote_call_concurrency: int = 64
     n_loops: int = 1
     vllm_port: int = 8000
-    vllm_start_server: bool = False
+    vllm_start_server: bool = True
     tgt_file: str = "responses.jsonl"
 
 
@@ -70,7 +71,7 @@ def run_inference(args: Args, df: pd.DataFrame, model: ModelvLLM, template: str)
 
 
 def run_multiple_inferences(args: Args) -> None:
-    df = load_dataset(dataset=args.dataset)
+    df = load_dataset(dataset=args.dataset, split=args.split)
     template = load_template(dataset=args.dataset, template_id=args.template_id)
     model = ModelvLLM(
         remote_call_concurrency=args.remote_call_concurrency,

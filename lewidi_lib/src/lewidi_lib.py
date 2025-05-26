@@ -12,12 +12,14 @@ logger = logging.getLogger(__name__)
 
 Dataset = Literal["CSC", "MP", "Paraphrase", "VariErrNLI"]
 
+Split = Literal["train", "dev"]
 
-def load_dataset(dataset: Dataset) -> pd.DataFrame:
+
+def load_dataset(dataset: Dataset, split: Split) -> pd.DataFrame:
     root = (
         Path(os.environ["DSS_HOME"]) / "lewidi-data" / "data_practice_phase" / dataset
     )
-    ds = root / f"{dataset}_train.json"
+    ds = root / f"{dataset}_{split}.json"
     assert ds.exists(), ds.absolute()
 
     df = pd.read_json(ds, orient="index")
