@@ -32,10 +32,10 @@ enroot start --rw --root \
     my_custom_pt bash -c "source /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/inference.py \
     --model_id {MODEL_ID} \
     --gen_kwargs {GEN_KWARGS} \
-    --dataset {DATASET} \
-    --split {SPLIT} \
+    --datasest {DATASETS} \
+    --splits {SPLITS} \
     --n_examples 1000 \
-    --remote_call_concurrency 256 \
+    --remote_call_concurrency 512 \
     --n_loops 3 \
     --vllm_port {VLLM_PORT} \
     --vllm_start_server True \

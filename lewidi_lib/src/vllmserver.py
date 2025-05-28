@@ -98,7 +98,7 @@ class VLLMServer:
 
 
 @contextmanager
-def spinup_vllm_server(model_id: str, port: int, use_reasoning_args: bool):
+def spinup_vllm_server(no_op: bool, model_id: str, port: int, use_reasoning_args: bool):
     """
     Context manager for managing a vLLM server lifecycle.
 
@@ -107,6 +107,10 @@ def spinup_vllm_server(model_id: str, port: int, use_reasoning_args: bool):
             # Do inference here
             pass
     """
+    if no_op:
+        yield
+        return
+
     server = VLLMServer(model_id, port, use_reasoning_args)
     try:
         server.start()

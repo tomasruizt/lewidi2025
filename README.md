@@ -42,6 +42,7 @@ python inference.py \
     --vllm_port 8000 \
     --vllm_start_server=True
 ```
+
 # SLURM
 Create the sbatch files:
 

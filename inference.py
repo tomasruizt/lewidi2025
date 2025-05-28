@@ -1,4 +1,6 @@
+from contextlib import contextmanager
 import datetime
+from itertools import product
 import json
 from pathlib import Path
 from typing import Literal
@@ -6,9 +8,8 @@ import uuid
 from llmlib.vllm_model import ModelvLLM
 from llmlib.base_llm import Message
 import logging
-import pandas as pd
-from tqdm import tqdm, trange
-from lewidi_lib import Split, load_dataset, enable_logging, load_template
+from tqdm import tqdm
+from lewidi_lib import Dataset, Split, load_dataset, enable_logging, load_template
 from vllmserver import spinup_vllm_server
 from pydantic_settings import BaseSettings
 
@@ -32,8 +33,8 @@ qwen3_common_gen_kwargs = dict(
 class Args(BaseSettings, cli_parse_args=True):
     model_id: str = "Qwen/Qwen3-0.6B"
     gen_kwargs: Literal["thinking", "nonthinking"] = "nonthinking"
-    dataset: str = "CSC"
-    split: Split = "train"
+    datasets: list[Dataset] = ["CSC"]
+    splits: list[Split] = ["train"]
     template_id: str = "00"
     n_examples: int = 10
     max_tokens: int = 5000
@@ -43,14 +44,40 @@ class Args(BaseSettings, cli_parse_args=True):
     vllm_start_server: bool = True
     tgt_file: str = "responses.jsonl"
 
+    def dict_for_dump(self):
+        exclude = [
+            "vllm_port",
+            "vllm_start_server",
+            "datasets",
+            "splits",
+            "n_examples",
+            "n_loops",
+            "tgt_file",
+        ]
+        d: dict = self.model_dump(exclude=exclude)
+        return d
 
-def run_inference(args: Args, df: pd.DataFrame, model: ModelvLLM, template: str):
+
+def run_inference(args: Args, dataset: Dataset, split: Split, pbar: tqdm | None = None):
+    if pbar is None:
+        pbar = tqdm(total=args.n_examples)
+
+    df = load_dataset(dataset=dataset, split=split)
+    template = load_template(dataset=dataset, template_id=args.template_id)
+
+    model = ModelvLLM(
+        remote_call_concurrency=args.remote_call_concurrency,
+        model_id=args.model_id,
+        port=args.vllm_port,
+    )
     # Ensure the target directory exists
     Path(args.tgt_file).parent.mkdir(parents=True, exist_ok=True)
 
-    fixed_data = args.model_dump()
+    fixed_data = args.dict_for_dump()
     fixed_data["run_id"] = uuid.uuid4()
     fixed_data["run_start"] = datetime.datetime.now().isoformat()
+    fixed_data["dataset"] = dataset
+    fixed_data["split"] = split
 
     generation_kwargs = dict(max_tokens=args.max_tokens, **qwen3_common_gen_kwargs)
     if args.gen_kwargs == "thinking":
@@ -61,7 +88,7 @@ def run_inference(args: Args, df: pd.DataFrame, model: ModelvLLM, template: str)
     prompts = (template.format(text=t) for t in df.head(args.n_examples)["text"])
     batchof_convos = ([Message.from_prompt(p)] for p in prompts)
     responses = model.complete_batch(batch=batchof_convos, **generation_kwargs)
-    for response in tqdm(responses, total=args.n_examples):
+    for response in responses:
         data = fixed_data | response
         data["timestamp"] = datetime.datetime.now().isoformat()
 
@@ -69,32 +96,30 @@ def run_inference(args: Args, df: pd.DataFrame, model: ModelvLLM, template: str)
             json_str = json.dumps(data, default=str)
             f.write(json_str + "\n")
 
+        pbar.update(1)
 
-def run_multiple_inferences(args: Args) -> None:
-    df = load_dataset(dataset=args.dataset, split=args.split)
-    template = load_template(dataset=args.dataset, template_id=args.template_id)
-    model = ModelvLLM(
-        remote_call_concurrency=args.remote_call_concurrency,
+
+def run_many_inferences(args: Args) -> None:
+    combinations = list(product(args.datasets, args.splits, range(args.n_loops)))
+    pbar = tqdm(total=len(combinations) * args.n_examples)
+    for dataset, split, _ in combinations:
+        run_inference(args, dataset, split, pbar)
+
+
+@contextmanager
+def using_vllm_server(args: Args):
+    with spinup_vllm_server(
+        no_op=not args.vllm_start_server,
         model_id=args.model_id,
         port=args.vllm_port,
-    )
-
-    for _ in trange(args.n_loops):
-        run_inference(args, df, model, template)
+        use_reasoning_args=args.gen_kwargs == "thinking",
+    ):
+        yield
 
 
 if __name__ == "__main__":
     enable_logging()
     args = Args()
     logger.info(f"Args: {args.model_dump_json()}")
-
-    if not args.vllm_start_server:
-        run_multiple_inferences(args)
-        exit(0)
-
-    with spinup_vllm_server(
-        model_id=args.model_id,
-        port=args.vllm_port,
-        use_reasoning_args=args.gen_kwargs == "thinking",
-    ):
-        run_multiple_inferences(args)
+    with using_vllm_server(args):
+        run_many_inferences(args)

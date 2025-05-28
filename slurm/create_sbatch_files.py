@@ -18,18 +18,18 @@ BASE_PORT = 9000
 
 os.makedirs("slurm_scripts", exist_ok=True)
 
-combinations = product(MODELS, DATASETS, GEN_KWARGS, SPLITS)
-for i, (model, dataset, gen_kwargs, split) in enumerate(combinations):
+combinations = product(MODELS, GEN_KWARGS)
+for i, (model, gen_kwargs) in enumerate(combinations):
     port = BASE_PORT + i
-    jobname = f"{model.replace('/', '_')}_{dataset}_{split}_{gen_kwargs}"
+    jobname = f"{model.replace('/', '_')}_{gen_kwargs}"
     template: str = Path("template.sbatch").read_text()
     filled = template.format(
         JOB_NAME=jobname,
         MODEL_ID=model,
         GEN_KWARGS=gen_kwargs,
-        DATASET=dataset,
+        DATASETS=",".join(DATASETS),
+        SPLITS=",".join(SPLITS),
         VLLM_PORT=port,
-        SPLIT=split,
     )
     script_path = Path(f"slurm_scripts/{jobname}.sbatch")
     script_path.write_text(filled)
