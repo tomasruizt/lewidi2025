@@ -4,7 +4,7 @@
 #SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/out.logs
 #SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/err.logs
 #SBATCH --job-name {JOB_NAME}
-#SBATCH --time 0:30:00
+#SBATCH --time 5:00:00
 
 # Set container name based on job name
 CONTAINER_NAME="lewidi_{JOB_NAME}"
@@ -31,7 +31,7 @@ enroot start --rw --root \
     --datasets {DATASETS} \
     --splits {SPLITS} \
     --n_examples 1000 \
-    --remote_call_concurrency 512 \
+    --remote_call_concurrency 256 \
     --n_loops 3 \
     --vllm_port {VLLM_PORT} \
     --vllm_start_server True \
