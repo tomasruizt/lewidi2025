@@ -6,20 +6,16 @@
 #SBATCH --job-name {JOB_NAME}
 #SBATCH --time 0:30:00
 
-# Delete, and recreate the container from the worker node if it exists. Ok if not
-# enroot remove --force my_custom_pt || true
+# Set container name based on job name
+CONTAINER_NAME="lewidi_{JOB_NAME}"
 
-# Check if container exists and print info
-echo "Checking for existing container..."
-enroot list | grep my_custom_pt || echo "Container not found"
+# Delete any existing container with this name
+echo "Removing any existing container named $CONTAINER_NAME..."
+enroot remove --force $CONTAINER_NAME || true
 
-# Create container if it doesn't exist
-if ! enroot list | grep -q my_custom_pt; then
-    echo "Creating new container..."
-    enroot create --name my_custom_pt /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/tomasruiz/my_custom_pt.sqsh
-else
-    echo "Container already exists"
-fi
+# Create new container
+echo "Creating new container $CONTAINER_NAME..."
+enroot create --name $CONTAINER_NAME /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/tomasruiz/my_custom_pt.sqsh
 
 # Start the container with necessary mounts and environment variables
 enroot start --rw --root \
@@ -29,10 +25,10 @@ enroot start --rw --root \
     --env DSS_HOME=$DSS_HOME \
     --env HF_TOKEN=$HF_TOKEN \
     --env HF_HOME=$HF_HOME \
-    my_custom_pt bash -c "source /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/inference.py \
+    $CONTAINER_NAME bash -c "source /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/inference.py \
     --model_id {MODEL_ID} \
     --gen_kwargs {GEN_KWARGS} \
-    --datasest {DATASETS} \
+    --datasets {DATASETS} \
     --splits {SPLITS} \
     --n_examples 1000 \
     --remote_call_concurrency 512 \
@@ -40,3 +36,7 @@ enroot start --rw --root \
     --vllm_port {VLLM_PORT} \
     --vllm_start_server True \
     --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{JOB_NAME}/responses.jsonl"
+
+# Clean up: remove the container after job completion
+echo "Cleaning up: removing container $CONTAINER_NAME..."
+enroot remove --force $CONTAINER_NAME || true
