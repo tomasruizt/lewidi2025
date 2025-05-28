@@ -79,15 +79,15 @@ def run_inference(args: Args, dataset: Dataset, split: Split, pbar: tqdm | None 
     fixed_data["dataset"] = dataset
     fixed_data["split"] = split
 
-    generation_kwargs = dict(max_tokens=args.max_tokens, **qwen3_common_gen_kwargs)
+    gen_kwargs = dict(max_tokens=args.max_tokens, **qwen3_common_gen_kwargs)
     if args.gen_kwargs == "thinking":
-        generation_kwargs |= qwen3_thinking_gen_kwargs
+        gen_kwargs = gen_kwargs | qwen3_thinking_gen_kwargs
     else:
-        generation_kwargs |= qwen3_nonthinking_gen_kwargs
+        gen_kwargs = gen_kwargs | qwen3_nonthinking_gen_kwargs
 
     prompts = (template.format(text=t) for t in df.head(args.n_examples)["text"])
     batchof_convos = ([Message.from_prompt(p)] for p in prompts)
-    responses = model.complete_batch(batch=batchof_convos, **generation_kwargs)
+    responses = model.complete_batch(batch=batchof_convos, **gen_kwargs)
     for response in responses:
         data = fixed_data | response
         data["timestamp"] = datetime.datetime.now().isoformat()
