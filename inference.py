@@ -69,6 +69,7 @@ def run_inference(args: Args, dataset: Dataset, split: Split, pbar: tqdm | None 
         remote_call_concurrency=args.remote_call_concurrency,
         model_id=args.model_id,
         port=args.vllm_port,
+        timeout_secs=180,
     )
     # Ensure the target directory exists
     Path(args.tgt_file).parent.mkdir(parents=True, exist_ok=True)
