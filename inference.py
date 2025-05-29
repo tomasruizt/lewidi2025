@@ -4,10 +4,10 @@ from itertools import product
 import json
 from pathlib import Path
 from typing import Literal
-import uuid
 from llmlib.vllm_model import ModelvLLM
 from llmlib.base_llm import Message
 import logging
+import pandas as pd
 from tqdm import tqdm
 from lewidi_lib import Dataset, Split, load_dataset, enable_logging, load_template
 from vllmserver import spinup_vllm_server
@@ -43,6 +43,8 @@ class Args(BaseSettings, cli_parse_args=True):
     vllm_port: int = 8000
     vllm_start_server: bool = True
     tgt_file: str = "responses.jsonl"
+    only_run_previously_failed: bool = False
+    timeout_secs: int = 5 * 60
 
     def dict_for_dump(self):
         exclude = [
@@ -53,32 +55,38 @@ class Args(BaseSettings, cli_parse_args=True):
             "n_examples",
             "n_loops",
             "tgt_file",
+            "only_run_previously_failed",
+            "timeout_secs",
         ]
         d: dict = self.model_dump(exclude=exclude)
         return d
 
 
-def run_inference(args: Args, dataset: Dataset, split: Split, pbar: tqdm | None = None):
-    timeout = 2 * 60
-    logger.info("Timeout (s): %d, dataset: '%s', split: '%s'", timeout, dataset, split)
+def run_inference(
+    args: Args, dataset: Dataset, split: Split, run_idx=0, pbar: tqdm | None = None
+):
+    logger.info(
+        "Timeout: %ds, dataset: '%s', split: '%s'", args.timeout_secs, dataset, split
+    )
 
     if pbar is None:
         pbar = tqdm(total=args.n_examples)
 
     df = load_dataset(dataset=dataset, split=split)
+    if args.only_run_previously_failed:
+        df = keep_only_failed_examples(df, args, dataset, split, run_idx)
     template = load_template(dataset=dataset, template_id=args.template_id)
 
     model = ModelvLLM(
         remote_call_concurrency=args.remote_call_concurrency,
         model_id=args.model_id,
         port=args.vllm_port,
-        timeout_secs=timeout,
+        timeout_secs=args.timeout_secs,
     )
-    # Ensure the target directory exists
     Path(args.tgt_file).parent.mkdir(parents=True, exist_ok=True)
 
     fixed_data = args.dict_for_dump()
-    fixed_data["run_id"] = uuid.uuid4()
+    fixed_data["run_idx"] = run_idx
     fixed_data["run_start"] = datetime.datetime.now().isoformat()
     fixed_data["dataset"] = dataset
     fixed_data["split"] = split
@@ -103,11 +111,22 @@ def run_inference(args: Args, dataset: Dataset, split: Split, pbar: tqdm | None 
         pbar.update(1)
 
 
+def keep_only_failed_examples(
+    df: pd.DataFrame, args: Args, dataset: Dataset, split: Split, run_idx: int
+) -> pd.DataFrame:
+    previous = pd.read_json(args.tgt_file, lines=True)
+    failed = previous.query(
+        "success == False and dataset == @dataset and split == @split and run_idx == @run_idx"
+    )
+    df = df.query("request_idx not in @failed.request_idx")
+    return df
+
+
 def run_many_inferences(args: Args) -> None:
     combinations = list(product(args.datasets, args.splits, range(args.n_loops)))
     pbar = tqdm(total=len(combinations) * args.n_examples)
-    for dataset, split, _ in combinations:
-        run_inference(args, dataset, split, pbar)
+    for dataset, split, run_idx in combinations:
+        run_inference(args, dataset, split, run_idx, pbar)
 
 
 @contextmanager
