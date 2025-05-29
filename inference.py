@@ -9,7 +9,14 @@ from llmlib.base_llm import Message
 import logging
 import pandas as pd
 from tqdm import tqdm
-from lewidi_lib import Dataset, Split, load_dataset, enable_logging, load_template
+from lewidi_lib import (
+    Dataset,
+    Split,
+    load_dataset,
+    enable_logging,
+    load_template,
+    BasicSchema,
+)
 from vllmserver import spinup_vllm_server
 from pydantic_settings import BaseSettings
 
@@ -45,6 +52,7 @@ class Args(BaseSettings, cli_parse_args=True):
     tgt_file: str = "responses.jsonl"
     only_run_previously_failed: bool = False
     timeout_secs: int = 5 * 60
+    enforce_json: bool = False
 
     def dict_for_dump(self):
         exclude = [
@@ -96,6 +104,9 @@ def run_inference(
         gen_kwargs = gen_kwargs | qwen3_thinking_gen_kwargs
     else:
         gen_kwargs = gen_kwargs | qwen3_nonthinking_gen_kwargs
+
+    if args.enforce_json:
+        gen_kwargs["json_schema"] = BasicSchema
 
     prompts = (template.format(text=t) for t in df.head(args.n_examples)["text"])
     batchof_convos = ([Message.from_prompt(p)] for p in prompts)

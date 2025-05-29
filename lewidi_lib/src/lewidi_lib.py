@@ -6,6 +6,7 @@ import logging
 import os
 from pathlib import Path
 
+from pydantic import RootModel
 import scipy
 
 logger = logging.getLogger(__name__)
@@ -182,3 +183,7 @@ def assign_col_ws_loss(df: pd.DataFrame) -> pd.DataFrame:
 
 def baseline_pred(n_classes: int) -> np.ndarray:
     return np.ones(n_classes) / n_classes
+
+
+class BasicSchema(RootModel):
+    root: dict[int, float]
