@@ -26,7 +26,8 @@ def load_dataset(dataset: Dataset, split: Split) -> pd.DataFrame:
     df.reset_index(inplace=True)
     df["request_idx"] = range(len(df))
     df["target"] = df["soft_label"].apply(parse_soft_label, dataset=dataset)
-    df["dataset_name"] = dataset
+    df["dataset"] = dataset
+    df["split"] = split
     return df
 
 
@@ -35,14 +36,20 @@ def n_classes(dataset: Dataset) -> int:
 
 
 def assign_n_classes(df: pd.DataFrame) -> pd.DataFrame:
-    col = df["dataset_name"].apply(n_classes)
+    col = df["dataset"].apply(n_classes)
     return df.assign(n_classes=col)
 
 
 def soft_label_to_nparray(d: dict | Any, n_classes: int) -> np.ndarray:
     if not isinstance(d, dict):
-        logger.info("Not a dict: %s", repr(d))
-        return pd.NA
+        match d:
+            case "":
+                return pd.NA
+            case list():
+                return pd.NA
+            case _:
+                logger.info("Not a dict: %s", repr(d))
+                return pd.NA
 
     array = np.zeros(n_classes)
     for k, v in d.items():
@@ -55,6 +62,9 @@ def soft_label_to_nparray(d: dict | Any, n_classes: int) -> np.ndarray:
             array[int(k)] = v
         except ValueError:
             logger.warning("Invalid key: '%s'", k)
+            return pd.NA
+        except IndexError:
+            logger.error("IndexError for: %s, n_classes: %d", repr(d), n_classes)
             return pd.NA
     return array
 
@@ -118,6 +128,7 @@ def enable_logging():
 
 def process_rdf(rdf: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Process model results dataframe"""
+    logger.info("Starting processing with %d rows", len(rdf))
     rdf["model_size"] = (
         rdf["model_id"].str.extract(r"-(\d+(?:\.\d+)?)B$").astype("float")
     )
@@ -125,6 +136,10 @@ def process_rdf(rdf: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     logger.info("Number of responses that are NA: %d", are_na)
     rdf.query("~response.isna()", inplace=True)
     rdf["response"] = rdf["response"].str.strip()
+
+    is_empty_str = len(rdf.query("response == ''"))
+    logger.info("Number of responses that are empty strings: %d", is_empty_str)
+    rdf.query("response != ''", inplace=True)
 
     rdf = assign_n_classes(rdf)
     rdf["pred"] = rdf.apply(
@@ -139,16 +154,7 @@ def process_rdf(rdf: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     rdf["pred_sum"] = rdf["pred"].apply(lambda x: x.sum())
     rdf["is_valid_pred"] = (rdf["pred_sum"] - 1).abs() < 0.01
-    rdf["reasoning_isnull"] = rdf["reasoning"].isna()
-
-    # Add columns indicating if the run has reasoning
-    reasoning_by_run = rdf.groupby("run_id", as_index=False).agg(
-        is_reasoning=("reasoning_isnull", lambda x: ~x.max())
-    )
-    rdf = rdf.merge(reasoning_by_run, on="run_id", how="left").drop(
-        columns=["reasoning_isnull"]
-    )
-    return rdf, reasoning_by_run
+    return rdf
 
 
 def l0_loss(tgt: np.ndarray, pred: np.ndarray) -> float:
