@@ -12,6 +12,18 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             // "args": ["--vllm_start_server=True", "--gen_kwargs=thinking"]
+        },
+        {
+            "name": "Streamlit",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "streamlit",
+            "args": [
+                "run",
+                "${workspaceFolder}/st_app/app.py"
+            ],
+            "console": "integratedTerminal",
+            "justMyCode": false
         }
     ]
 }
