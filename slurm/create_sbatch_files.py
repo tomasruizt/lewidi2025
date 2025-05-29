@@ -15,8 +15,12 @@ GEN_KWARGS = ["thinking", "nonthinking"]
 SPLITS = ["train", "dev"]
 BASE_PORT = 9000
 
+tgt_dir = Path("slurm_scripts")
+os.makedirs(tgt_dir, exist_ok=True)
 
-os.makedirs("slurm_scripts", exist_ok=True)
+# Clear any existing .sbatch files
+for file in tgt_dir.glob("*.sbatch"):
+    file.unlink()
 
 combinations = product(MODELS, GEN_KWARGS)
 for i, (model, gen_kwargs) in enumerate(combinations):
