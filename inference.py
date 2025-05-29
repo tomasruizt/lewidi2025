@@ -59,7 +59,7 @@ class Args(BaseSettings, cli_parse_args=True):
 
 
 def run_inference(args: Args, dataset: Dataset, split: Split, pbar: tqdm | None = None):
-    timeout = 10 * 60
+    timeout = 2 * 60
     logger.info("Timeout (s): %d, dataset: '%s', split: '%s'", timeout, dataset, split)
 
     if pbar is None:
