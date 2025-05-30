@@ -62,7 +62,7 @@ def soft_label_to_nparray(d: dict | Any, n_classes: int) -> np.ndarray:
         try:
             array[int(k)] = v
         except ValueError:
-            logger.warning("Invalid key: '%s'", k)
+            logger.warning("Invalid key: '%s'", repr(k)[:30])
             return pd.NA
         except IndexError:
             logger.error("IndexError for: %s, n_classes: %d", repr(d), n_classes)
