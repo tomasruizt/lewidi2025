@@ -29,6 +29,7 @@ enroot start --rw --root \
     --model_id {MODEL_ID} \
     --gen_kwargs {GEN_KWARGS} \
     --datasets {DATASETS} \
+    --template_id 01 \
     --splits {SPLITS} \
     --n_examples 1000 \
     --remote_call_concurrency 64 \
