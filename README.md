@@ -34,8 +34,8 @@ Start the server and run the inference:
 ```shell
 python inference.py \
     --model_id Qwen/Qwen3-4B \
-    --gen_kwargs nonthinking \
-    --dataset MP \
+    --gen_kwargs thinking \
+    --datasets CSC \
     --n_examples 100 \
     --remote_call_concurrency 256 \
     --n_loops 3 \

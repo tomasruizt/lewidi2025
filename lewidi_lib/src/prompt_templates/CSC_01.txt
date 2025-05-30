@@ -1,0 +1,18 @@
+# Dataset Description:
+The Conversational Sarcasm Corpus (CSC)
+The CSC is a dataset of sarcasm that provides ~7,000 context+response pairs, sarcasm ratings from 1 to 6 both by the response generators (speakers), and by multiple external observers per pair (6 in part1, 4 in part2). It is the result of multiple online experiments, in which the first batch of participants (speakers, generators) responded to given contexts (situation descriptions involving an imaginary interlocutor), and provided sarcasm ratings to their own responses from 1 (not at all) to 6 (completely). In the subsequent experiments, a new batch of participants (observers, evaluators) provided sarcasm ratings to the speakers' responses from 1 to 6. Multiple observers evaluated each context+response pair (each row in the dataset), where 6 observers evaluated the same row for part1, and 4 observers for part2.
+
+# Task:
+You are given a single example from the dataset, not the full dataset.
+Your task is to estimate the fraction of annotators that selected each label for this example.
+In other words, estimate the distribution of annotations for this example.
+
+# Constraints:
+Output the fractions / probabilities in JSON format like below. 
+
+{{ "1": p1, "2": p2, "3": p3, "4": p4, "5": p5, "6": p6 }}
+
+Where p1, ..., pX are fractions / probabilities between 0 and 1, and their sum equals 1.
+
+# Example:
+{text}
