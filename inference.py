@@ -77,12 +77,14 @@ def run_inference(
         "Timeout: %ds, dataset: '%s', split: '%s'", args.timeout_secs, dataset, split
     )
 
-    if pbar is None:
-        pbar = tqdm(total=args.n_examples)
-
     df = load_dataset(dataset=dataset, split=split)
+    df = df.head(args.n_examples)
     if args.only_run_previously_failed:
         df = keep_only_failed_examples(df, args, dataset, split, run_idx)
+
+    if pbar is None:
+        pbar = tqdm(total=len(df))
+
     template = load_template(dataset=dataset, template_id=args.template_id)
 
     model = ModelvLLM(
@@ -108,7 +110,7 @@ def run_inference(
     if args.enforce_json:
         gen_kwargs["json_schema"] = BasicSchema
 
-    prompts = (template.format(text=t) for t in df.head(args.n_examples)["text"])
+    prompts = (template.format(text=t) for t in df["text"])
     batchof_convos = ([Message.from_prompt(p)] for p in prompts)
     responses = model.complete_batch(batch=batchof_convos, **gen_kwargs)
     for response in responses:
@@ -136,7 +138,12 @@ def keep_only_failed_examples(
 
 def run_many_inferences(args: Args) -> None:
     combinations = list(product(args.datasets, args.splits, range(args.n_loops)))
-    pbar = tqdm(total=len(combinations) * args.n_examples)
+
+    if args.only_run_previously_failed:
+        pbar = None  # actual n_examples determined later
+    else:
+        pbar = tqdm(total=len(combinations) * args.n_examples)
+
     for dataset, split, run_idx in combinations:
         run_inference(args, dataset, split, run_idx, pbar)
 
