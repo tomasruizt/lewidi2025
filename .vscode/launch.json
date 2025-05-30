@@ -5,13 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python:Current File",
+            "name": "inference.py",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
+            "program": "inference.py",
             "console": "integratedTerminal",
             "justMyCode": false,
-            // "args": ["--vllm_start_server=True", "--gen_kwargs=thinking"]
+            "args": [
+                "--vllm_start_server=False",
+                "--gen_kwargs=thinking",
+                "--datasets=CSC",
+                "--splits=train,dev",
+                "--n_examples=1000",
+                "--only_run_previously_failed=true"
+            ]
         },
         {
             "name": "Streamlit",

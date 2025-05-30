@@ -129,8 +129,8 @@ def keep_only_failed_examples(
     failed = previous.query(
         "success == False and dataset == @dataset and split == @split and run_idx == @run_idx"
     )
+    df = df.query("request_idx in @failed.request_idx")
     logger.info(f"Keeping {len(df)} previously failed examples")
-    df = df.query("request_idx not in @failed.request_idx")
     return df
 
 
