@@ -127,11 +127,18 @@ def enable_logging():
     logging.basicConfig(level=logging.INFO, format=fmt)
 
 
-def process_rdf(rdf: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+def process_rdf(
+    rdf: pd.DataFrame, discard_invalid_pred: bool = False
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Process model results dataframe"""
     logger.info("Starting processing with %d rows", len(rdf))
     rdf["model_size"] = (
         rdf["model_id"].str.extract(r"-(\d+(?:\.\d+)?)B$").astype("float")
+    )
+    rdf["model_size"] = pd.Categorical(
+        rdf["model_size"].astype(str),
+        categories=[str(s) for s in sorted(rdf["model_size"].unique())],
+        ordered=True,
     )
     are_na = len(rdf.query("response.isna()"))
     logger.info("Number of responses that are NA: %d", are_na)
@@ -155,7 +162,20 @@ def process_rdf(rdf: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 
     rdf["pred_sum"] = rdf["pred"].apply(lambda x: x.sum())
     rdf["is_valid_pred"] = (rdf["pred_sum"] - 1).abs() < 0.01
+
+    if discard_invalid_pred:
+        invalid_preds = rdf.query("~is_valid_pred")
+        logger.info("Dropping %d invalid predictions", len(invalid_preds))
+        rdf.query("is_valid_pred", inplace=True)
+
+        assign_col_pred_entropy(rdf)
+
     return rdf
+
+
+def assign_col_pred_entropy(df: pd.DataFrame) -> pd.DataFrame:
+    col = df.groupby("n_classes")["pred"].transform(entropy)
+    return df.assign(pred_entropy=col)
 
 
 def l0_loss(tgt: np.ndarray, pred: np.ndarray) -> float:
@@ -187,3 +207,7 @@ def baseline_pred(n_classes: int) -> np.ndarray:
 
 class BasicSchema(RootModel):
     root: dict[int, float]
+
+
+def entropy(s: pd.Series) -> np.ndarray:
+    return scipy.stats.entropy(np.array(s.values.tolist()).T)
