@@ -81,3 +81,11 @@ find . -name 'responses.jsonl' | xargs wc -l
 find . -name 'responses.jsonl' -exec cat {} + > combined_responses.jsonl
 
 duckdb -c "COPY (SELECT * FROM 'combined_responses.jsonl') TO 'combined_responses.parquet'"
+
+Alternatively,
+
+```python
+import pandas as pd
+df = pd.read_json("combined_responses.jsonl", lines=True, dtype={"error": "string"})
+df.to_parquet("combined_responses.parquet")
+```
