@@ -151,9 +151,15 @@ def using_vllm_server(args: Args):
         yield
 
 
+def convert_output_to_parquet(tgt_file: str) -> None:
+    df = pd.read_json(tgt_file, lines=True)
+    df.to_parquet(tgt_file.replace(".jsonl", ".parquet"))
+
+
 if __name__ == "__main__":
     enable_logging()
     args = Args()
     logger.info(f"Args: {args.model_dump_json()}")
     with using_vllm_server(args):
         run_many_inferences(args)
+    convert_output_to_parquet(args.tgt_file)
