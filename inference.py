@@ -125,10 +125,11 @@ def run_inference(
 def keep_only_failed_examples(
     df: pd.DataFrame, args: Args, dataset: Dataset, split: Split, run_idx: int
 ) -> pd.DataFrame:
-    previous = pd.read_json(args.tgt_file, lines=True)
+    previous = pd.read_json(args.tgt_file, lines=True, dtype={"error": "string"})
     failed = previous.query(
         "success == False and dataset == @dataset and split == @split and run_idx == @run_idx"
     )
+    logger.info(f"Keeping {len(df)} previously failed examples")
     df = df.query("request_idx not in @failed.request_idx")
     return df
 
