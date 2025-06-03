@@ -31,8 +31,8 @@ enroot start --rw --root \
     --datasets {DATASETS} \
     --template_id 01 \
     --splits {SPLITS} \
-    --n_examples 1000 \
-    --remote_call_concurrency 64 \
+    --n_examples 100 \
+    --remote_call_concurrency 32 \
     --n_loops 3 \
     --vllm_port {VLLM_PORT} \
     --vllm_start_server True \

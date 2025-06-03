@@ -80,7 +80,7 @@ find . -name 'responses.jsonl' | xargs wc -l
 
 find . -name 'responses.jsonl' -exec cat {} + > combined_responses.jsonl
 
-duckdb -c "COPY (SELECT * FROM 'combined_responses.jsonl') TO 'combined_responses.parquet'"
+duckdb -c "COPY (SELECT * FROM read_json_auto('combined_responses.jsonl', union_by_name=True)) TO 'combined_responses.parquet'"
 
 Alternatively,
 
