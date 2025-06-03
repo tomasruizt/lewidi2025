@@ -29,7 +29,7 @@ class VLLMServer:
             "--task=generate",
             "--disable-log-requests",  # prevents logging the prompt
             "--disable-uvicorn-access-log",  # prevents logging 200 OKs
-            "--max-model-len=8192",
+            "--max-model-len=16k",
             "--gpu-memory-utilization=0.95",
             f"--port={self.port}",
         ]
