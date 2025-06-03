@@ -37,8 +37,8 @@ python inference.py \
     --gen_kwargs thinking \
     --datasets VariErrNLI \
     --template_id 01 \
-    --remote_call_concurrency 8 \
-    --n_examples 100 \
+    --remote_call_concurrency 10 \
+    --n_examples 10 \
     --vllm_port 8000 \
     --vllm_start_server=False
 ```

@@ -41,7 +41,14 @@ def assign_n_classes(df: pd.DataFrame) -> pd.DataFrame:
     return df.assign(n_classes=col)
 
 
-def soft_label_to_nparray(d: dict | Any, n_classes: int) -> np.ndarray:
+def soft_label_to_nparray(
+    d: dict | Any, dataset: Dataset, do_recurse: bool = True
+) -> np.ndarray:
+    if dataset == "VariErrNLI" and do_recurse:
+        return {
+            k: soft_label_to_nparray(v, dataset, do_recurse=False) for k, v in d.items()
+        }
+
     if not isinstance(d, dict):
         match d:
             case "":
@@ -52,7 +59,7 @@ def soft_label_to_nparray(d: dict | Any, n_classes: int) -> np.ndarray:
                 logger.info("Not a dict: %s", repr(d))
                 return pd.NA
 
-    array = np.zeros(n_classes)
+    array = np.zeros(n_classes(dataset))
     for k, v in d.items():
         if k == "0.0":
             k = 0
@@ -152,7 +159,7 @@ def process_rdf(
     rdf = assign_n_classes(rdf)
     rdf["pred"] = rdf.apply(
         lambda row: soft_label_to_nparray(
-            json_repair.loads(row["response"]), n_classes=row["n_classes"]
+            json_repair.loads(row["response"]), dataset=row["dataset"]
         ),
         axis=1,
     )
@@ -178,25 +185,39 @@ def assign_col_pred_entropy(df: pd.DataFrame) -> pd.DataFrame:
     return df.assign(pred_entropy=col)
 
 
-def l0_loss(tgt: np.ndarray, pred: np.ndarray) -> float:
-    return np.abs(tgt - pred).sum()
+def l0_loss(tgt: np.ndarray | dict, pred: np.ndarray | dict, dataset: Dataset) -> float:
+    if dataset == "VariErrNLI":
+        dists = []
+        for k, tgt_val in tgt.items():
+            dists.append(np.abs(tgt_val - pred[k]).mean())
+        return np.mean(dists)
+    return np.abs(tgt - pred).mean()
 
 
-def ws_loss(tgt: np.ndarray, pred: np.ndarray, n_classes: int) -> float:
+def ws_loss(tgt: np.ndarray | dict, pred: np.ndarray | dict, dataset: Dataset) -> float:
     """wasserstein distance between two distributions https://stackoverflow.com/a/76061410/5730291"""
-    return scipy.stats.wasserstein_distance(
-        range(n_classes), range(n_classes), tgt, pred
-    )
+    n = n_classes(dataset)
+    if dataset == "VariErrNLI":
+        dists = []
+        for k, tgt_val in tgt.items():
+            dists.append(
+                scipy.stats.wasserstein_distance(range(n), range(n), tgt_val, pred[k])
+            )
+        return np.mean(dists)
+
+    return scipy.stats.wasserstein_distance(range(n), range(n), tgt, pred)
 
 
 def assign_col_l0_loss(df: pd.DataFrame) -> pd.DataFrame:
-    col = df.apply(lambda row: l0_loss(row["target"], row["pred"]), axis=1)
+    col = df.apply(
+        lambda row: l0_loss(row["target"], row["pred"], row["dataset"]), axis=1
+    )
     return df.assign(l0_loss=col)
 
 
 def assign_col_ws_loss(df: pd.DataFrame) -> pd.DataFrame:
     col = df.apply(
-        lambda row: ws_loss(row["target"], row["pred"], row["n_classes"]), axis=1
+        lambda row: ws_loss(row["target"], row["pred"], row["dataset"]), axis=1
     )
     return df.assign(ws_loss=col)
 

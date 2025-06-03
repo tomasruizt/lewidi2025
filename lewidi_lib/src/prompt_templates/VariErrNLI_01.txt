@@ -8,12 +8,11 @@ Your task is to estimate the fraction of annotators that selected each label for
 In other words, estimate the distribution of annotations for this example.
 
 # Constraints:
+Please output the fractions / probabilities that each label is chosen (entailment, neutral, contradiction) separately, where p1 is the probability that the label is chosen, and p0 is the probability that the label is not chosen. The sum p0 + p1 equals 1 for each label.
+
 Output the fractions / probabilities in JSON format like below. 
 
 {{ "entailment": {{ "0": p0, "1": p1 }}, "neutral": {{ "0": p0, "1": p1 }}, "contradiction": {{ "0": p0, "1": p1 }} }}
-
-Where p0, ..., pX are fractions / probabilities between 0 and 1. 
-For each label (entailment, neutral, contradiction), the sum of the probabilities p0 + p1 equals 1.
 
 # Example:
 {text}
