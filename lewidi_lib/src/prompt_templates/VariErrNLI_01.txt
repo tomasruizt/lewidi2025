@@ -1,0 +1,19 @@
+# Dataset Description:
+The VariErr NLI dataset (VariErrNLI)
+VariErrNLI was created designed for automatic error detection, distinguishing between annotation errors and legitimate human label variations in Natural Language Inference (NLI) tasks. The dataset was created using a two-round annotation process: initially, annotators provided labels and explanations for each NLI item; subsequently, they assessed the validity of each label-explanation pair. It comprises 1,933 explanations for 500 re-annotated items from the Multi-Genre Natural Language Inference (MNLI) corpus for Round 1 and 7,732 validity judgments for Round 2. The LeWiDi 2025 Shared Task focuses on Round 1, annotators could assign one or more labels from {{Entailment, Neutral, Contradiction}} to each (Premise, Hypothesis) pair and provide corresponding explanations.
+
+# Task:
+You are given a single example from the dataset, not the full dataset.
+Your task is to estimate the fraction of annotators that selected each label for this example.
+In other words, estimate the distribution of annotations for this example.
+
+# Constraints:
+Output the fractions / probabilities in JSON format like below. 
+
+{{ "entailment": {{ "0": p0, "1": p1 }}, "neutral": {{ "0": p0, "1": p1 }}, "contradiction": {{ "0": p0, "1": p1 }} }}
+
+Where p0, ..., pX are fractions / probabilities between 0 and 1. 
+For each label (entailment, neutral, contradiction), the sum of the probabilities p0 + p1 equals 1.
+
+# Example:
+{text}
