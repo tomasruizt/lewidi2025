@@ -232,3 +232,31 @@ class BasicSchema(RootModel):
 
 def entropy(s: pd.Series) -> np.ndarray:
     return scipy.stats.entropy(np.array(s.values.tolist()).T)
+
+
+def plot_baseline_losses(g, baseline_losses: pd.DataFrame, **keywords):
+    for ax in g.axes.flat:
+        ax.grid(alpha=0.5)
+        keywords = keywords | parse_keywords_from_string(ax.title.get_text())
+        baseline_ws_loss_ = baseline_losses.query(
+            "dataset == @keywords['dataset'] and split == @keywords['split']"
+        )["ws_loss"].values[0]
+        ax.axhline(baseline_ws_loss_, color="red", linestyle="--", label="Baseline")
+
+
+def parse_keywords_from_string(s: str) -> dict:
+    keywords = {}
+    for duo in s.split(" | "):
+        k, v = duo.split(" = ")
+        keywords[k.strip()] = v.strip()
+    return keywords
+
+
+def plot_baseline_entropy(g, baseline_entropy: pd.DataFrame):
+    for ax in g.axes.flat:
+        ax.grid(alpha=0.5)
+        keywords = parse_keywords_from_string(ax.title.get_text())
+        value = baseline_entropy.query("dataset == @keywords['dataset']")[
+            "entropy"
+        ].values[0]
+        ax.axhline(value, color="red", linestyle="--", label="Baseline")
