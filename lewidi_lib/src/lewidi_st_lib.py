@@ -20,13 +20,9 @@ def load_preds_cached() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner="Loading predictions...")
-def load_preds_cached_subset(
-    dataset: str, split: str, template_id: str, model: str
-) -> pd.DataFrame:
+def load_preds_cached_subset(dataset: str, split: str, model: str) -> pd.DataFrame:
     rdf = load_preds_cached()
-    return rdf.query(
-        "dataset == @dataset and split == @split and template_id == @template_id and model_id == @model"
-    )
+    return rdf.query("dataset == @dataset and split == @split and model_id == @model")
 
 
 def fmt_perf_df(perf_df: pd.DataFrame) -> pd.DataFrame:

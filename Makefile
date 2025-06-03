@@ -7,7 +7,7 @@ vllm-qwen3-thinking:
 		--reasoning-parser deepseek_r1 \
 		--task generate \
 		--disable-log-requests \
-		--max-model-len 8192 \
+		--max-model-len 16k \
 		--gpu-memory-utilization 0.8 \
 		--enable-chunked-prefill \
 		--disable-uvicorn-access-log
@@ -17,8 +17,10 @@ inference:
 	python inference.py \
 		--model_id Qwen/Qwen3-4B \
 		--gen_kwargs thinking \
-		--datasets VariErrNLI \
+		--datasets CSC \
 		--template_id 01 \
 		--remote_call_concurrency 10 \
 		--n_examples 10 \
-		--vllm_start_server=False
+		--n_fewshot_examples 10 \
+		--vllm_start_server=False \
+		--max_tokens 10000

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Literal
 from llmlib.vllm_model import ModelvLLM
-from llmlib.base_llm import Message
+from llmlib.base_llm import Message, Conversation
 import logging
 import pandas as pd
 from tqdm import tqdm
@@ -44,7 +44,8 @@ class Args(BaseSettings, cli_parse_args=True):
     splits: list[Split] = ["train"]
     template_id: str = "00"
     n_examples: int = 10
-    max_tokens: int = 5000
+    n_fewshot_examples: int = 0
+    max_tokens: int = 10000
     remote_call_concurrency: int = 64
     n_loops: int = 1
     vllm_port: int = 8000
@@ -78,14 +79,15 @@ def run_inference(
     )
 
     df = load_dataset(dataset=dataset, split=split)
+    examples_df = df.head(args.n_fewshot_examples)
+    if args.n_fewshot_examples > 0:
+        df = df.tail(-args.n_fewshot_examples)
     df = df.head(args.n_examples)
     if args.only_run_missing_examples:
         df = keep_only_missing_examples(df, args, dataset, split, run_idx)
 
     if pbar is None:
         pbar = tqdm(total=len(df))
-
-    template = load_template(dataset=dataset, template_id=args.template_id)
 
     model = ModelvLLM(
         remote_call_concurrency=args.remote_call_concurrency,
@@ -110,9 +112,11 @@ def run_inference(
     if args.enforce_json:
         gen_kwargs["json_schema"] = BasicSchema
 
-    prompts = (template.format(text=t) for t in df["text"])
-    batchof_convos = ([Message.from_prompt(p)] for p in prompts)
-    responses = model.complete_batch(batch=batchof_convos, **gen_kwargs)
+    batchof_convos = (make_convo(t, args, dataset, examples_df) for t in df["text"])
+    metadatas = [{"dataset_idx": row["dataset_idx"]} for _, row in df.iterrows()]
+    responses = model.complete_batch(
+        batch=batchof_convos, metadatas=metadatas, **gen_kwargs
+    )
     for response in responses:
         data = fixed_data | response
         data["timestamp"] = datetime.datetime.now().isoformat()
@@ -122,6 +126,21 @@ def run_inference(
             f.write(json_str + "\n")
 
         pbar.update(1)
+
+
+def make_convo(
+    text: str, args: Args, dataset: Dataset, examples_df: pd.DataFrame
+) -> Conversation:
+    template = load_template(dataset=dataset, template_id=args.template_id)
+
+    few_shot_msgs = []
+    for _, row in examples_df.iterrows():
+        few_shot_msgs.append(Message.from_prompt(template.format(text=row["text"])))
+        soft_label = {k: round(v, 3) for k, v in row["soft_label"].items()}
+        few_shot_msgs.append(Message(role="assistant", msg=json.dumps(soft_label)))
+
+    final_msg = Message.from_prompt(template.format(text=text))
+    return few_shot_msgs + [final_msg]
 
 
 def keep_only_missing_examples(

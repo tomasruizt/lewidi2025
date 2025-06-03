@@ -10,9 +10,9 @@ In other words, estimate the distribution of annotations for this example.
 # Constraints:
 Output the fractions / probabilities in JSON format like below. 
 
-{{ "1": p1, "2": p2, "3": p3, "4": p4, "5": p5, "6": p6 }}
+{{'0': p0, '1': p1, '2': p2, '3': p3, '4': p4, '5': p5, '6': p6}}
 
-Where p1, ..., pX are fractions / probabilities between 0 and 1, and their sum equals 1.
+Where p0, ..., pX are fractions / probabilities between 0.0 and 1.0, and their sum equals 1.0.
 
 # Example:
 {text}

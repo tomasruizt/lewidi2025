@@ -19,11 +19,10 @@ st.set_page_config(layout="wide")
 st.title("Explore Data & Answers")
 
 DATASETS = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
-SPLITS = ["train", "test"]
-TEMPLATE_IDS = ["0", "01"]
+SPLITS = ["train", "dev"]
 MODELS = [f"Qwen/Qwen3-{n}B" for n in ["0.6", "1.7", "4", "8", "14", "32"]]
 
-cs = st.columns(4)
+cs = st.columns(3)
 
 with cs[0]:
     dataset = st.radio("Select a dataset", DATASETS, horizontal=True)
@@ -32,9 +31,6 @@ with cs[1]:
     split = st.radio("Select a split", SPLITS, horizontal=True)
 
 with cs[2]:
-    template_id = st.radio("Select a prompt template", TEMPLATE_IDS, horizontal=True)
-
-with cs[3]:
     model = st.selectbox("Select a model", MODELS, index=None)
 
 
@@ -58,10 +54,21 @@ st.dataframe(row["text"])
 if model is None:
     st.stop()
 
-rdf = load_preds_cached_subset(dataset, split, template_id, model)
-gen_kwargs = st.radio("Type", ["thinking", "nonthinking"], horizontal=True)
+rdf = load_preds_cached_subset(dataset, split, model)
+if len(rdf) == 0:
+    st.warning("No predictions found")
+    st.stop()
+
+cs = st.columns([1, 3])
+with cs[0]:
+    template_ids = rdf["template_id"].unique()
+    template_id = st.radio("Select a prompt template", template_ids, horizontal=True)
+with cs[1]:
+    gen_kwargs_ids = rdf["gen_kwargs"].unique()
+    gen_kwargs = st.radio("Type", gen_kwargs_ids, horizontal=True)
+
 matches = rdf.query(
-    "request_idx == @row['request_idx'] and gen_kwargs == @gen_kwargs and split == @split"
+    "gen_kwargs == @gen_kwargs and template_id == @template_id and dataset_idx == @row['dataset_idx']"
 )
 ev2 = st.dataframe(
     matches,
