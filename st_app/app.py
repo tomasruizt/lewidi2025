@@ -20,9 +20,10 @@ st.title("Explore Data & Answers")
 
 DATASETS = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
 SPLITS = ["train", "test"]
+TEMPLATE_IDS = ["0", "01"]
 MODELS = [f"Qwen/Qwen3-{n}B" for n in ["0.6", "1.7", "4", "8", "14", "32"]]
 
-cs = st.columns(3)
+cs = st.columns(4)
 
 with cs[0]:
     dataset = st.radio("Select a dataset", DATASETS, horizontal=True)
@@ -31,6 +32,9 @@ with cs[1]:
     split = st.radio("Select a split", SPLITS, horizontal=True)
 
 with cs[2]:
+    template_id = st.radio("Select a prompt template", TEMPLATE_IDS, horizontal=True)
+
+with cs[3]:
     model = st.selectbox("Select a model", MODELS, index=None)
 
 
@@ -54,7 +58,7 @@ st.dataframe(row["text"])
 if model is None:
     st.stop()
 
-rdf = load_preds_cached_subset(dataset, split, model)
+rdf = load_preds_cached_subset(dataset, split, template_id, model)
 gen_kwargs = st.radio("Type", ["thinking", "nonthinking"], horizontal=True)
 matches = rdf.query(
     "request_idx == @row['request_idx'] and gen_kwargs == @gen_kwargs and split == @split"
