@@ -1,0 +1,18 @@
+# Dataset Description:
+The Paraphrase Detection dataset (Par)
+Four annotators independently annotated 500 question pairs from the Quora Question Pairs (QQP) dataset, assigning a Likert scale score from -5 to 5 to indicate how strongly the questions are paraphrases of one another. Each annotator also provided a short explanation for their score. This dataset uses scalar labels and limits each annotator to a single score per item.
+
+# Task:
+You are given a single example from the dataset, not the full dataset.
+Your task is to estimate the fraction of annotators that selected each label for this example.
+In other words, estimate the distribution of annotations for this example.
+
+# Constraints:
+Output the fractions / probabilities in JSON format like below. 
+
+{{ "-5": p0, "-4": p1, "-3": p2, "-2": p3, "-1": p4, "0": p5, "1": p6, "2": p7, "3": p8, "4": p9, "5": p10 }}
+
+Where p0, ..., pX are fractions / probabilities between 0 and 1, and their sum equals 1.
+
+# Example:
+{text}

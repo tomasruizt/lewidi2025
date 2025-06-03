@@ -3,6 +3,7 @@ parquets*/
 backups/
 slurm/slurm_scripts/
 responses.jsonl
+responses.parquet
 *.jsonl
 lewidi2025.code-workspace
 

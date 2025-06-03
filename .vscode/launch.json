@@ -14,10 +14,11 @@
             "args": [
                 "--vllm_start_server=False",
                 "--gen_kwargs=thinking",
-                "--datasets=CSC",
+                "--datasets=Paraphrase",
+                "--template_id=01",
                 "--splits=train,dev",
                 "--n_examples=1000",
-                "--only_run_missing_examples=true"
+                //"--only_run_missing_examples=true"
             ]
         },
         {
