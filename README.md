@@ -35,12 +35,12 @@ Start the server and run the inference:
 python inference.py \
     --model_id Qwen/Qwen3-4B \
     --gen_kwargs thinking \
-    --datasets CSC \
+    --datasets VariErrNLI \
+    --template_id 01 \
+    --remote_call_concurrency 8 \
     --n_examples 100 \
-    --remote_call_concurrency 256 \
-    --n_loops 3 \
     --vllm_port 8000 \
-    --vllm_start_server=True
+    --vllm_start_server=False
 ```
 
 # SLURM

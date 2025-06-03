@@ -1,7 +1,7 @@
 .PHONY: vllm-qwen3-thinking
 
 vllm-qwen3-thinking:
-	vllm serve Qwen/Qwen3-0.6B \
+	vllm serve Qwen/Qwen3-4B \
 		--dtype auto \
 		--enable-reasoning \
 		--reasoning-parser deepseek_r1 \
