@@ -29,9 +29,10 @@ enroot start --rw --root \
     --model_id {MODEL_ID} \
     --gen_kwargs {GEN_KWARGS} \
     --datasets {DATASETS} \
-    --template_id 01 \
+    --template_ids {TEMPLATE_IDS} \
     --splits {SPLITS} \
     --n_examples 100 \
+    --n_fewshot_examples 10 \
     --remote_call_concurrency 32 \
     --n_loops 3 \
     --vllm_port {VLLM_PORT} \

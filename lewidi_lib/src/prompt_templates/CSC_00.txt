@@ -8,7 +8,7 @@ Your task is to estimate the distribution of labels that human annotators will a
 Format:
 Output the probability of each label as a JSON object like this:
 
-{{ "1": p1, "2": p2, "3": p3, "4": p4, "5": p5, "6": p6 }}
+{{ '1': p1, '2': p2, '3': p3, '4': p4, '5': p5, '6': p6 }}
 
 Text:
 {text}

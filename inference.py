@@ -42,7 +42,7 @@ class Args(BaseSettings, cli_parse_args=True):
     gen_kwargs: Literal["thinking", "nonthinking"] = "nonthinking"
     datasets: list[Dataset] = ["CSC"]
     splits: list[Split] = ["train"]
-    template_id: str = "00"
+    template_ids: list[str] = ["00"]
     n_examples: int = 10
     n_fewshot_examples: int = 0
     max_tokens: int = 10000
@@ -61,6 +61,7 @@ class Args(BaseSettings, cli_parse_args=True):
             "vllm_start_server",
             "datasets",
             "splits",
+            "template_ids",
             "n_examples",
             "n_loops",
             "tgt_file",
@@ -72,10 +73,19 @@ class Args(BaseSettings, cli_parse_args=True):
 
 
 def run_inference(
-    args: Args, dataset: Dataset, split: Split, run_idx=0, pbar: tqdm | None = None
+    args: Args,
+    dataset: Dataset,
+    split: Split,
+    template_id: str,
+    run_idx: int = 0,
+    pbar: tqdm | None = None,
 ):
     logger.info(
-        "Timeout: %ds, dataset: '%s', split: '%s'", args.timeout_secs, dataset, split
+        "Timeout: %ds, dataset: '%s', split: '%s', template_id: '%s'",
+        args.timeout_secs,
+        dataset,
+        split,
+        template_id,
     )
 
     df = load_dataset(dataset=dataset, split=split)
@@ -102,6 +112,7 @@ def run_inference(
     fixed_data["run_start"] = datetime.datetime.now().isoformat()
     fixed_data["dataset"] = dataset
     fixed_data["split"] = split
+    fixed_data["template_id"] = template_id
 
     gen_kwargs = dict(max_tokens=args.max_tokens, **qwen3_common_gen_kwargs)
     if args.gen_kwargs == "thinking":
@@ -112,7 +123,9 @@ def run_inference(
     if args.enforce_json:
         gen_kwargs["json_schema"] = BasicSchema
 
-    batchof_convos = (make_convo(t, args, dataset, examples_df) for t in df["text"])
+    batchof_convos = (
+        make_convo(t, dataset, examples_df, template_id) for t in df["text"]
+    )
     metadatas = [{"dataset_idx": row["dataset_idx"]} for _, row in df.iterrows()]
     responses = model.complete_batch(
         batch=batchof_convos, metadatas=metadatas, **gen_kwargs
@@ -129,9 +142,12 @@ def run_inference(
 
 
 def make_convo(
-    text: str, args: Args, dataset: Dataset, examples_df: pd.DataFrame
+    text: str,
+    dataset: Dataset,
+    examples_df: pd.DataFrame,
+    template_id: str,
 ) -> Conversation:
-    template = load_template(dataset=dataset, template_id=args.template_id)
+    template = load_template(dataset=dataset, template_id=template_id)
 
     few_shot_msgs = []
     for _, row in examples_df.iterrows():
@@ -156,15 +172,17 @@ def keep_only_missing_examples(
 
 
 def run_many_inferences(args: Args) -> None:
-    combinations = list(product(args.datasets, args.splits, range(args.n_loops)))
+    combinations = list(
+        product(args.datasets, args.splits, args.template_ids, range(args.n_loops))
+    )
 
     if args.only_run_missing_examples:
         pbar = None  # actual n_examples determined later
     else:
         pbar = tqdm(total=len(combinations) * args.n_examples)
 
-    for dataset, split, run_idx in combinations:
-        run_inference(args, dataset, split, run_idx, pbar)
+    for dataset, split, template_id, run_idx in combinations:
+        run_inference(args, dataset, split, template_id, run_idx, pbar)
 
 
 @contextmanager
