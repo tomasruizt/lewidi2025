@@ -17,7 +17,7 @@
                 "--datasets=CSC",
                 "--splits=train,dev",
                 "--n_examples=1000",
-                "--only_run_previously_failed=true"
+                "--only_run_missing_examples=true"
             ]
         },
         {

@@ -50,7 +50,7 @@ class Args(BaseSettings, cli_parse_args=True):
     vllm_port: int = 8000
     vllm_start_server: bool = True
     tgt_file: str = "responses.jsonl"
-    only_run_previously_failed: bool = False
+    only_run_missing_examples: bool = False
     timeout_secs: int = 5 * 60
     enforce_json: bool = False
 
@@ -63,7 +63,7 @@ class Args(BaseSettings, cli_parse_args=True):
             "n_examples",
             "n_loops",
             "tgt_file",
-            "only_run_previously_failed",
+            "only_run_missing_examples",
             "timeout_secs",
         ]
         d: dict = self.model_dump(exclude=exclude)
@@ -79,8 +79,8 @@ def run_inference(
 
     df = load_dataset(dataset=dataset, split=split)
     df = df.head(args.n_examples)
-    if args.only_run_previously_failed:
-        df = keep_only_failed_examples(df, args, dataset, split, run_idx)
+    if args.only_run_missing_examples:
+        df = keep_only_missing_examples(df, args, dataset, split, run_idx)
 
     if pbar is None:
         pbar = tqdm(total=len(df))
@@ -124,22 +124,22 @@ def run_inference(
         pbar.update(1)
 
 
-def keep_only_failed_examples(
+def keep_only_missing_examples(
     df: pd.DataFrame, args: Args, dataset: Dataset, split: Split, run_idx: int
 ) -> pd.DataFrame:
     previous = pd.read_json(args.tgt_file, lines=True, dtype={"error": "string"})
-    failed = previous.query(
-        "success == False and dataset == @dataset and split == @split and run_idx == @run_idx"
+    success = previous.query(
+        "success == True and dataset == @dataset and split == @split and run_idx == @run_idx"
     )
-    df = df.query("request_idx in @failed.request_idx")
-    logger.info(f"Keeping {len(df)} previously failed examples")
+    df = df.query("~request_idx.isin(@success.request_idx)")
+    logger.info(f"Keeping {len(df)} missing examples")
     return df
 
 
 def run_many_inferences(args: Args) -> None:
     combinations = list(product(args.datasets, args.splits, range(args.n_loops)))
 
-    if args.only_run_previously_failed:
+    if args.only_run_missing_examples:
         pbar = None  # actual n_examples determined later
     else:
         pbar = tqdm(total=len(combinations) * args.n_examples)
