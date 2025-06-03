@@ -126,12 +126,14 @@ def run_inference(
     batchof_convos = (
         make_convo(t, dataset, examples_df, template_id) for t in df["text"]
     )
-    metadatas = [{"dataset_idx": row["dataset_idx"]} for _, row in df.iterrows()]
+    metadatas = [
+        fixed_data | {"dataset_idx": row["dataset_idx"]} for _, row in df.iterrows()
+    ]
     responses = model.complete_batch(
         batch=batchof_convos, metadatas=metadatas, **gen_kwargs
     )
     for response in responses:
-        data = fixed_data | response
+        data = response
         data["timestamp"] = datetime.datetime.now().isoformat()
 
         with open(args.tgt_file, "at") as f:

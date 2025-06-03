@@ -18,7 +18,7 @@ inference:
 		--model_id Qwen/Qwen3-4B \
 		--gen_kwargs thinking \
 		--datasets CSC \
-		--template_id 01 \
+		--template_ids 1 \
 		--remote_call_concurrency 10 \
 		--n_examples 10 \
 		--n_fewshot_examples 10 \
