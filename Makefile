@@ -21,6 +21,7 @@ inference:
 		--template_ids 1 \
 		--remote_call_concurrency 10 \
 		--n_examples 10 \
+		--n_loops 2 \
 		--n_fewshot_examples 10 \
 		--vllm_start_server=False \
 		--max_tokens 10000

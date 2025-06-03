@@ -1,9 +1,10 @@
 from contextlib import contextmanager
 import datetime
-from itertools import product
+from itertools import chain, product
 import json
 from pathlib import Path
-from typing import Literal
+from typing import Iterable, Literal
+from attr import dataclass
 from llmlib.vllm_model import ModelvLLM
 from llmlib.base_llm import Message, Conversation
 import logging
@@ -58,35 +59,6 @@ class Args(BaseSettings, cli_parse_args=True):
         return d
 
 
-def run_inference(
-    args: Args,
-    dataset: Dataset,
-    split: Split,
-    template_id: int,
-    run_idx: int = 0,
-    pbar: tqdm | None = None,
-):
-    batchof_convos, metadatas, n_requests = create_batch_for_model(
-        args, dataset, split, template_id, run_idx
-    )
-    if pbar is None:
-        pbar = tqdm(total=n_requests)
-
-    model = ModelvLLM(
-        remote_call_concurrency=args.remote_call_concurrency,
-        model_id=args.model_id,
-        port=args.vllm_port,
-        timeout_secs=args.timeout_secs,
-    )
-    gen_kwargs = make_gen_kwargs(args)
-    responses = model.complete_batch(
-        batch=batchof_convos, metadatas=metadatas, **gen_kwargs
-    )
-    for response in responses:
-        dump_response(args, response)
-        pbar.update(1)
-
-
 def dump_response(args: Args, response: dict) -> None:
     response["timestamp"] = datetime.datetime.now().isoformat()
     with open(args.tgt_file, "at") as f:
@@ -94,17 +66,28 @@ def dump_response(args: Args, response: dict) -> None:
         f.write(json_str + "\n")
 
 
+@dataclass
+class BatchForModel:
+    batchof_convos: Iterable[Conversation]
+    metadatas: Iterable[dict]
+    n_requests: int
+
+    def __add__(self, other: "BatchForModel") -> "BatchForModel":
+        return BatchForModel(
+            batchof_convos=chain(self.batchof_convos, other.batchof_convos),
+            metadatas=chain(self.metadatas, other.metadatas),
+            n_requests=self.n_requests + other.n_requests,
+        )
+
+    def __radd__(self, other: "BatchForModel") -> "BatchForModel":
+        if other == 0:  # this allows sum(batches)
+            return self
+        return self + other
+
+
 def create_batch_for_model(
     args: Args, dataset: Dataset, split: Split, template_id: int, run_idx: int
-) -> tuple[list[Conversation], list[dict], int]:
-    logger.info(
-        "Timeout: %ds, dataset: '%s', split: '%s', template_id: '%s'",
-        args.timeout_secs,
-        dataset,
-        split,
-        template_id,
-    )
-
+) -> BatchForModel:
     df = load_dataset(dataset=dataset, split=split)
     examples_df = df.head(args.n_fewshot_examples)
     if args.n_fewshot_examples > 0:
@@ -130,7 +113,7 @@ def create_batch_for_model(
     )
 
     n_requests = len(df)
-    return batchof_convos, metadatas, n_requests
+    return BatchForModel(batchof_convos, metadatas, n_requests)
 
 
 def make_gen_kwargs(args: Args) -> dict:
@@ -194,13 +177,27 @@ def run_many_inferences(args: Args) -> None:
         product(args.datasets, args.splits, args.template_ids, range(args.n_loops))
     )
 
-    if args.only_run_missing_examples:
-        pbar = None  # actual n_examples determined later
-    else:
-        pbar = tqdm(total=len(combinations) * args.n_examples)
-
+    batches: list[BatchForModel] = []
     for dataset, split, template_id, run_idx in combinations:
-        run_inference(args, dataset, split, template_id, run_idx, pbar)
+        batch = create_batch_for_model(args, dataset, split, template_id, run_idx)
+        batches.append(batch)
+
+    batch: BatchForModel = sum(batches)
+    pbar = tqdm(total=batch.n_requests)
+
+    model = ModelvLLM(
+        remote_call_concurrency=args.remote_call_concurrency,
+        model_id=args.model_id,
+        port=args.vllm_port,
+        timeout_secs=args.timeout_secs,
+    )
+    gen_kwargs = make_gen_kwargs(args)
+    responses = model.complete_batch(
+        batch=batch.batchof_convos, metadatas=batch.metadatas, **gen_kwargs
+    )
+    for response in responses:
+        dump_response(args, response)
+        pbar.update(1)
 
 
 @contextmanager

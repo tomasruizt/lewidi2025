@@ -17,6 +17,7 @@
                 "--gen_kwargs=thinking",
                 "--datasets=CSC",
                 "--template_ids=0,1",
+                "--n_loops=2",
                 "--splits=train,dev",
                 "--n_examples=10",
                 "--n_fewshot_examples=10",
