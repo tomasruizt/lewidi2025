@@ -42,7 +42,7 @@ class Args(BaseSettings, cli_parse_args=True):
     gen_kwargs: Literal["thinking", "nonthinking"] = "nonthinking"
     datasets: list[Dataset] = ["CSC"]
     splits: list[Split] = ["train"]
-    template_ids: list[str] = ["00"]
+    template_ids: list[int] = [0]
     n_examples: int = 10
     n_fewshot_examples: int = 0
     max_tokens: int = 10000
@@ -76,7 +76,7 @@ def run_inference(
     args: Args,
     dataset: Dataset,
     split: Split,
-    template_id: str,
+    template_id: int,
     run_idx: int = 0,
     pbar: tqdm | None = None,
 ):

@@ -16,7 +16,7 @@
                 "--vllm_start_server=False",
                 "--gen_kwargs=thinking",
                 "--datasets=CSC",
-                "--template_id=01",
+                "--template_ids=0,1",
                 "--splits=train,dev",
                 "--n_examples=10",
                 "--n_fewshot_examples=10",

@@ -121,9 +121,9 @@ soft_label_mapping = {
 }
 
 
-def load_template(dataset: Dataset, template_id: str) -> str:
+def load_template(dataset: Dataset, template_id: int) -> str:
     root = Path(__file__).parent / "prompt_templates"
-    template = root / f"{dataset}_{template_id}.txt"
+    template = root / f"{dataset}_{str(template_id)}.txt"
     assert template.exists(), template.absolute()
     with open(template, "r") as f:
         return f.read()
