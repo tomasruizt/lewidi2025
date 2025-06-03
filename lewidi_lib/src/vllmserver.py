@@ -26,9 +26,9 @@ class VLLMServer:
             "vllm",
             "serve",
             self.model_id,
-            "--dtype=auto",
             "--task=generate",
-            "--disable-log-requests",
+            "--disable-log-requests",  # prevents logging the prompt
+            "--disable-uvicorn-access-log",  # prevents logging 200 OKs
             "--max-model-len=8192",
             "--gpu-memory-utilization=0.95",
             f"--port={self.port}",
