@@ -23,20 +23,6 @@ from pydantic_settings import BaseSettings
 logger = logging.getLogger(__name__)
 
 
-qwen3_thinking_gen_kwargs = dict(
-    temperature=0.6,
-    top_p=0.95,
-)
-qwen3_nonthinking_gen_kwargs = dict(
-    temperature=0.7,
-    top_p=0.8,
-    presence_penalty=1.5,
-)
-qwen3_common_gen_kwargs = dict(
-    top_k=20,
-)
-
-
 class Args(BaseSettings, cli_parse_args=True):
     model_id: str = "Qwen/Qwen3-0.6B"
     gen_kwargs: Literal["thinking", "nonthinking"] = "nonthinking"
@@ -80,6 +66,37 @@ def run_inference(
     run_idx: int = 0,
     pbar: tqdm | None = None,
 ):
+    batchof_convos, metadatas, n_requests = create_batch_for_model(
+        args, dataset, split, template_id, run_idx
+    )
+    if pbar is None:
+        pbar = tqdm(total=n_requests)
+
+    model = ModelvLLM(
+        remote_call_concurrency=args.remote_call_concurrency,
+        model_id=args.model_id,
+        port=args.vllm_port,
+        timeout_secs=args.timeout_secs,
+    )
+    gen_kwargs = make_gen_kwargs(args)
+    responses = model.complete_batch(
+        batch=batchof_convos, metadatas=metadatas, **gen_kwargs
+    )
+    for response in responses:
+        dump_response(args, response)
+        pbar.update(1)
+
+
+def dump_response(args: Args, response: dict) -> None:
+    response["timestamp"] = datetime.datetime.now().isoformat()
+    with open(args.tgt_file, "at") as f:
+        json_str = json.dumps(response, default=str)
+        f.write(json_str + "\n")
+
+
+def create_batch_for_model(
+    args: Args, dataset: Dataset, split: Split, template_id: int, run_idx: int
+) -> tuple[list[Conversation], list[dict], int]:
     logger.info(
         "Timeout: %ds, dataset: '%s', split: '%s', template_id: '%s'",
         args.timeout_secs,
@@ -96,15 +113,6 @@ def run_inference(
     if args.only_run_missing_examples:
         df = keep_only_missing_examples(df, args, dataset, split, run_idx)
 
-    if pbar is None:
-        pbar = tqdm(total=len(df))
-
-    model = ModelvLLM(
-        remote_call_concurrency=args.remote_call_concurrency,
-        model_id=args.model_id,
-        port=args.vllm_port,
-        timeout_secs=args.timeout_secs,
-    )
     Path(args.tgt_file).parent.mkdir(parents=True, exist_ok=True)
 
     fixed_data = args.dict_for_dump()
@@ -114,6 +122,18 @@ def run_inference(
     fixed_data["split"] = split
     fixed_data["template_id"] = template_id
 
+    batchof_convos = (
+        make_convo(t, dataset, examples_df, template_id) for t in df["text"]
+    )
+    metadatas = (
+        fixed_data | {"dataset_idx": row["dataset_idx"]} for _, row in df.iterrows()
+    )
+
+    n_requests = len(df)
+    return batchof_convos, metadatas, n_requests
+
+
+def make_gen_kwargs(args: Args) -> dict:
     gen_kwargs = dict(max_tokens=args.max_tokens, **qwen3_common_gen_kwargs)
     if args.gen_kwargs == "thinking":
         gen_kwargs = gen_kwargs | qwen3_thinking_gen_kwargs
@@ -122,25 +142,21 @@ def run_inference(
 
     if args.enforce_json:
         gen_kwargs["json_schema"] = BasicSchema
+    return gen_kwargs
 
-    batchof_convos = (
-        make_convo(t, dataset, examples_df, template_id) for t in df["text"]
-    )
-    metadatas = [
-        fixed_data | {"dataset_idx": row["dataset_idx"]} for _, row in df.iterrows()
-    ]
-    responses = model.complete_batch(
-        batch=batchof_convos, metadatas=metadatas, **gen_kwargs
-    )
-    for response in responses:
-        data = response
-        data["timestamp"] = datetime.datetime.now().isoformat()
 
-        with open(args.tgt_file, "at") as f:
-            json_str = json.dumps(data, default=str)
-            f.write(json_str + "\n")
-
-        pbar.update(1)
+qwen3_thinking_gen_kwargs = dict(
+    temperature=0.6,
+    top_p=0.95,
+)
+qwen3_nonthinking_gen_kwargs = dict(
+    temperature=0.7,
+    top_p=0.8,
+    presence_penalty=1.5,
+)
+qwen3_common_gen_kwargs = dict(
+    top_k=20,
+)
 
 
 def make_convo(
