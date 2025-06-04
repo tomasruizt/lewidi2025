@@ -1,0 +1,16 @@
+Your task is to estimate the distribution of labels that annotators will assign in the task.
+They annotators rate the level of sarcasm in the 'response' ranging from 1 to 6, where 1 is least sarcastic and 6 is most sarcastic.
+
+Output the probability of each label as a JSON object like this:
+{{
+    "1": p1,
+    "2": p2,
+    "3": p3,
+    "4": p4,
+    "5": p5,
+    "6": p6
+}}
+
+Try to be concise in your reasoning.
+
+{text}
