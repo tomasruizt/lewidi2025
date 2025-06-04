@@ -35,6 +35,22 @@
             ],
             "console": "integratedTerminal",
             "justMyCode": false
+        },
+        {
+            "name": "vLLM Server",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "vllm.entrypoints.openai.api_server",
+            "args": [
+                "--model=Qwen/Qwen3-4B",
+                "--enable-reasoning",
+                "--reasoning-parser=deepseek_r1",
+                "--task=generate",
+                "--max-model-len=16k",
+                "--gpu-memory-utilization=0.8",
+                "--enforce-eager"
+            ],
+            "justMyCode": false,
         }
     ]
 }
