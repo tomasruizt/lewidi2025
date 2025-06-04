@@ -1,12 +1,11 @@
 from contextlib import contextmanager
 import datetime
-from itertools import chain, product
+from itertools import product
 import json
 from pathlib import Path
 from typing import Iterable, Literal
-from attr import dataclass
 from llmlib.vllm_model import ModelvLLM
-from llmlib.base_llm import Message, Conversation
+from llmlib.base_llm import Message, Conversation, LlmReq
 import logging
 import pandas as pd
 from tqdm import tqdm
@@ -66,28 +65,9 @@ def dump_response(args: Args, response: dict) -> None:
         f.write(json_str + "\n")
 
 
-@dataclass
-class BatchForModel:
-    batchof_convos: Iterable[Conversation]
-    metadatas: Iterable[dict]
-    n_requests: int
-
-    def __add__(self, other: "BatchForModel") -> "BatchForModel":
-        return BatchForModel(
-            batchof_convos=chain(self.batchof_convos, other.batchof_convos),
-            metadatas=chain(self.metadatas, other.metadatas),
-            n_requests=self.n_requests + other.n_requests,
-        )
-
-    def __radd__(self, other: "BatchForModel") -> "BatchForModel":
-        if other == 0:  # this allows sum(batches)
-            return self
-        return self + other
-
-
 def create_batch_for_model(
     args: Args, dataset: Dataset, split: Split, template_id: int, run_idx: int
-) -> BatchForModel:
+) -> Iterable[LlmReq]:
     df = load_dataset(dataset=dataset, split=split)
     examples_df = df.head(args.n_fewshot_examples)
     if args.n_fewshot_examples > 0:
@@ -105,15 +85,14 @@ def create_batch_for_model(
     fixed_data["split"] = split
     fixed_data["template_id"] = template_id
 
-    batchof_convos = (
-        make_convo(t, dataset, examples_df, template_id) for t in df["text"]
-    )
-    metadatas = (
-        fixed_data | {"dataset_idx": row["dataset_idx"]} for _, row in df.iterrows()
-    )
-
-    n_requests = len(df)
-    return BatchForModel(batchof_convos, metadatas, n_requests)
+    for _, row in df.iterrows():
+        convo = make_convo(row["text"], dataset, examples_df, template_id)
+        metadata = fixed_data | {"dataset_idx": row["dataset_idx"]}
+        yield LlmReq(
+            convo=convo,
+            gen_kwargs=make_gen_kwargs(args),
+            metadata=metadata,
+        )
 
 
 def make_gen_kwargs(args: Args) -> dict:
@@ -177,13 +156,12 @@ def run_many_inferences(args: Args) -> None:
         product(args.datasets, args.splits, args.template_ids, range(args.n_loops))
     )
 
-    batches: list[BatchForModel] = []
+    batches: list[LlmReq] = []
     for dataset, split, template_id, run_idx in combinations:
         batch = create_batch_for_model(args, dataset, split, template_id, run_idx)
-        batches.append(batch)
+        batches.extend(batch)
 
-    batch: BatchForModel = sum(batches)
-    pbar = tqdm(total=batch.n_requests)
+    pbar = tqdm(total=len(batches))
 
     model = ModelvLLM(
         remote_call_concurrency=args.remote_call_concurrency,
@@ -191,10 +169,7 @@ def run_many_inferences(args: Args) -> None:
         port=args.vllm_port,
         timeout_secs=args.timeout_secs,
     )
-    gen_kwargs = make_gen_kwargs(args)
-    responses = model.complete_batch(
-        batch=batch.batchof_convos, metadatas=batch.metadatas, **gen_kwargs
-    )
+    responses = model.complete_batchof_reqs(batch=batches)
     for response in responses:
         dump_response(args, response)
         pbar.update(1)
