@@ -25,3 +25,6 @@ inference:
 		--n_fewshot_examples 10 \
 		--vllm_start_server=False \
 		--max_tokens 10000
+
+stapp:
+	python -m streamlit run st_app/app.py
