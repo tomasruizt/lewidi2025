@@ -136,39 +136,40 @@ def enable_logging():
 
 def process_rdf(
     rdf: pd.DataFrame, discard_invalid_pred: bool = False
-) -> tuple[pd.DataFrame, pd.DataFrame]:
+) -> pd.DataFrame:
     """Process model results dataframe"""
     logger.info("Starting processing with %d rows", len(rdf))
-    rdf["model_size"] = (
-        rdf["model_id"].str.extract(r"-(\d+(?:\.\d+)?)B$").astype("float")
-    )
-    rdf["model_size"] = pd.Categorical(
-        rdf["model_size"].astype(str),
-        categories=[str(s) for s in sorted(rdf["model_size"].unique())],
+    model_size_col = rdf["model_id"].str.extract(r"-(\d+(?:\.\d+)?)B$")[0]
+    model_size_col = pd.Categorical(
+        model_size_col,
+        categories=[str(s) for s in sorted(model_size_col.unique())],
         ordered=True,
     )
+    rdf = rdf.assign(model_size=model_size_col)
+
     are_na = len(rdf.query("response.isna()"))
     logger.info("Number of responses that are NA: %d", are_na)
     rdf.query("~response.isna()", inplace=True)
-    rdf["response"] = rdf["response"].str.strip()
+    rdf = rdf.assign(response=rdf["response"].str.strip())
 
     is_empty_str = len(rdf.query("response == ''"))
     logger.info("Number of responses that are empty strings: %d", is_empty_str)
     rdf.query("response != ''", inplace=True)
 
     rdf = assign_n_classes(rdf)
-    rdf["pred"] = rdf.apply(
+    pred_col = rdf.apply(
         lambda row: soft_label_to_nparray(
             json_repair.loads(row["response"]), dataset=row["dataset"]
         ),
         axis=1,
     )
+    rdf = rdf.assign(pred=pred_col)
 
     logger.info("Dropping %d NA predictions", len(rdf.query("pred.isna()")))
     rdf.query("~pred.isna()", inplace=True)
 
-    rdf["pred_sum"] = rdf["pred"].apply(lambda x: x.sum())
-    rdf["is_valid_pred"] = (rdf["pred_sum"] - 1).abs() < 0.01
+    rdf = rdf.assign(pred_sum=rdf["pred"].apply(lambda x: x.sum()))
+    rdf = rdf.assign(is_valid_pred=(rdf["pred_sum"] - 1).abs() < 0.01)
 
     if discard_invalid_pred:
         invalid_preds = rdf.query("~is_valid_pred")
