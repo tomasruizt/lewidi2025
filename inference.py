@@ -167,7 +167,7 @@ def keep_only_missing_examples(
     success = previous.query(
         "success == True and dataset == @dataset and split == @split and run_idx == @run_idx"
     )
-    df = df.query("~request_idx.isin(@success.request_idx)")
+    df = df.query("~dataset_idx.isin(@success.dataset_idx)")
     logger.info(f"Keeping {len(df)} missing examples")
     return df
 
