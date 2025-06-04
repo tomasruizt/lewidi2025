@@ -16,12 +16,12 @@
                 "--vllm_start_server=False",
                 "--gen_kwargs=thinking",
                 "--datasets=CSC",
-                "--template_ids=0,1",
-                "--n_loops=2",
-                "--splits=train,dev",
-                "--n_examples=10",
-                "--n_fewshot_examples=10",
-                //"--only_run_missing_examples=true"
+                "--template_ids=0,1,2,3,4",
+                "--n_loops=10",
+                "--splits=train",
+                "--n_examples=100",
+                "--n_fewshot_examples=0",
+                "--only_run_missing_examples=true"
             ]
         },
         {

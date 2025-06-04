@@ -86,4 +86,7 @@ with tabs[0]:
 
 with tabs[1]:
     match = rdf.query("dataset_idx == @row['dataset_idx']")
+    if len(match) == 0:
+        st.warning("No predictions found")
+        st.stop()
     show_single_example_agg_stats(dataset, row, match)

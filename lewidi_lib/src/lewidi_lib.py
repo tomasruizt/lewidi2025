@@ -134,18 +134,19 @@ def enable_logging():
     logging.basicConfig(level=logging.INFO, format=fmt)
 
 
-def process_rdf(
-    rdf: pd.DataFrame, discard_invalid_pred: bool = False
-) -> pd.DataFrame:
+def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.DataFrame:
     """Process model results dataframe"""
     logger.info("Starting processing with %d rows", len(rdf))
-    model_size_col = rdf["model_id"].str.extract(r"-(\d+(?:\.\d+)?)B$")[0]
-    model_size_col = pd.Categorical(
-        model_size_col,
-        categories=[str(s) for s in sorted(model_size_col.unique())],
-        ordered=True,
+
+    failed = rdf.query("not success")
+    logger.info("Dropping %d rows with success=False", len(failed))
+    rdf = rdf.query("success")
+
+    model_size_col = rdf["model_id"].str.extract(r"-(\d+(?:\.\d+)?)B$")[0].astype(float)
+    rdf = rdf.assign(
+        model_size=as_categorical(model_size_col),
+        template_id=as_categorical(rdf["template_id"].astype(int)),
     )
-    rdf = rdf.assign(model_size=model_size_col)
 
     are_na = len(rdf.query("response.isna()"))
     logger.info("Number of responses that are NA: %d", are_na)
@@ -179,6 +180,12 @@ def process_rdf(
         assign_col_pred_entropy(rdf)
 
     return rdf
+
+
+def as_categorical(ss: pd.Series) -> pd.Categorical:
+    return pd.Categorical(
+        ss.astype(str), categories=[str(s) for s in sorted(ss.unique())], ordered=True
+    )
 
 
 def assign_col_pred_entropy(df: pd.DataFrame) -> pd.DataFrame:
