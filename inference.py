@@ -3,6 +3,7 @@ import datetime
 from itertools import product
 import json
 from pathlib import Path
+import random
 from typing import Iterable, Literal
 from llmlib.vllm_model import ModelvLLM
 from llmlib.base_llm import Message, Conversation, LlmReq
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 class Args(BaseSettings, cli_parse_args=True):
     model_id: str = "Qwen/Qwen3-0.6B"
     gen_kwargs: Literal["thinking", "nonthinking"] = "nonthinking"
+    use_random_temperature: bool = False
     datasets: list[Dataset] = ["CSC"]
     splits: list[Split] = ["train"]
     template_ids: list[int] = [0]
@@ -104,6 +106,10 @@ def make_gen_kwargs(args: Args) -> dict:
 
     if args.enforce_json:
         gen_kwargs["json_schema"] = BasicSchema
+
+    if args.use_random_temperature:
+        gen_kwargs["temperature"] = random.uniform(0.0, 1.0)
+
     return gen_kwargs
 
 
