@@ -1,4 +1,3 @@
-import duckdb
 import json_repair
 import numpy as np
 import pandas as pd
@@ -7,6 +6,7 @@ import streamlit as st
 from lewidi_lib import (
     l0_loss,
     load_dataset,
+    load_preds,
     n_classes,
     parse_soft_label,
     soft_label_to_nparray,
@@ -21,10 +21,7 @@ def load_dataset_cached(dataset: str, split: str) -> pd.DataFrame:
 
 @st.cache_data(show_spinner="Loading predictions...")
 def load_preds_cached() -> pd.DataFrame:
-    con = duckdb.connect()
-    return con.sql(
-        "SELECT * FROM read_parquet('parquets/*.parquet', union_by_name=True)"
-    ).df()
+    return load_preds()
 
 
 @st.cache_data(show_spinner="Loading predictions...")

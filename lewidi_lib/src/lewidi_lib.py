@@ -1,4 +1,5 @@
 from typing import Any, Literal
+import duckdb
 import json_repair
 import numpy as np
 import pandas as pd
@@ -268,3 +269,10 @@ def plot_baseline_entropy(g, baseline_entropy: pd.DataFrame):
             "entropy"
         ].values[0]
         ax.axhline(value, color="red", linestyle="--", label="Baseline")
+
+
+def load_preds(parquets_dir: str = "parquets") -> pd.DataFrame:
+    con = duckdb.connect()
+    return con.sql(
+        f"SELECT * FROM read_parquet('{parquets_dir}/*.parquet', union_by_name=True)"
+    ).df()
