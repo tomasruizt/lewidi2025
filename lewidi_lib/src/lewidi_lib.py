@@ -276,3 +276,30 @@ def load_preds(parquets_dir: str = "parquets") -> pd.DataFrame:
     return con.sql(
         f"SELECT * FROM read_parquet('{parquets_dir}/*.parquet', union_by_name=True)"
     ).df()
+
+
+def join_correct_responses(rdf: pd.DataFrame) -> pd.DataFrame:
+    ds = rdf[["dataset", "split"]].drop_duplicates()
+    datasets = []
+    for dataset, split in ds.itertuples(index=False):
+        df = load_dataset(dataset, split)
+        datasets.append(df)
+    ddf = pd.concat(datasets)
+    joint = join_dataset_and_preds(ddf, rdf)
+    return joint
+
+
+def join_dataset_and_preds(ddf: pd.DataFrame, rdf: pd.DataFrame) -> pd.DataFrame:
+    joint_df = pd.merge(
+        ddf[["dataset", "split", "dataset_idx", "target"]],
+        rdf,
+        on=["dataset", "split", "dataset_idx"],
+    )
+    return joint_df
+
+
+def assign_cols_perf_metrics(joint_df: pd.DataFrame) -> pd.DataFrame:
+    joint_df = assign_col_l0_loss(joint_df)
+    joint_df = assign_col_ws_loss(joint_df)
+    joint_df = assign_col_pred_entropy(joint_df)
+    return joint_df
