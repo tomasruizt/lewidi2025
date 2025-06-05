@@ -290,8 +290,9 @@ def join_correct_responses(rdf: pd.DataFrame) -> pd.DataFrame:
 
 
 def join_dataset_and_preds(ddf: pd.DataFrame, rdf: pd.DataFrame) -> pd.DataFrame:
+    ddf_cols = ["dataset", "split", "dataset_idx", "target", "text"]
     joint_df = pd.merge(
-        ddf[["dataset", "split", "dataset_idx", "target"]],
+        ddf[ddf_cols],
         rdf,
         on=["dataset", "split", "dataset_idx"],
     )
