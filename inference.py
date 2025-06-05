@@ -38,6 +38,7 @@ class Args(BaseSettings, cli_parse_args=True):
     n_loops: int = 1
     vllm_port: int = 8000
     vllm_start_server: bool = True
+    vllm_enable_reasoning: bool = False
     tgt_file: str = "responses.jsonl"
     only_run_missing_examples: bool = False
     timeout_secs: int = 5 * 60
@@ -187,7 +188,7 @@ def using_vllm_server(args: Args):
         no_op=not args.vllm_start_server,
         model_id=args.model_id,
         port=args.vllm_port,
-        use_reasoning_args=args.gen_kwargs == "thinking",
+        enable_reasoning=args.vllm_enable_reasoning,
     ):
         yield
 

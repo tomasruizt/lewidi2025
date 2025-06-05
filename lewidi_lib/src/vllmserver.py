@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from pathlib import Path
 import subprocess
 import time
@@ -9,12 +10,12 @@ from contextlib import contextmanager
 logger = logging.getLogger(__name__)
 
 
+@dataclass
 class VLLMServer:
-    def __init__(self, model_id: str, port: int, use_reasoning_args: bool):
-        self.model_id = model_id
-        self.port = port
-        self.use_reasoning_args = use_reasoning_args
-        self.process: Optional[subprocess.Popen] = None
+    model_id: str
+    port: int
+    enable_reasoning: bool
+    process: Optional[subprocess.Popen] = None
 
     def start(self) -> None:
         """
@@ -34,7 +35,7 @@ class VLLMServer:
             f"--port={self.port}",
         ]
 
-        if self.use_reasoning_args:
+        if self.enable_reasoning:
             cmd.extend(["--enable-reasoning", "--reasoning-parser=deepseek_r1"])
         else:
             chat_template = "qwen3_nonthinking.jinja"
@@ -98,7 +99,7 @@ class VLLMServer:
 
 
 @contextmanager
-def spinup_vllm_server(no_op: bool, model_id: str, port: int, use_reasoning_args: bool):
+def spinup_vllm_server(no_op: bool, model_id: str, port: int, enable_reasoning: bool):
     """
     Context manager for managing a vLLM server lifecycle.
 
@@ -111,7 +112,7 @@ def spinup_vllm_server(no_op: bool, model_id: str, port: int, use_reasoning_args
         yield
         return
 
-    server = VLLMServer(model_id, port, use_reasoning_args)
+    server = VLLMServer(model_id, port, enable_reasoning)
     try:
         server.start()
         yield server
