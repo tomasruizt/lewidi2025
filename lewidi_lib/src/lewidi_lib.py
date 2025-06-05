@@ -59,7 +59,8 @@ def soft_label_to_nparray(
                 logger.info("Not a dict: %s", repr(d))
                 return pd.NA
 
-    array = np.zeros(n_classes(dataset))
+    n_classes_ = n_classes(dataset)
+    array = np.zeros(n_classes_)
     for k, v in d.items():
         if k == "0.0":
             k = 0
@@ -72,7 +73,7 @@ def soft_label_to_nparray(
             logger.warning("Invalid key: '%s'", repr(k)[:30])
             return pd.NA
         except IndexError:
-            logger.error("IndexError for: %s, n_classes: %d", repr(d), n_classes)
+            logger.error("IndexError for: %s, n_classes: %d", repr(d), n_classes_)
             return pd.NA
     return array
 
