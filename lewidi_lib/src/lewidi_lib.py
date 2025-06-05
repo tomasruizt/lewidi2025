@@ -26,7 +26,6 @@ def load_dataset(dataset: Dataset, split: Split) -> pd.DataFrame:
 
     df = pd.read_json(ds, orient="index")
     df.reset_index(inplace=True, names="dataset_idx")
-    df["request_idx"] = range(len(df))
     df["target"] = df["soft_label"].apply(parse_soft_label, dataset=dataset)
     df["dataset"] = dataset
     df["split"] = split
