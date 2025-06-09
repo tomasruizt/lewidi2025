@@ -139,6 +139,10 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
     """Process model results dataframe"""
     logger.info("Starting processing with %d rows", len(rdf))
 
+    # Replace suggestive names with less suggestive ones
+    gen_kwargs_mapping = {"thinking": "set1", "nonthinking": "set2"}
+    rdf = rdf.assign(gen_kwargs=rdf["gen_kwargs"].replace(gen_kwargs_mapping))
+
     failed = rdf.query("not success")
     logger.info("Dropping %d rows with success=False", len(failed))
     rdf = rdf.query("success")
@@ -177,8 +181,6 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
         invalid_preds = rdf.query("~is_valid_pred")
         logger.info("Dropping %d invalid predictions", len(invalid_preds))
         rdf.query("is_valid_pred", inplace=True)
-
-        assign_col_pred_entropy(rdf)
 
     return rdf
 

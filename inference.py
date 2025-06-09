@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 class Args(BaseSettings, cli_parse_args=True):
     model_id: str = "Qwen/Qwen3-0.6B"
-    gen_kwargs: Literal["thinking", "nonthinking", "random"] = "nonthinking"
+    gen_kwargs: Literal["set1", "set2", "random"] = "set1"
     datasets: list[Dataset] = ["CSC"]
     splits: list[Split] = ["train"]
     template_ids: list[int] = [0]
@@ -98,34 +98,26 @@ def create_batch_for_model(
 
 
 def make_gen_kwargs(args: Args) -> dict:
-    gen_kwargs = dict(max_tokens=args.max_tokens, **qwen3_common_gen_kwargs)
-    if args.gen_kwargs == "thinking":
-        gen_kwargs = gen_kwargs | qwen3_thinking_gen_kwargs
-    elif args.gen_kwargs == "nonthinking":
-        gen_kwargs = gen_kwargs | qwen3_nonthinking_gen_kwargs
+    """Values are from page 13 of the Qwen3 technical report: https://arxiv.org/abs/2505.09388"""
+    gen_kwargs = dict(max_tokens=args.max_tokens, top_k=20)
+    if args.gen_kwargs == "set1":  # thinking
+        gen_kwargs["temperature"] = 0.6
+        gen_kwargs["top_p"] = 0.95
+    elif args.gen_kwargs == "set2":  # nonthinking
+        gen_kwargs["temperature"] = 0.7
+        gen_kwargs["top_p"] = 0.8
+        gen_kwargs["presence_penalty"] = 1.5
     elif args.gen_kwargs == "random":
         gen_kwargs["temperature"] = random.uniform(0.0, 1.0)
         gen_kwargs["top_p"] = random.uniform(0.4, 1.0)
         gen_kwargs["presence_penalty"] = random.uniform(0.0, 2.0)
+    else:
+        raise ValueError(f"Invalid gen_kwargs: {args.gen_kwargs}")
 
     if args.enforce_json:
         gen_kwargs["json_schema"] = BasicSchema
 
     return gen_kwargs
-
-
-qwen3_thinking_gen_kwargs = dict(
-    temperature=0.6,
-    top_p=0.95,
-)
-qwen3_nonthinking_gen_kwargs = dict(
-    temperature=0.7,
-    top_p=0.8,
-    presence_penalty=1.5,
-)
-qwen3_common_gen_kwargs = dict(
-    top_k=20,
-)
 
 
 def make_convo(
