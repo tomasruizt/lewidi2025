@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 class Args(BaseSettings, cli_parse_args=True):
     model_id: str = "Qwen/Qwen3-0.6B"
-    gen_kwargs: Literal["set1", "set2", "random"] = "set1"
+    gen_kwargs: Literal["set1", "set2", "random", "gemini-defaults"] = "set2"
     datasets: list[Dataset] = ["CSC"]
     splits: list[Split] = ["train"]
     template_ids: list[int] = [0]
@@ -68,6 +68,12 @@ def dump_response(args: Args, response: dict) -> None:
         f.write(json_str + "\n")
 
 
+def postprocess_response(r: dict) -> dict:
+    if "safety_settings" in r:
+        del r["safety_settings"]
+    return r
+
+
 def create_batch_for_model(
     args: Args, dataset: Dataset, split: Split, template_id: int, run_idx: int
 ) -> Iterable[LlmReq]:
@@ -100,7 +106,7 @@ def create_batch_for_model(
 
 def make_gen_kwargs(args: Args) -> dict:
     """Values are from page 13 of the Qwen3 technical report: https://arxiv.org/abs/2505.09388"""
-    gen_kwargs = dict(max_tokens=args.max_tokens, top_k=20)
+    gen_kwargs = {"max_tokens": args.max_tokens, "top_k": 20}
     if args.gen_kwargs == "set1":  # thinking
         gen_kwargs["temperature"] = 0.6
         gen_kwargs["top_p"] = 0.95
@@ -112,11 +118,24 @@ def make_gen_kwargs(args: Args) -> dict:
         gen_kwargs["temperature"] = random.uniform(0.0, 1.0)
         gen_kwargs["top_p"] = random.uniform(0.4, 1.0)
         gen_kwargs["presence_penalty"] = random.uniform(0.0, 2.0)
+    elif args.gen_kwargs == "gemini-defaults":
+        # Taken from https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro
+        gen_kwargs["top_k"] = 64
+        gen_kwargs["top_p"] = 0.95
+        gen_kwargs["temperature"] = None  # 0-2 (not sure how to implement that)
     else:
         raise ValueError(f"Invalid gen_kwargs: {args.gen_kwargs}")
 
     if args.enforce_json:
         gen_kwargs["json_schema"] = BasicSchema
+
+    if args.model_id.startswith("gemini"):
+        gen_kwargs["max_output_tokens"] = gen_kwargs["max_tokens"]
+        del gen_kwargs["max_tokens"]
+        gen_kwargs["topK"] = gen_kwargs["top_k"]
+        del gen_kwargs["top_k"]
+        gen_kwargs["topP"] = gen_kwargs["top_p"]
+        del gen_kwargs["top_p"]
 
     return gen_kwargs
 
@@ -172,13 +191,19 @@ def run_many_inferences(args: Args) -> None:
     model = make_model(args)
     responses = model.complete_batchof_reqs(batch=batches)
     for response in responses:
+        response = postprocess_response(response)
         dump_response(args, response)
         pbar.update(1)
 
 
 def make_model(args):
     if args.model_id.startswith("gemini"):
-        model = GeminiAPI(model_id=args.model_id)
+        model = GeminiAPI(
+            model_id=args.model_id,
+            max_n_batching_threads=args.remote_call_concurrency,
+            include_thoughts=True,
+            location="global",
+        )
         return model
 
     model = ModelvLLM(
