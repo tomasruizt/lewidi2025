@@ -28,3 +28,6 @@ inference:
 
 stapp:
 	python -m streamlit run st_app/app.py
+
+rateapp:
+	python -m streamlit run st_app/rate_reasoning.py
