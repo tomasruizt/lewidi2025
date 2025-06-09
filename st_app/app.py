@@ -1,4 +1,15 @@
-from lewidi_lib import Dataset, assign_col_ws_loss, parse_soft_label, process_rdf
+from lewidi_lib import (
+    Dataset,
+    assign_cols_perf_metrics,
+    enable_logging,
+    load_template,
+    max_entropy,
+    max_ws_loss,
+    parse_soft_label,
+    uniform_baseline_pred,
+    ws_loss,
+)
+import seaborn as sns
 from lewidi_st_lib import (
     load_dataset_cached,
     load_preds_cached_subset,
@@ -8,29 +19,56 @@ from matplotlib import pyplot as plt
 import pandas as pd
 import streamlit as st
 
+enable_logging()
+
 st.set_page_config(layout="wide")
 
 
+@st.dialog("Templates", width="large")
+def show_templates(dataset: Dataset):
+    templates: list[str] = []
+    template_ids: list[int] = []
+    for template_id in range(10):
+        try:
+            templates.append(load_template(dataset=dataset, template_id=template_id))
+            template_ids.append(template_id)
+        except FileNotFoundError:
+            break
+
+    tabs = st.tabs([f"Template {i}" for i in template_ids])
+    for tab, template in zip(tabs, templates):
+        tab.code(template)
+
+
 def show_single_example_agg_stats(dataset: Dataset, row: dict, match: pd.DataFrame):
+    if st.button("See templates"):
+        show_templates(dataset)
+
     tgt = parse_soft_label(row["soft_label"], dataset=dataset)
-    match = process_rdf(rdf=match)
     match = match.query("is_valid_pred")
     match = match.assign(target=[tgt] * len(match))
-    match = match.pipe(assign_col_ws_loss)
+    match = match.pipe(assign_cols_perf_metrics)
 
-    import seaborn as sns
-
-    match = match.assign(template_id=match["template_id"].astype("string"))
     match.sort_values("template_id", inplace=True)
-    fig, axs = plt.subplots(figsize=(5, 5))
+    fig, axs = plt.subplots(figsize=(4, 4))
     sns.scatterplot(
         match,
         x="template_id",
         y="ws_loss",
+        hue="pred_entropy",
+        hue_norm=(0, max_entropy(dataset)),
         ax=axs,
     )
+    axs.axhline(
+        ws_loss(tgt=tgt, pred=uniform_baseline_pred(dataset), dataset=dataset),
+        color="red",
+        linestyle="--",
+        label="Uniform Baseline",
+    )
+    axs.set_ylim(0, max_ws_loss(dataset))
     axs.grid(alpha=0.5)
-    cs = st.columns([1, 3])
+    axs.legend(bbox_to_anchor=(1.05, 1), loc="upper left", title="Prediction Entropy")
+    cs = st.columns([1, 2.5])
     with cs[0]:
         st.pyplot(fig)
     with cs[1]:

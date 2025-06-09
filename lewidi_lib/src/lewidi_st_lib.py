@@ -9,6 +9,7 @@ from lewidi_lib import (
     load_preds,
     n_classes,
     parse_soft_label,
+    process_rdf,
     soft_label_to_nparray,
     ws_loss,
 )
@@ -27,6 +28,7 @@ def load_preds_cached() -> pd.DataFrame:
 @st.cache_data(show_spinner="Loading predictions...")
 def load_preds_cached_subset(dataset: str, split: str, model: str) -> pd.DataFrame:
     rdf = load_preds_cached()
+    rdf = process_rdf(rdf)
     return rdf.query("dataset == @dataset and split == @split and model_id == @model")
 
 

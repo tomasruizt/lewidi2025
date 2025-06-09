@@ -125,7 +125,8 @@ soft_label_mapping = {
 def load_template(dataset: Dataset, template_id: int) -> str:
     root = Path(__file__).parent / "prompt_templates"
     template = root / f"{dataset}_{str(template_id)}.txt"
-    assert template.exists(), template.absolute()
+    if not template.exists():
+        raise FileNotFoundError(f"Template file '{template.absolute()}' not found")
     with open(template, "r") as f:
         return f.read()
 
@@ -154,12 +155,12 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
     )
 
     are_na = len(rdf.query("response.isna()"))
-    logger.info("Number of responses that are NA: %d", are_na)
+    logger.info("Dropping %d rows with response NA", are_na)
     rdf.query("~response.isna()", inplace=True)
     rdf = rdf.assign(response=rdf["response"].str.strip())
 
     is_empty_str = len(rdf.query("response == ''"))
-    logger.info("Number of responses that are empty strings: %d", is_empty_str)
+    logger.info("Dropping %d rows with empty response", is_empty_str)
     rdf.query("response != ''", inplace=True)
 
     rdf = assign_n_classes(rdf)
@@ -306,3 +307,24 @@ def assign_cols_perf_metrics(joint_df: pd.DataFrame) -> pd.DataFrame:
     joint_df = assign_col_ws_loss(joint_df)
     joint_df = assign_col_pred_entropy(joint_df)
     return joint_df
+
+
+def max_ws_loss(dataset: Dataset) -> float:
+    assert dataset != "VariErrNLI"
+    n = n_classes(dataset)
+    tgt = np.zeros(n)
+    tgt[0] = 1
+    pred = np.zeros(n)
+    pred[-1] = 1
+    return ws_loss(tgt=tgt, pred=pred, dataset=dataset)
+
+
+def max_entropy(dataset: Dataset) -> float:
+    n = n_classes(dataset)
+    return scipy.stats.entropy(np.ones(n) / n)
+
+
+def uniform_baseline_pred(dataset: Dataset) -> np.ndarray:
+    assert dataset != "VariErrNLI"
+    n = n_classes(dataset)
+    return np.ones(n) / n
