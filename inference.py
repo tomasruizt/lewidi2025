@@ -7,6 +7,7 @@ import random
 from typing import Iterable, Literal
 from llmlib.vllm_model import ModelvLLM
 from llmlib.base_llm import Message, Conversation, LlmReq
+from llmlib.gemini.gemini_code import GeminiAPI
 import logging
 import pandas as pd
 from tqdm import tqdm
@@ -168,16 +169,25 @@ def run_many_inferences(args: Args) -> None:
 
     pbar = tqdm(total=len(batches))
 
+    model = make_model(args)
+    responses = model.complete_batchof_reqs(batch=batches)
+    for response in responses:
+        dump_response(args, response)
+        pbar.update(1)
+
+
+def make_model(args):
+    if args.model_id.startswith("gemini"):
+        model = GeminiAPI(model_id=args.model_id)
+        return model
+
     model = ModelvLLM(
         remote_call_concurrency=args.remote_call_concurrency,
         model_id=args.model_id,
         port=args.vllm_port,
         timeout_secs=args.timeout_secs,
     )
-    responses = model.complete_batchof_reqs(batch=batches)
-    for response in responses:
-        dump_response(args, response)
-        pbar.update(1)
+    return model
 
 
 @contextmanager
