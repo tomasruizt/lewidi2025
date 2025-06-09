@@ -144,6 +144,7 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
     gen_kwargs_mapping = {"thinking": "set1", "nonthinking": "set2"}
     rdf = rdf.assign(gen_kwargs=rdf["gen_kwargs"].replace(gen_kwargs_mapping))
 
+    rdf = rdf.assign(success=rdf["success"].astype(bool).fillna(1.0))
     failed = rdf.query("not success")
     logger.info("Dropping %d rows with success=False", len(failed))
     rdf = rdf.query("success")
@@ -246,14 +247,19 @@ def entropy(s: pd.Series) -> np.ndarray:
     return scipy.stats.entropy(np.array(s.values.tolist()).T)
 
 
-def plot_baseline_losses(g, baseline_losses: pd.DataFrame, **keywords):
+def plot_baseline_losses(
+    g, baseline_losses: pd.DataFrame, label: str, color: str, **keywords
+):
     for ax in g.axes.flat:
         ax.grid(alpha=0.5)
         keywords = keywords | parse_keywords_from_string(ax.title.get_text())
-        baseline_ws_loss_ = baseline_losses.query(
-            "dataset == @keywords['dataset'] and split == @keywords['split']"
-        )["ws_loss"].values[0]
-        ax.axhline(baseline_ws_loss_, color="red", linestyle="--", label="Baseline")
+        query = [f"{k} == @keywords['{k}']" for k in keywords]
+        matches = baseline_losses.query(" and ".join(query))
+        if len(matches) == 0:
+            continue
+        ax.axhline(
+            matches["ws_loss"].values[0], color=color, linestyle="--", label=label
+        )
 
 
 def parse_keywords_from_string(s: str) -> dict:
