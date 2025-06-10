@@ -253,7 +253,7 @@ def plot_baseline_losses(
     for ax in g.axes.flat:
         ax.grid(alpha=0.5)
         keywords = keywords | parse_keywords_from_string(ax.title.get_text())
-        query = [f"{k} == @keywords['{k}']" for k in keywords]
+        query = [f"{k} == @keywords['{k}']" for k in keywords if k in baseline_losses.columns]
         matches = baseline_losses.query(" and ".join(query))
         if len(matches) == 0:
             continue
@@ -361,4 +361,27 @@ def compute_strong_baselines_perf_metrics():
     agg_df = rdf.groupby(
         ["model_id", "dataset", "split", "template_id"], as_index=False
     ).agg(ws_loss=("ws_loss", "mean"), pred_entropy=("pred_entropy", "mean"))
+    return agg_df
+
+
+def group_pred(preds: pd.Series) -> np.ndarray:
+    return np.mean(preds.tolist(), axis=0)
+
+
+def compute_average_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
+    gby_cols = [
+        "model_id",
+        "model_size",
+        "gen_kwargs",
+        "dataset",
+        "n_classes",  # for downstream ops
+        "split",
+        "template_id",
+        "dataset_idx",
+    ]
+    agg_df = rdf.groupby(gby_cols, as_index=False, observed=True).agg(
+        pred=("pred", group_pred)
+    )
+    agg_df = join_correct_responses(agg_df)
+    agg_df = assign_cols_perf_metrics(agg_df)
     return agg_df
