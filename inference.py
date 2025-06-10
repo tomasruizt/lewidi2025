@@ -186,6 +186,8 @@ def run_many_inferences(args: Args) -> None:
         batch = create_batch_for_model(args, dataset, split, template_id, run_idx)
         batches.extend(batch)
 
+    logger.info("Total num of examples: %d", len(batches))
+
     pbar = tqdm(total=len(batches))
 
     model = make_model(args)
