@@ -32,7 +32,11 @@ run_idx = st.radio(label="Run Index", options=sorted(run_idxs), horizontal=True)
 matches = matches.query(f"run_idx == {run_idx}")
 
 st.write("Context")
-assert len(matches) == 1
+if len(matches) > 1:
+    st.warning("Found %d matches. Using first one." % len(matches))
+    matches.sort_values(by="timestamp", inplace=True)
+    st.dataframe(matches)
+
 row = matches.iloc[0].to_dict()
 st.write(row["text"])
 
