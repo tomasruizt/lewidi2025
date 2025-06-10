@@ -10,7 +10,8 @@ vllm-qwen3-thinking:
 		--max-model-len 16k \
 		--gpu-memory-utilization 0.8 \
 		--enable-chunked-prefill \
-		--disable-uvicorn-access-log
+		--disable-uvicorn-access-log \
+		--enforce-eager
 
 
 inference:
@@ -24,7 +25,8 @@ inference:
 		--n_loops 2 \
 		--n_fewshot_examples 0 \
 		--vllm_start_server=False \
-		--max_tokens 10000
+		--max_tokens 10000 \
+		--include_prompt_in_output True
 
 gemini-inference:
 	python inference.py \

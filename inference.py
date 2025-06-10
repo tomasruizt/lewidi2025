@@ -43,6 +43,7 @@ class Args(BaseSettings, cli_parse_args=True):
     only_run_missing_examples: bool = False
     timeout_secs: int = 5 * 60
     enforce_json: bool = False
+    include_prompt_in_output: bool = False
 
     def dict_for_dump(self):
         exclude = [
@@ -56,6 +57,7 @@ class Args(BaseSettings, cli_parse_args=True):
             "tgt_file",
             "only_run_missing_examples",
             "timeout_secs",
+            "include_prompt_in_output",
         ]
         d: dict = self.model_dump(exclude=exclude)
         return d
@@ -95,8 +97,10 @@ def create_batch_for_model(
     fixed_data["template_id"] = template_id
 
     for _, row in df.iterrows():
-        convo = make_convo(row["text"], dataset, examples_df, template_id)
+        convo, prompt = make_convo(row["text"], dataset, examples_df, template_id)
         metadata = fixed_data | {"dataset_idx": row["dataset_idx"]}
+        if args.include_prompt_in_output:
+            metadata["prompt"] = prompt
         yield LlmReq(
             convo=convo,
             gen_kwargs=make_gen_kwargs(args),
@@ -145,7 +149,7 @@ def make_convo(
     dataset: Dataset,
     examples_df: pd.DataFrame,
     template_id: str,
-) -> Conversation:
+) -> tuple[Conversation, str]:
     template = load_template(dataset=dataset, template_id=template_id)
 
     few_shot_msgs = []
@@ -154,8 +158,10 @@ def make_convo(
         soft_label = {k: round(v, 3) for k, v in row["soft_label"].items()}
         few_shot_msgs.append(Message(role="assistant", msg=json.dumps(soft_label)))
 
-    final_msg = Message.from_prompt(template.format(text=text))
-    return few_shot_msgs + [final_msg]
+    prompt = template.format(text=text)
+    final_msg = Message.from_prompt(prompt)
+    convo = few_shot_msgs + [final_msg]
+    return convo, prompt
 
 
 def keep_only_missing_examples(
