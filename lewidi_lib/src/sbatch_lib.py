@@ -37,18 +37,19 @@ def compute_validity_df(rdf: pd.DataFrame) -> pd.DataFrame:
 def compute_perf_metrics(rdf: pd.DataFrame, gby_cols: list[str]) -> pd.DataFrame:
     df = rdf.groupby(gby_cols, as_index=False, observed=True).agg(
         avg_ws_loss=("ws_loss", "mean"),
-        ws_loss_count=("ws_loss", "count"),
+        avg_l0_loss=("l0_loss", "mean"),
+        loss_count=("ws_loss", "count"),
     )
     return df
 
 
 _gby_cols = [
+    "dataset",
+    "split",
     "template_id",
     "model_size",
     "model_id",
     "gen_kwargs",
-    "dataset",
-    "split",
 ]
 
 
