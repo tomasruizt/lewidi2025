@@ -125,10 +125,14 @@ soft_label_mapping = {
 def load_template(dataset: Dataset, template_id: int) -> str:
     root = Path(__file__).parent / "prompt_templates"
     template = root / f"{dataset}_{str(template_id)}.txt"
-    if not template.exists():
-        raise FileNotFoundError(f"Template file '{template.absolute()}' not found")
-    with open(template, "r") as f:
-        return f.read()
+    return load_template_file(template)
+
+
+def load_template_file(file: str | Path) -> str:
+    file = Path(file)
+    if not file.exists():
+        raise FileNotFoundError(f"Template file '{file.absolute()}' not found")
+    return file.read_text()
 
 
 def enable_logging():

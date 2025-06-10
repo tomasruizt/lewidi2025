@@ -2,13 +2,14 @@ from lewidi_lib import (
     Dataset,
     assign_cols_perf_metrics,
     enable_logging,
-    load_template,
+    load_template_file,
     max_entropy,
     max_ws_loss,
     parse_soft_label,
     uniform_baseline_pred,
     ws_loss,
 )
+from prompt_templates import all_templates
 import seaborn as sns
 from lewidi_st_lib import (
     load_dataset_cached,
@@ -27,15 +28,14 @@ st.set_page_config(layout="wide")
 @st.dialog("Templates", width="large")
 def show_templates(dataset: Dataset):
     templates: list[str] = []
-    template_ids: list[int] = []
-    for template_id in range(10):
+    dataset_templates = [t for t in sorted(all_templates) if dataset in t.name]
+    for file in dataset_templates:
         try:
-            templates.append(load_template(dataset=dataset, template_id=template_id))
-            template_ids.append(template_id)
+            templates.append(load_template_file(file))
         except FileNotFoundError:
             break
 
-    tabs = st.tabs([f"Template {i}" for i in template_ids])
+    tabs = st.tabs([file.name for file in dataset_templates])
     for tab, template in zip(tabs, templates):
         tab.code(template)
 
