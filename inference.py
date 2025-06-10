@@ -19,7 +19,7 @@ from lewidi_lib import (
     load_template,
     BasicSchema,
 )
-from vllmserver import spinup_vllm_server
+from vllmserver import spinup_vllm_servers
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,9 @@ class Args(BaseSettings, cli_parse_args=True):
     timeout_secs: int = 5 * 60
     enforce_json: bool = False
     include_prompt_in_output: bool = False
+
+    def vllm_ports(self) -> list[int]:
+        return [self.vllm_port] + self.vllm_more_ports
 
     def dict_for_dump(self):
         exclude = [
@@ -234,10 +237,10 @@ def make_model(args):
 
 @contextmanager
 def using_vllm_server(args: Args):
-    with spinup_vllm_server(
+    with spinup_vllm_servers(
         no_op=not args.vllm_start_server,
         model_id=args.model_id,
-        port=args.vllm_port,
+        ports=args.vllm_ports(),
         enable_reasoning=args.vllm_enable_reasoning,
     ):
         yield

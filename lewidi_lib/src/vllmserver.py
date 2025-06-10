@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import subprocess
 import time
@@ -6,6 +6,7 @@ import requests
 import logging
 from typing import Optional
 from contextlib import contextmanager
+import concurrent.futures
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,9 @@ class VLLMServer:
             abs_fpath = (Path(__file__).parent / chat_template).absolute()
             cmd.extend([f"--chat-template={str(abs_fpath)}"])
 
-        logger.info(f"Starting vLLM server with command: {' '.join(cmd)}")
+        logger.info(
+            "Starting vLLM server on port %s with command: %s", self.port, " ".join(cmd)
+        )
         self.process = subprocess.Popen(cmd)
 
         # Wait for server to be ready
@@ -51,23 +54,30 @@ class VLLMServer:
 
         for attempt in range(max_attempts):
             if not self.is_running():
-                raise RuntimeError("Server process died unexpectedly")
+                raise RuntimeError(
+                    f"Server process on port {self.port} died unexpectedly"
+                )
 
             try:
                 response = requests.get(f"http://localhost:{self.port}/v1/models")
                 if response.status_code == 200:
-                    logger.info("Server is ready!")
+                    logger.info("Server on port %s is ready!", self.port)
                     return
             except requests.exceptions.ConnectionError:
                 pass
 
             logger.info(
-                f"Attempt {attempt + 1}/{max_attempts}: Server not ready yet, waiting {wait_time}s... ({(attempt + 1) * wait_time}s elapsed)"
+                "Port %s - Attempt %d/%d: Server not ready yet, waiting %ds... (%ds elapsed)",
+                self.port,
+                attempt + 1,
+                max_attempts,
+                wait_time,
+                (attempt + 1) * wait_time,
             )
             time.sleep(wait_time)
 
         raise TimeoutError(
-            f"Server failed to start after {max_attempts} attempts (10min timeout)"
+            f"Server on port {self.port} failed to start after {max_attempts} attempts (10min timeout)"
         )
 
     def is_running(self) -> bool:
@@ -79,12 +89,19 @@ class VLLMServer:
     def stop(self):
         """Stop the vLLM server."""
         if self.process is not None and self.is_running():
-            logger.info(f"Stopping vLLM server (PID: {self.process.pid})...")
+            logger.info(
+                "Stopping vLLM server on port %s (PID: %s)...",
+                self.port,
+                self.process.pid,
+            )
             self.process.terminate()
             try:
                 self.process.wait(timeout=10)
             except subprocess.TimeoutExpired:
-                logger.warning("Server did not terminate gracefully, forcing...")
+                logger.warning(
+                    "Server on port %s did not terminate gracefully, forcing...",
+                    self.port,
+                )
                 self.process.kill()
             self.process = None
 
@@ -98,13 +115,89 @@ class VLLMServer:
         self.stop()
 
 
-@contextmanager
-def spinup_vllm_server(no_op: bool, model_id: str, port: int, enable_reasoning: bool):
-    """
-    Context manager for managing a vLLM server lifecycle.
+@dataclass
+class MultiVLLMServerManager:
+    """Manager for multiple vLLM servers."""
 
+    model_id: str
+    ports: list[int]
+    enable_reasoning: bool
+    servers: list[VLLMServer] = field(default_factory=list)
+
+    def start(self) -> None:
+        """Start all vLLM servers in parallel and wait for all to be ready."""
+        if not self.ports:
+            logger.info("No ports specified, not starting any servers")
+            return
+
+        logger.info(
+            "Starting %d vLLM servers on ports: %s", len(self.ports), self.ports
+        )
+
+        # Create server instances
+        self.servers = [
+            VLLMServer(self.model_id, port, self.enable_reasoning)
+            for port in self.ports
+        ]
+
+        # Start all servers in parallel using ThreadPoolExecutor
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(self.servers)
+        ) as executor:
+            futures = [executor.submit(server.start) for server in self.servers]
+
+            # Wait for all servers to start successfully
+            for i, future in enumerate(concurrent.futures.as_completed(futures)):
+                try:
+                    future.result()  # This will raise any exception that occurred
+                    logger.info(
+                        "Server %d/%d started successfully", i + 1, len(self.servers)
+                    )
+                except Exception as e:
+                    logger.error(
+                        "Failed to start server on port %s: %s", self.servers[i].port, e
+                    )
+                    # Stop any servers that did start
+                    self.stop()
+                    raise
+
+        logger.info("All %d vLLM servers are ready!", len(self.servers))
+
+    def stop(self) -> None:
+        """Stop all vLLM servers."""
+        if not self.servers:
+            return
+
+        logger.info("Stopping %d vLLM servers...", len(self.servers))
+
+        # Stop all servers in parallel
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=len(self.servers)
+        ) as executor:
+            futures = [executor.submit(server.stop) for server in self.servers]
+            concurrent.futures.wait(futures)
+
+        self.servers = []
+        logger.info("All vLLM servers stopped")
+
+    def __enter__(self):
+        """Context manager entry point."""
+        self.start()
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit point."""
+        self.stop()
+
+
+@contextmanager
+def spinup_vllm_servers(
+    no_op: bool, model_id: str, ports: list[int], enable_reasoning: bool
+):
+    """
+    Context manager for managing a multiple vLLM servers lifecycle.
     Example:
-        with spinup_vllm_server(..) as server:
+        with spinup_vllm_servers(..) as server:
             # Do inference here
             pass
     """
@@ -112,7 +205,7 @@ def spinup_vllm_server(no_op: bool, model_id: str, port: int, enable_reasoning: 
         yield
         return
 
-    server = VLLMServer(model_id, port, enable_reasoning)
+    server = MultiVLLMServerManager(model_id, ports, enable_reasoning)
     try:
         server.start()
         yield server
