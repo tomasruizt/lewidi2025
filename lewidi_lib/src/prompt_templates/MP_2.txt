@@ -1,0 +1,5 @@
+# Task
+Below is a post-reply pair where human annotators rated the irony of the 'reply' as either 0.0 (not ironic) or 1 (ironic). Please guess the distribution of ratings and output it in JSON format like this: {{'0': p0, '1': p1}}, where p0 and p1 are probabilities. The sum of probabilities must equal 1.0.
+
+# Post-Reply Pair
+{text}
