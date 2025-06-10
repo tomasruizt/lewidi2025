@@ -176,14 +176,18 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
     logger.info("Dropping %d NA predictions", len(rdf.query("pred.isna()")))
     rdf.query("~pred.isna()", inplace=True)
 
-    rdf = rdf.assign(pred_sum=rdf["pred"].apply(lambda x: x.sum()))
-    rdf = rdf.assign(is_valid_pred=(rdf["pred_sum"] - 1).abs() < 0.01)
-
+    rdf = assign_col_is_valid_pred(rdf)
     if discard_invalid_pred:
         invalid_preds = rdf.query("~is_valid_pred")
         logger.info("Dropping %d invalid predictions", len(invalid_preds))
         rdf.query("is_valid_pred", inplace=True)
 
+    return rdf
+
+
+def assign_col_is_valid_pred(rdf: pd.DataFrame) -> pd.DataFrame:
+    rdf = rdf.assign(pred_sum=rdf["pred"].apply(lambda x: x.sum()))
+    rdf = rdf.assign(is_valid_pred=(rdf["pred_sum"] - 1).abs() < 0.01)
     return rdf
 
 
@@ -247,18 +251,18 @@ def entropy(s: pd.Series) -> np.ndarray:
     return scipy.stats.entropy(np.array(s.values.tolist()).T)
 
 
-def plot_baseline_losses(
-    g, baseline_losses: pd.DataFrame, label: str, color: str, **keywords
+def plot_horizontal_lines(
+    g, data: pd.DataFrame, label: str, color: str, data_col: str, **keywords
 ):
     for ax in g.axes.flat:
         ax.grid(alpha=0.5)
         keywords = keywords | parse_keywords_from_string(ax.title.get_text())
-        query = [f"{k} == @keywords['{k}']" for k in keywords if k in baseline_losses.columns]
-        matches = baseline_losses.query(" and ".join(query))
+        query = [f"{k} == @keywords['{k}']" for k in keywords if k in data.columns]
+        matches = data.query(" and ".join(query))
         if len(matches) == 0:
             continue
         ax.axhline(
-            matches["ws_loss"].values[0], color=color, linestyle="--", label=label
+            matches[data_col].values[0], color=color, linestyle="--", label=label
         )
 
 
@@ -268,16 +272,6 @@ def parse_keywords_from_string(s: str) -> dict:
         k, v = duo.split(" = ")
         keywords[k.strip()] = v.strip()
     return keywords
-
-
-def plot_baseline_entropy(g, baseline_entropy: pd.DataFrame):
-    for ax in g.axes.flat:
-        ax.grid(alpha=0.5)
-        keywords = parse_keywords_from_string(ax.title.get_text())
-        value = baseline_entropy.query("dataset == @keywords['dataset']")[
-            "entropy"
-        ].values[0]
-        ax.axhline(value, color="red", linestyle="--", label="Baseline")
 
 
 def load_preds(parquets_dir: str = "parquets") -> pd.DataFrame:
@@ -385,3 +379,21 @@ def compute_average_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
     agg_df = join_correct_responses(agg_df)
     agg_df = assign_cols_perf_metrics(agg_df)
     return agg_df
+
+
+def smoothen(preds: pd.Series) -> pd.Series:
+    original = np.array(preds.tolist())
+    _, n_classes = original.shape
+    uniform = np.ones(n_classes) / n_classes
+    new = (original + uniform) / 2
+    assert np.allclose(1, new.sum(1), atol=0.01)
+    return list(new)
+
+
+def compute_smoothed_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
+    smoothed = rdf.assign(pred=rdf.groupby("n_classes")["pred"].transform(smoothen))
+    smoothed = assign_col_is_valid_pred(smoothed)
+    assert smoothed["is_valid_pred"].all()
+    smoothed = join_correct_responses(smoothed)
+    smoothed = assign_cols_perf_metrics(smoothed)
+    return smoothed
