@@ -17,6 +17,7 @@ class VLLMServer:
     port: int
     enable_reasoning: bool
     process: Optional[subprocess.Popen] = None
+    rank: int = 0
 
     def start(self) -> None:
         """
@@ -25,6 +26,7 @@ class VLLMServer:
         Raises TimeoutError if the server fails to start after 10 minutes.
         """
         cmd = [
+            f"CUDA_VISIBLE_DEVICES={self.rank}",
             "vllm",
             "serve",
             self.model_id,
@@ -32,6 +34,7 @@ class VLLMServer:
             "--disable-log-requests",  # prevents logging the prompt
             "--disable-uvicorn-access-log",  # prevents logging 200 OKs
             "--max-model-len=16k",
+            "--max-num-seqs=1000",  # throttling is done client-side
             "--gpu-memory-utilization=0.95",
             f"--port={self.port}",
         ]
@@ -136,8 +139,8 @@ class MultiVLLMServerManager:
 
         # Create server instances
         self.servers = [
-            VLLMServer(self.model_id, port, self.enable_reasoning)
-            for port in self.ports
+            VLLMServer(self.model_id, port, self.enable_reasoning, rank=i)
+            for i, port in enumerate(self.ports)
         ]
 
         # Start all servers in parallel using ThreadPoolExecutor
