@@ -12,3 +12,4 @@ dependencies = [
 
 [project.scripts]
 lewidi-plot = "metrics_plotter:main"
+lewidi-sbatch-progress = "sbatch_lib:main"

@@ -6,6 +6,7 @@ responses.jsonl
 responses.parquet
 *.jsonl
 lewidi2025.code-workspace
+tests/testfiles/wip-di38bec
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
