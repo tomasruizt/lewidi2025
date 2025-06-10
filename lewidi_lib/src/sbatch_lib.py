@@ -2,7 +2,12 @@ from pathlib import Path
 from typing import Any
 from pydantic_settings import BaseSettings
 
-from lewidi_lib import assign_cols_perf_metrics, join_correct_responses, process_rdf
+from lewidi_lib import (
+    assign_cols_perf_metrics,
+    enable_logging,
+    join_correct_responses,
+    process_rdf,
+)
 import pandas as pd
 
 
@@ -45,6 +50,7 @@ def load_preds_jsonl(dir: str | Path) -> pd.DataFrame:
 
 
 def main():
+    enable_logging()
     args = Args()
     progress = sketch_sbatch_progress(args.sbatch_dir)
     print(progress["perf_metrics"])
