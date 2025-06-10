@@ -37,6 +37,7 @@ class Args(BaseSettings, cli_parse_args=True):
     remote_call_concurrency: int = 64
     n_loops: int = 1
     vllm_port: int = 8000
+    vllm_more_ports: list[int] = []
     vllm_start_server: bool = True
     vllm_enable_reasoning: bool = True
     tgt_file: str = "responses.jsonl"
@@ -48,6 +49,7 @@ class Args(BaseSettings, cli_parse_args=True):
     def dict_for_dump(self):
         exclude = [
             "vllm_port",
+            "vllm_more_ports",
             "vllm_start_server",
             "datasets",
             "splits",
@@ -225,6 +227,7 @@ def make_model(args):
         model_id=args.model_id,
         port=args.vllm_port,
         timeout_secs=args.timeout_secs,
+        more_ports=args.vllm_more_ports,
     )
     return model
 
