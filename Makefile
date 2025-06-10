@@ -32,14 +32,14 @@ gemini-inference:
 		--gen_kwargs gemini-defaults \
 		--datasets CSC \
 		--splits train \
-		--template_ids 0,1,2,4 \
+		--template_ids 0,1,2,4,31 \
 		--n_examples 100 \
 		--n_loops 3 \
 		--n_fewshot_examples 0 \
 		--vllm_start_server False \
 		--only_run_missing_examples True \
 		--max_tokens 10000 \
-		--tgt_file gemini-2.5-csc-train-template3.jsonl
+		--tgt_file parquets/baseline/gemini-2.5-csc-train-alltemplates.jsonl
 
 stapp:
 	python -m streamlit run st_app/app.py
