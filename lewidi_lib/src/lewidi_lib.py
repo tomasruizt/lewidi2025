@@ -334,3 +334,31 @@ def uniform_baseline_pred(dataset: Dataset) -> np.ndarray:
     assert dataset != "VariErrNLI"
     n = n_classes(dataset)
     return np.ones(n) / n
+
+
+def compute_baseline_entropy(datasets: list[Dataset]) -> pd.DataFrame:
+    ents = [scipy.stats.entropy(baseline_pred(n_classes(d))) for d in datasets]
+    return pd.DataFrame({"entropy": ents, "dataset": datasets})
+
+
+def compute_unif_baseline_perf_metrics(ddf: pd.DataFrame):
+    bdf = assign_n_classes(ddf)
+    bdf = bdf.assign(pred=lambda row: row["n_classes"].apply(baseline_pred))
+    bdf = assign_cols_perf_metrics(bdf)
+    baseline_losses = bdf.groupby(["dataset", "split"], as_index=False).agg(
+        {"ws_loss": "mean", "l0_loss": "mean"}
+    )
+    return baseline_losses
+
+
+def compute_strong_baselines_perf_metrics():
+    rdf = load_preds("../parquets/baseline")
+    rdf = (
+        rdf.pipe(process_rdf)
+        .pipe(join_correct_responses)
+        .pipe(assign_cols_perf_metrics)
+    )
+    agg_df = rdf.groupby(
+        ["model_id", "dataset", "split", "template_id"], as_index=False
+    ).agg(ws_loss=("ws_loss", "mean"), pred_entropy=("pred_entropy", "mean"))
+    return agg_df
