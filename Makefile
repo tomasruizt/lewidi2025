@@ -32,7 +32,7 @@ gemini-inference:
 		--gen_kwargs gemini-defaults \
 		--datasets CSC \
 		--splits train \
-		--template_ids 0,1,2,4,31 \
+		--template_ids 0,1,2,4,31,32 \
 		--n_examples 100 \
 		--n_loops 3 \
 		--n_fewshot_examples 0 \

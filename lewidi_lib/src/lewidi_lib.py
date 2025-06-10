@@ -186,6 +186,8 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
         logger.info("Dropping %d invalid predictions", len(invalid_preds))
         rdf.query("is_valid_pred", inplace=True)
 
+    rdf = assign_col_template_alias(rdf)
+
     return rdf
 
 
@@ -357,7 +359,9 @@ def compute_strong_baselines_perf_metrics():
         .pipe(assign_cols_perf_metrics)
     )
     agg_df = rdf.groupby(
-        ["model_id", "dataset", "split", "template_id"], as_index=False
+        ["model_id", "dataset", "split", "template_id", "template_alias"],
+        as_index=False,
+        observed=True,
     ).agg(ws_loss=("ws_loss", "mean"), pred_entropy=("pred_entropy", "mean"))
     return agg_df
 
@@ -401,3 +405,15 @@ def compute_smoothed_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
     smoothed = join_correct_responses(smoothed)
     smoothed = assign_cols_perf_metrics(smoothed)
     return smoothed
+
+
+def assign_col_template_alias(df: pd.DataFrame) -> pd.DataFrame:
+    alias_df = pd.DataFrame(
+        {
+            "dataset": "CSC",
+            "template_id": as_categorical(pd.Series([2, 3, 32, 31])),
+            "template_alias": ["0 simple", "1 +def", "2 +pers", "3 +def+pers"],
+        }
+    )
+    new_df = df.merge(alias_df, on=["dataset", "template_id"], how="left")
+    return new_df
