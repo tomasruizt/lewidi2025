@@ -22,7 +22,9 @@ def load_dataset_cached(dataset: str, split: str) -> pd.DataFrame:
 
 @st.cache_data(show_spinner="Loading predictions...")
 def load_preds_cached() -> pd.DataFrame:
-    return load_preds()
+    rdf = load_preds()
+    rdf = rdf.query("~template_id.isin([0, 1, 4])")
+    return rdf
 
 
 @st.cache_data(show_spinner="Loading predictions...")
