@@ -43,12 +43,12 @@ def compute_perf_metrics(rdf: pd.DataFrame, gby_cols: list[str]) -> pd.DataFrame
 
 
 _gby_cols = [
+    "template_id",
     "model_size",
     "model_id",
     "gen_kwargs",
     "dataset",
     "split",
-    "template_id",
 ]
 
 
