@@ -83,7 +83,7 @@ def create_batch_for_model(
         df = df.tail(-args.n_fewshot_examples)
     df = df.head(args.n_examples)
     if args.only_run_missing_examples:
-        df = keep_only_missing_examples(df, args, dataset, split, run_idx)
+        df = keep_only_missing_examples(df, args, dataset, split, run_idx, template_id)
 
     Path(args.tgt_file).parent.mkdir(parents=True, exist_ok=True)
 
@@ -159,19 +159,25 @@ def make_convo(
 
 
 def keep_only_missing_examples(
-    df: pd.DataFrame, args: Args, dataset: Dataset, split: Split, run_idx: int
+    df: pd.DataFrame,
+    args: Args,
+    dataset: Dataset,
+    split: Split,
+    run_idx: int,
+    template_id: int,
 ) -> pd.DataFrame:
     previous = pd.read_json(args.tgt_file, lines=True, dtype={"error": "string"})
     success = previous.query(
-        "success == True and dataset == @dataset and split == @split and run_idx == @run_idx"
+        "success == True and dataset == @dataset and split == @split and run_idx == @run_idx and template_id == @template_id"
     )
     df = df.query("~dataset_idx.isin(@success.dataset_idx)")
     logger.info(
-        "Keeping %d missing examples for dataset='%s', split='%s', run_idx=%d",
+        "Keeping %d missing examples for dataset='%s', split='%s', run_idx=%d, template_id=%d",
         len(df),
         dataset,
         split,
         run_idx,
+        template_id,
     )
     return df
 
