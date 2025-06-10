@@ -7,6 +7,7 @@ import logging
 from typing import Optional
 from contextlib import contextmanager
 import concurrent.futures
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +27,6 @@ class VLLMServer:
         Raises TimeoutError if the server fails to start after 10 minutes.
         """
         cmd = [
-            f"CUDA_VISIBLE_DEVICES={self.rank}",
             "vllm",
             "serve",
             self.model_id,
@@ -46,10 +46,15 @@ class VLLMServer:
             abs_fpath = (Path(__file__).parent / chat_template).absolute()
             cmd.extend([f"--chat-template={str(abs_fpath)}"])
 
+        # Set up environment variables
+        env = os.environ.copy()
+        env["CUDA_VISIBLE_DEVICES"] = str(self.rank)
+
         logger.info(
-            "Starting vLLM server on port %s with command: %s", self.port, " ".join(cmd)
+            "Starting vLLM server on port %s with command: %s (CUDA_VISIBLE_DEVICES=%s)", 
+            self.port, " ".join(cmd), self.rank
         )
-        self.process = subprocess.Popen(cmd)
+        self.process = subprocess.Popen(cmd, env=env)
 
         # Wait for server to be ready
         max_attempts = 40  # 10 minutes total (40 * 15s = 600s = 10min)
