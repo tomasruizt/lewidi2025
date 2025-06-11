@@ -1,6 +1,7 @@
 from typing import Any, Literal
 import duckdb
 import json_repair
+from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
 import logging
@@ -187,8 +188,14 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
         rdf.query("is_valid_pred", inplace=True)
 
     rdf = assign_col_template_alias(rdf)
-
+    rdf = discard_unnecessary_cols(rdf)
     return rdf
+
+
+def discard_unnecessary_cols(rdf: pd.DataFrame) -> pd.DataFrame:
+    to_discard = ["model", "pred_sum", "request_idx"]
+    to_discard = [c for c in to_discard if c in rdf.columns]
+    return rdf.drop(columns=to_discard)
 
 
 def assign_col_is_valid_pred(rdf: pd.DataFrame) -> pd.DataFrame:
@@ -267,9 +274,23 @@ def plot_horizontal_lines(
         matches = data.query(" and ".join(query))
         if len(matches) == 0:
             continue
-        ax.axhline(
-            matches[data_col].values[0], color=color, linestyle="--", label=label
-        )
+        y_val = matches[data_col].values[0]
+        ax.axhline(y_val, color=color, linestyle="--")
+        add_label_above_hline(label, color, ax, y_val)
+
+
+def add_label_above_hline(label: str, color: str, ax: plt.Axes, y_val: float):
+    """By Cursor"""
+    ax.text(
+        ax.get_xlim()[0]
+        + (ax.get_xlim()[1] - ax.get_xlim()[0]) * 0.02,  # 2% from left edge
+        y_val + (ax.get_ylim()[1] - ax.get_ylim()[0]) * 0.01,  # 1% above the line
+        label,
+        fontsize=8,
+        color=color,
+        verticalalignment="bottom",
+        horizontalalignment="left",
+    )
 
 
 def parse_keywords_from_string(s: str) -> dict:
@@ -341,6 +362,12 @@ def compute_baseline_entropy(datasets: list[Dataset]) -> pd.DataFrame:
     return pd.DataFrame({"entropy": ents, "dataset": datasets})
 
 
+def compute_target_entropy(ddf: pd.DataFrame) -> pd.DataFrame:
+    return ddf.groupby(["dataset", "split"], as_index=False).agg(
+        entropy=("target", lambda series: entropy(series).mean())
+    )
+
+
 def compute_unif_baseline_perf_metrics(ddf: pd.DataFrame):
     bdf = assign_n_classes(ddf)
     bdf = bdf.assign(pred=lambda row: row["n_classes"].apply(baseline_pred))
@@ -371,17 +398,7 @@ def group_pred(preds: pd.Series) -> np.ndarray:
 
 
 def compute_average_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
-    gby_cols = [
-        "model_id",
-        "model_size",
-        "gen_kwargs",
-        "dataset",
-        "n_classes",  # for downstream ops
-        "split",
-        "template_id",
-        "dataset_idx",
-    ]
-    agg_df = rdf.groupby(gby_cols, as_index=False, observed=True).agg(
+    agg_df = rdf.groupby(_gby_example_cols, as_index=False, observed=True).agg(
         pred=("pred", group_pred)
     )
     agg_df = join_correct_responses(agg_df)
@@ -405,6 +422,23 @@ def compute_smoothed_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
     smoothed = join_correct_responses(smoothed)
     smoothed = assign_cols_perf_metrics(smoothed)
     return smoothed
+
+
+def compute_best_wsloss_baseline(joint_df: pd.DataFrame) -> pd.DataFrame:
+    idx = joint_df.groupby(_gby_example_cols, observed=True)["ws_loss"].idxmin()
+    return joint_df.loc[idx]
+
+
+_gby_example_cols = [
+    "template_id",
+    "model_id",
+    "model_size",
+    "gen_kwargs",
+    "dataset",
+    "n_classes",  # for downstream ops
+    "split",
+    "dataset_idx",
+]
 
 
 def assign_col_template_alias(df: pd.DataFrame) -> pd.DataFrame:
