@@ -378,8 +378,7 @@ def compute_unif_baseline_perf_metrics(ddf: pd.DataFrame):
     return baseline_losses
 
 
-def compute_strong_baselines_perf_metrics():
-    rdf = load_preds("../parquets/baseline")
+def compute_strong_baselines_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
     rdf = (
         rdf.pipe(process_rdf)
         .pipe(join_correct_responses)
@@ -431,6 +430,7 @@ def compute_best_wsloss_baseline(joint_df: pd.DataFrame) -> pd.DataFrame:
 
 _gby_example_cols = [
     "template_id",
+    "template_alias",
     "model_id",
     "model_size",
     "gen_kwargs",
@@ -442,12 +442,16 @@ _gby_example_cols = [
 
 
 def assign_col_template_alias(df: pd.DataFrame) -> pd.DataFrame:
+    if "template_alias" in df.columns:
+        return df
+    assert "template_id" in df.columns
     alias_df = pd.DataFrame(
         {
-            "dataset": "CSC",
             "template_id": as_categorical(pd.Series([2, 3, 32, 31])),
             "template_alias": ["0 simple", "1 +def", "2 +pers", "3 +def+pers"],
         }
     )
+    alias_df = alias_df.merge(pd.DataFrame({"dataset": ["CSC", "MP"]}), how="cross")
     new_df = df.merge(alias_df, on=["dataset", "template_id"], how="left")
+    assert new_df["template_alias"].notna().all()
     return new_df
