@@ -36,6 +36,8 @@ class Args(BaseSettings, cli_parse_args=True):
     template_ids: list[int] = [0]
     n_examples: int = 10
     n_fewshot_examples: int = 0
+    data_rank: int = 0
+    data_world_size: int = 1
     max_tokens: int = 10000
     remote_call_concurrency: int = 64
     n_loops: int = 1
@@ -66,6 +68,8 @@ class Args(BaseSettings, cli_parse_args=True):
             "only_run_missing_examples",
             "timeout_secs",
             "include_prompt_in_output",
+            "data_rank",
+            "data_world_size",
         ]
         d: dict = self.model_dump(exclude=exclude)
         return d
@@ -91,7 +95,10 @@ def create_batch_for_model(
     fixed_data["split"] = split
     fixed_data["template_id"] = template_id
 
-    for _, row in df.iterrows():
+    for data_idx, (_, row) in enumerate(df.iterrows()):
+        skip_this_row = data_idx % args.data_world_size != args.data_rank
+        if skip_this_row:  # because of data parallelism
+            continue
         convo, prompt = make_convo(row["text"], dataset, examples_df, template_id)
         metadata = fixed_data | {"dataset_idx": row["dataset_idx"]}
         if args.include_prompt_in_output:

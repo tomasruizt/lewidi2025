@@ -25,6 +25,8 @@ inference:
 		--remote_call_concurrency 10 \
 		--n_examples 10 \
 		--n_loops 2 \
+		--data_rank 0 \
+		--data_world_size 1 \
 		--n_fewshot_examples 0 \
 		--vllm_start_server=False \
 		--max_tokens 10000 \
