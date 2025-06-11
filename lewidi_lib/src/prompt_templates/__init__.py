@@ -1,4 +1,5 @@
 from pathlib import Path
 
 
-all_templates = list(Path(__file__).parent.glob("*.txt"))
+templates_root = Path(__file__).parent
+all_templates = list(templates_root.glob("*.txt"))

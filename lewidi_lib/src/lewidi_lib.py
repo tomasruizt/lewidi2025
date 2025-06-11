@@ -1,3 +1,6 @@
+import datetime
+import json
+import random
 from typing import Any, Literal
 import duckdb
 import json_repair
@@ -16,6 +19,8 @@ logger = logging.getLogger(__name__)
 Dataset = Literal["CSC", "MP", "Paraphrase", "VariErrNLI"]
 
 Split = Literal["train", "dev"]
+
+GenKwargs = Literal["set1", "set2", "random", "gemini-defaults"]
 
 
 def load_dataset(dataset: Dataset, split: Split) -> pd.DataFrame:
@@ -455,3 +460,56 @@ def assign_col_template_alias(df: pd.DataFrame) -> pd.DataFrame:
     new_df = df.merge(alias_df, on=["dataset", "template_id"], how="left")
     assert new_df["template_alias"].notna().all()
     return new_df
+
+
+def make_gen_kwargs_from_str(id_: GenKwargs, max_tokens: int) -> dict:
+    gen_kwargs = {"max_tokens": max_tokens, "top_k": 20}
+    if id_ == "set1":  # thinking
+        gen_kwargs["temperature"] = 0.6
+        gen_kwargs["top_p"] = 0.95
+    elif id_ == "set2":  # nonthinking
+        gen_kwargs["temperature"] = 0.7
+        gen_kwargs["top_p"] = 0.8
+        gen_kwargs["presence_penalty"] = 1.5
+    elif id_ == "random":
+        gen_kwargs["temperature"] = random.uniform(0.0, 1.0)
+        gen_kwargs["top_p"] = random.uniform(0.4, 1.0)
+        gen_kwargs["presence_penalty"] = random.uniform(0.0, 2.0)
+    elif id_ == "gemini-defaults":
+        # Taken from https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro
+        gen_kwargs["top_k"] = 64
+        gen_kwargs["top_p"] = 0.95
+        gen_kwargs["temperature"] = None  # 0-2 (not sure how to implement that)
+    else:
+        raise ValueError(f"Invalid gen_kwargs: {id_}")
+
+    if id_.startswith("gemini"):
+        gen_kwargs["max_output_tokens"] = gen_kwargs["max_tokens"]
+        del gen_kwargs["max_tokens"]
+        gen_kwargs["topK"] = gen_kwargs["top_k"]
+        del gen_kwargs["top_k"]
+        gen_kwargs["topP"] = gen_kwargs["top_p"]
+        del gen_kwargs["top_p"]
+    return gen_kwargs
+
+
+def dump_response(response: dict, tgt_file: str) -> None:
+    response["timestamp"] = datetime.datetime.now().isoformat()
+    with open(tgt_file, "at") as f:
+        json_str = json.dumps(response, default=str)
+        f.write(json_str + "\n")
+
+
+def postprocess_response(r: dict) -> dict:
+    if "safety_settings" in r:
+        del r["safety_settings"]
+    return r
+
+
+def make_query_from_dict(data: dict, cols: list[str]) -> str:
+    query = " and ".join(f"{k} == {fmt(v)}" for k, v in data.items() if k in cols)
+    return query
+
+
+def fmt(x: str | int) -> str:
+    return f"'{x}'" if isinstance(x, str) else str(x)

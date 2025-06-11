@@ -3,8 +3,7 @@ import datetime
 from itertools import product
 import json
 from pathlib import Path
-import random
-from typing import Iterable, Literal
+from typing import Iterable
 from llmlib.vllm_model import ModelvLLM
 from llmlib.base_llm import Message, Conversation, LlmReq
 from llmlib.gemini.gemini_code import GeminiAPI
@@ -14,10 +13,14 @@ from tqdm import tqdm
 from lewidi_lib import (
     Dataset,
     Split,
+    GenKwargs,
     load_dataset,
     enable_logging,
     load_template,
     BasicSchema,
+    make_gen_kwargs_from_str,
+    dump_response,
+    postprocess_response,
 )
 from vllmserver import spinup_vllm_servers
 from pydantic_settings import BaseSettings
@@ -27,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 class Args(BaseSettings, cli_parse_args=True):
     model_id: str = "Qwen/Qwen3-0.6B"
-    gen_kwargs: Literal["set1", "set2", "random", "gemini-defaults"] = "set2"
+    gen_kwargs: GenKwargs = "set2"
     datasets: list[Dataset] = ["CSC"]
     splits: list[Split] = ["train"]
     template_ids: list[int] = [0]
@@ -68,19 +71,6 @@ class Args(BaseSettings, cli_parse_args=True):
         return d
 
 
-def dump_response(args: Args, response: dict) -> None:
-    response["timestamp"] = datetime.datetime.now().isoformat()
-    with open(args.tgt_file, "at") as f:
-        json_str = json.dumps(response, default=str)
-        f.write(json_str + "\n")
-
-
-def postprocess_response(r: dict) -> dict:
-    if "safety_settings" in r:
-        del r["safety_settings"]
-    return r
-
-
 def create_batch_for_model(
     args: Args, dataset: Dataset, split: Split, template_id: int, run_idx: int
 ) -> Iterable[LlmReq]:
@@ -115,36 +105,10 @@ def create_batch_for_model(
 
 def make_gen_kwargs(args: Args) -> dict:
     """Values are from page 13 of the Qwen3 technical report: https://arxiv.org/abs/2505.09388"""
-    gen_kwargs = {"max_tokens": args.max_tokens, "top_k": 20}
-    if args.gen_kwargs == "set1":  # thinking
-        gen_kwargs["temperature"] = 0.6
-        gen_kwargs["top_p"] = 0.95
-    elif args.gen_kwargs == "set2":  # nonthinking
-        gen_kwargs["temperature"] = 0.7
-        gen_kwargs["top_p"] = 0.8
-        gen_kwargs["presence_penalty"] = 1.5
-    elif args.gen_kwargs == "random":
-        gen_kwargs["temperature"] = random.uniform(0.0, 1.0)
-        gen_kwargs["top_p"] = random.uniform(0.4, 1.0)
-        gen_kwargs["presence_penalty"] = random.uniform(0.0, 2.0)
-    elif args.gen_kwargs == "gemini-defaults":
-        # Taken from https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro
-        gen_kwargs["top_k"] = 64
-        gen_kwargs["top_p"] = 0.95
-        gen_kwargs["temperature"] = None  # 0-2 (not sure how to implement that)
-    else:
-        raise ValueError(f"Invalid gen_kwargs: {args.gen_kwargs}")
+    gen_kwargs: dict = make_gen_kwargs_from_str(args.gen_kwargs, args.max_tokens)
 
     if args.enforce_json:
         gen_kwargs["json_schema"] = BasicSchema
-
-    if args.model_id.startswith("gemini"):
-        gen_kwargs["max_output_tokens"] = gen_kwargs["max_tokens"]
-        del gen_kwargs["max_tokens"]
-        gen_kwargs["topK"] = gen_kwargs["top_k"]
-        del gen_kwargs["top_k"]
-        gen_kwargs["topP"] = gen_kwargs["top_p"]
-        del gen_kwargs["top_p"]
 
     return gen_kwargs
 
@@ -211,7 +175,7 @@ def run_many_inferences(args: Args) -> None:
     responses = model.complete_batchof_reqs(batch=batches)
     for response in responses:
         response = postprocess_response(response)
-        dump_response(args, response)
+        dump_response(tgt_file=args.tgt_file, response=response)
         pbar.update(1)
 
 
