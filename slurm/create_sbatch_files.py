@@ -23,7 +23,6 @@ GEN_KWARGS = ["set2"]  # , "set1"]
 SPLITS = ["train"]  # "dev"]
 TEMPLATE_IDS = ["2", "3", "31", "32"]  # ["0", "1", "2", "3", "4"]
 BASE_PORT = 9000
-DATA_RANKS = list(range(8))
 
 tgt_dir = Path("slurm_scripts")
 os.makedirs(tgt_dir, exist_ok=True)
@@ -32,9 +31,10 @@ os.makedirs(tgt_dir, exist_ok=True)
 for file in tgt_dir.glob("*.sbatch"):
     file.unlink()
 
-combinations = product(MODELS, GEN_KWARGS, DATA_RANKS)
-for i, (model, gen_kwargs, data_rank) in enumerate(combinations):
-    port = BASE_PORT + i
+combinations = product(MODELS, GEN_KWARGS)
+for i, (model, gen_kwargs) in enumerate(combinations):
+    # Base port for this combination - each array task will add its task ID to this
+    port = BASE_PORT + (i * 100)  # Give enough space between job ports
     jobname = f"{i}_cscfull_10loops_t31_{model.replace('/', '_')}_{gen_kwargs}"
     template: str = Path("template.sbatch").read_text()
     filled = template.format(
@@ -45,8 +45,6 @@ for i, (model, gen_kwargs, data_rank) in enumerate(combinations):
         SPLITS=",".join(SPLITS),
         TEMPLATE_IDS=",".join(TEMPLATE_IDS),
         VLLM_PORT=port,
-        DATA_RANK=data_rank,
-        DATA_WORLD_SIZE=len(DATA_RANKS),
     )
     script_path = Path(f"slurm_scripts/{jobname}.sbatch")
     script_path.write_text(filled)
@@ -55,4 +53,4 @@ for i, (model, gen_kwargs, data_rank) in enumerate(combinations):
 
     if args.launch:
         os.system(f"sbatch {script_path}")
-        print(f"Launched job: '{script_path}'")
+        print(f"Launched array job: '{script_path}'")

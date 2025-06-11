@@ -1,13 +1,17 @@
 #!/bin/bash
 #SBATCH --partition lrz-hgx-h100-94x4,lrz-dgx-a100-80x8,lrz-hgx-a100-80x4
 #SBATCH --gres=gpu:1
-#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/out.logs
-#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/err.logs
+#SBATCH --array=0-9  # Array job with 10 tasks (DATA_RANK 0-9)
+#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/out_%A_%a.logs
+#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/err_%A_%a.logs
 #SBATCH --job-name {JOB_NAME}
 #SBATCH --time 5:00:00
 
-# Set container name based on job name
-CONTAINER_NAME="lewidi_{JOB_NAME}"
+# Set container name based on job name and array task ID to avoid conflicts
+CONTAINER_NAME="lewidi_{JOB_NAME}_${SLURM_ARRAY_TASK_ID}"
+
+# Calculate port based on base port and array task ID to avoid conflicts
+VLLM_PORT=$(({VLLM_PORT} + $SLURM_ARRAY_TASK_ID))
 
 # Delete any existing container with this name
 echo "Removing any existing container named $CONTAINER_NAME..."
@@ -35,12 +39,12 @@ enroot start --rw --root \
     --n_fewshot_examples 0 \
     --remote_call_concurrency 32 \
     --n_loops 20 \
-    --data_rank {DATA_RANK} \
-    --data_world_size {DATA_WORLD_SIZE} \
-    --vllm_port {VLLM_PORT} \
+    --data_rank $SLURM_ARRAY_TASK_ID \
+    --data_world_size 10 \
+    --vllm_port $VLLM_PORT \
     --vllm_start_server True \
     --only_run_missing_examples False \
-    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{JOB_NAME}/responses.jsonl"
+    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{JOB_NAME}/${SLURM_ARRAY_TASK_ID}_responses.jsonl"
 
 # Clean up: remove the container after job completion
 echo "Cleaning up: removing container $CONTAINER_NAME..."
