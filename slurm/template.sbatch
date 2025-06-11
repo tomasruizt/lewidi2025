@@ -32,11 +32,12 @@ enroot start --rw --root \
     --template_ids {TEMPLATE_IDS} \
     --splits {SPLITS} \
     --n_examples 100 \
-    --n_fewshot_examples 10 \
+    --n_fewshot_examples 0 \
     --remote_call_concurrency 32 \
     --n_loops 3 \
     --vllm_port {VLLM_PORT} \
     --vllm_start_server True \
+    --only_run_missing_examples False \
     --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{JOB_NAME}/responses.jsonl"
 
 # Clean up: remove the container after job completion
