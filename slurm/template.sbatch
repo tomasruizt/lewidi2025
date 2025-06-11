@@ -31,10 +31,12 @@ enroot start --rw --root \
     --datasets {DATASETS} \
     --template_ids {TEMPLATE_IDS} \
     --splits {SPLITS} \
-    --n_examples 100 \
+    --n_examples 6000 \
     --n_fewshot_examples 0 \
     --remote_call_concurrency 32 \
-    --n_loops 3 \
+    --n_loops 20 \
+    --data_rank {DATA_RANK} \
+    --data_world_size {DATA_WORLD_SIZE} \
     --vllm_port {VLLM_PORT} \
     --vllm_start_server True \
     --only_run_missing_examples False \
