@@ -1,5 +1,6 @@
 import datetime
 import json
+from multiprocessing import Pool
 import random
 from typing import Any, Literal
 import duckdb
@@ -175,12 +176,12 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
     rdf.query("response != ''", inplace=True)
 
     rdf = assign_n_classes(rdf)
-    pred_col = rdf.apply(
-        lambda row: soft_label_to_nparray(
-            json_repair.loads(row["response"]), dataset=row["dataset"]
-        ),
-        axis=1,
-    )
+
+    with Pool(20) as p:
+        pred_col = p.starmap(
+            parse_row, zip(rdf["response"].values, rdf["dataset"].values)
+        )
+
     rdf = rdf.assign(pred=pred_col)
 
     logger.info("Dropping %d NA predictions", len(rdf.query("pred.isna()")))
@@ -195,6 +196,10 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
     rdf = assign_col_template_alias(rdf)
     rdf = discard_unnecessary_cols(rdf)
     return rdf
+
+
+def parse_row(response: str, dataset: str) -> np.ndarray:
+    return soft_label_to_nparray(json_repair.loads(response), dataset=dataset)
 
 
 def discard_unnecessary_cols(rdf: pd.DataFrame) -> pd.DataFrame:
