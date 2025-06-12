@@ -518,3 +518,14 @@ def make_query_from_dict(data: dict, cols: list[str]) -> str:
 
 def fmt(x: str | int) -> str:
     return f"'{x}'" if isinstance(x, str) else str(x)
+
+
+def tgt_has_holes(tgts: pd.Series) -> np.ndarray:
+    """By Cursor"""
+    results = []
+    for arr in tgts:
+        arr, nz = np.array(arr), np.nonzero(arr)[0]
+        results.append(
+            len(arr) > 2 and len(nz) > 1 and np.any(arr[nz[0] : nz[-1] + 1] == 0)
+        )
+    return np.array(results)
