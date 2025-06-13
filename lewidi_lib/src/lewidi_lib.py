@@ -2,7 +2,7 @@ import datetime
 import json
 from multiprocessing import Pool
 import random
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 import duckdb
 import json_repair
 from matplotlib import pyplot as plt
@@ -34,9 +34,22 @@ def load_dataset(dataset: Dataset, split: Split) -> pd.DataFrame:
     df = pd.read_json(ds, orient="index")
     df.reset_index(inplace=True, names="dataset_idx")
     df["target"] = df["soft_label"].apply(parse_soft_label, dataset=dataset)
+    df["tgt_has_holes"] = tgt_has_holes(df["target"])
+    df["target_entropy"] = entropy(df["target"])
     df["dataset"] = dataset
+    df = assign_n_classes(df)
     df["split"] = split
-    return df
+    cols = [
+        "dataset",
+        "n_classes",
+        "split",
+        "dataset_idx",
+        "target",
+        "text",
+        "tgt_has_holes",
+        "target_entropy",
+    ]
+    return df[cols]
 
 
 def n_classes(dataset: Dataset) -> int:
@@ -177,12 +190,7 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
 
     rdf = assign_n_classes(rdf)
 
-    with Pool(20) as p:
-        pred_col = p.starmap(
-            parse_row, zip(rdf["response"].values, rdf["dataset"].values)
-        )
-
-    rdf = rdf.assign(pred=pred_col)
+    rdf = assign_col_pred(rdf)
 
     logger.info("Dropping %d NA predictions", len(rdf.query("pred.isna()")))
     rdf.query("~pred.isna()", inplace=True)
@@ -196,6 +204,24 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
     rdf = assign_col_template_alias(rdf)
     rdf = discard_unnecessary_cols(rdf)
     return rdf
+
+
+def assign_col_pred(rdf: pd.DataFrame) -> pd.DataFrame:
+    return assign_col_mp(
+        rdf,
+        input_cols=["response", "dataset"],
+        ouput_col="pred",
+        func=parse_row,
+    )
+
+
+def assign_col_mp(
+    rdf: pd.DataFrame, input_cols: list[str], ouput_col: str, func: Callable
+) -> pd.DataFrame:
+    input_cols = [rdf[c].values for c in input_cols]
+    with Pool(n_cpus()) as p:
+        col = p.starmap(func, zip(*input_cols))
+    return rdf.assign(**{ouput_col: col})
 
 
 def parse_row(response: str, dataset: str) -> np.ndarray:
@@ -231,7 +257,14 @@ def l0_loss(tgt: np.ndarray | dict, pred: np.ndarray | dict, dataset: Dataset) -
         for k, tgt_val in tgt.items():
             dists.append(np.abs(tgt_val - pred[k]).mean())
         return np.mean(dists)
-    return np.abs(tgt - pred).mean()
+    return np.abs(as_np(tgt) - as_np(pred)).mean(axis=1)
+
+
+def as_np(s: pd.Series | np.ndarray) -> np.ndarray:
+    """not calling s.tolist() because it turn innner arrays into lists, too"""
+    if isinstance(s, np.ndarray):
+        return s
+    return np.array(list(s.values))
 
 
 def ws_loss(tgt: np.ndarray | dict, pred: np.ndarray | dict, dataset: Dataset) -> float:
@@ -249,17 +282,23 @@ def ws_loss(tgt: np.ndarray | dict, pred: np.ndarray | dict, dataset: Dataset) -
 
 
 def assign_col_l0_loss(df: pd.DataFrame) -> pd.DataFrame:
-    col = df.apply(
-        lambda row: l0_loss(row["target"], row["pred"], row["dataset"]), axis=1
+    col = df.groupby("dataset").apply(
+        lambda df: l0_loss(df["target"], df["pred"], df["dataset"].iloc[0])
     )
     return df.assign(l0_loss=col)
 
 
 def assign_col_ws_loss(df: pd.DataFrame) -> pd.DataFrame:
-    col = df.apply(
-        lambda row: ws_loss(row["target"], row["pred"], row["dataset"]), axis=1
+    return assign_col_mp(
+        df,
+        input_cols=["target", "pred", "dataset"],
+        ouput_col="ws_loss",
+        func=ws_loss,
     )
-    return df.assign(ws_loss=col)
+
+
+def n_cpus() -> int:
+    return int(os.cpu_count() * 0.9)
 
 
 def baseline_pred(n_classes: int) -> np.ndarray:
@@ -271,7 +310,8 @@ class BasicSchema(RootModel):
 
 
 def entropy(s: pd.Series) -> np.ndarray:
-    return scipy.stats.entropy(np.array(s.values.tolist()).T)
+    """Input is series of numpy arrays"""
+    return scipy.stats.entropy(as_np(s).T)
 
 
 def plot_horizontal_lines(
@@ -330,11 +370,10 @@ def join_correct_responses(rdf: pd.DataFrame) -> pd.DataFrame:
 
 
 def join_dataset_and_preds(ddf: pd.DataFrame, rdf: pd.DataFrame) -> pd.DataFrame:
-    ddf_cols = ["dataset", "split", "dataset_idx", "target", "text"]
     joint_df = pd.merge(
-        ddf[ddf_cols],
+        ddf,
         rdf,
-        on=["dataset", "split", "dataset_idx"],
+        on=["dataset", "n_classes", "split", "dataset_idx"],
     )
     return joint_df
 
@@ -373,7 +412,7 @@ def compute_baseline_entropy(datasets: list[Dataset]) -> pd.DataFrame:
 
 
 def compute_target_entropy(ddf: pd.DataFrame) -> pd.DataFrame:
-    return ddf.groupby(["dataset", "split"], as_index=False).agg(
+    return ddf.groupby(["dataset", "n_classes"], as_index=False).agg(
         entropy=("target", lambda series: entropy(series).mean())
     )
 
