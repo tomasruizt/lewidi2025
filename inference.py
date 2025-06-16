@@ -23,7 +23,7 @@ from lewidi_lib import (
     postprocess_response,
     nonthinking_chat_template,
 )
-from vllmserver import spinup_vllm_server
+from llmlib.vllmserver import spinup_vllm_server
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
