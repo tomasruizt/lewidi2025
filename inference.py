@@ -21,8 +21,9 @@ from lewidi_lib import (
     make_gen_kwargs_from_str,
     dump_response,
     postprocess_response,
+    nonthinking_chat_template,
 )
-from vllmserver import spinup_vllm_servers
+from vllmserver import spinup_vllm_server
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,6 @@ class Args(BaseSettings, cli_parse_args=True):
     remote_call_concurrency: int = 64
     n_loops: int = 1
     vllm_port: int = 8000
-    vllm_more_ports: list[int] = []
     vllm_start_server: bool = True
     vllm_enable_reasoning: bool = True
     tgt_file: str = "responses.jsonl"
@@ -51,14 +51,9 @@ class Args(BaseSettings, cli_parse_args=True):
     enforce_json: bool = False
     include_prompt_in_output: bool = False
 
-    def vllm_ports(self) -> list[int]:
-        return [self.vllm_port] + self.vllm_more_ports
-
     def dict_for_dump(self):
         exclude = [
             "vllm_port",
-            "vllm_more_ports",
-            "vllm_start_server",
             "datasets",
             "splits",
             "template_ids",
@@ -186,7 +181,7 @@ def run_many_inferences(args: Args) -> None:
         pbar.update(1)
 
 
-def make_model(args):
+def make_model(args: Args):
     if args.model_id.startswith("gemini"):
         model = GeminiAPI(
             model_id=args.model_id,
@@ -201,20 +196,36 @@ def make_model(args):
         model_id=args.model_id,
         port=args.vllm_port,
         timeout_secs=args.timeout_secs,
-        more_ports=args.vllm_more_ports,
     )
     return model
 
 
 @contextmanager
 def using_vllm_server(args: Args):
-    with spinup_vllm_servers(
-        no_op=not args.vllm_start_server,
-        model_id=args.model_id,
-        ports=args.vllm_ports(),
-        enable_reasoning=args.vllm_enable_reasoning,
-    ):
+    cmd: list[str] = vllm_command(args)
+    with spinup_vllm_server(no_op=not args.vllm_start_server, vllm_command=cmd):
         yield
+
+
+def vllm_command(args: Args) -> list[str]:
+    cmd = [
+        "vllm",
+        "serve",
+        args.model_id,
+        "--task=generate",
+        "--disable-log-requests",  # prevents logging the prompt
+        "--disable-uvicorn-access-log",  # prevents logging 200 OKs
+        "--max-model-len=16k",
+        "--max-num-seqs=1000",  # throttling is done client-side
+        "--gpu-memory-utilization=0.95",
+        "--host=127.0.0.1",
+        f"--port={args.vllm_port}",
+    ]
+    if args.vllm_enable_reasoning:
+        cmd.extend(["--enable-reasoning", "--reasoning-parser=deepseek_r1"])
+    else:
+        cmd.extend(["--chat-template=" + str(nonthinking_chat_template.absolute())])
+    return cmd
 
 
 def convert_output_to_parquet(tgt_file: str) -> None:

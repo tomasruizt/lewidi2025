@@ -23,6 +23,8 @@ Split = Literal["train", "dev"]
 
 GenKwargs = Literal["set1", "set2", "random", "gemini-defaults"]
 
+nonthinking_chat_template = Path(__file__).parent / "qwen3_nonthinking.jinja"
+
 
 def load_dataset(dataset: Dataset, split: Split) -> pd.DataFrame:
     root = (
