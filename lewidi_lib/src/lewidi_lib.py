@@ -158,7 +158,7 @@ def load_template_file(file: str | Path) -> str:
 
 
 def enable_logging():
-    fmt = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    fmt = "%(asctime)s [%(levelname)s] %(filename)s:%(lineno)d - %(message)s"
     logging.basicConfig(level=logging.INFO, format=fmt)
 
 
