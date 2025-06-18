@@ -12,6 +12,12 @@ Bad option is one that confidently says something incorrect, is off-topic/weird,
 the solution into a clear dead-end, or is not explained clearly enough for a human to follow
 along with (even if it is correct).
 
+Math Problem:
+{PROBLEM}
+
+Model Steps:
+{STEPS}
+
 Only output the step text and the rating, like this example below.
 [
     {{"text": "step text", "rating": "great"}},
@@ -19,8 +25,4 @@ Only output the step text and the rating, like this example below.
     {{"text": "step text", "rating": "bad"}},
     {{"text": "step text", "rating": "great"}}
 ]
-The final answer is considered just another step.
 Please verify that the step text is the same as in the input.
-
-Input Steps:
-{STEPS}

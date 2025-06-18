@@ -17,11 +17,13 @@ dataset = problems_with_50pct_correct_solutions(dataset, n_problem_ids=10)
 template = templates_root / "rate_prm800k.txt"
 batch = []
 for _, row in dataset.iterrows():
-    steps = [{"step": t} for t in row["texts"]]
-    prompt = template.read_text().format(STEPS=json.dumps(steps, indent=2))
+    steps = [{"text": t} for t in row["texts"]]
+    prompt = template.read_text().format(
+        STEPS=json.dumps(steps, indent=2), PROBLEM=row["problem"]
+    )
     req = LlmReq(
         convo=[Message.from_prompt(prompt)],
-        metadata={"dataset_idx": row["dataset_idx"]},
+        metadata={"dataset_idx": row["dataset_idx"], "prompt": prompt},
         gen_kwargs={"max_output_tokens": 10_000},
     )
     batch.append(req)

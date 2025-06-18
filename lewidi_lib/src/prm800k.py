@@ -1,8 +1,11 @@
+from logging import getLogger
 from pathlib import Path
 from typing import Literal
 import numpy as np
 import pandas as pd
 import os
+
+logger = getLogger(__name__)
 
 Split = Literal["test", "train"]
 
@@ -75,3 +78,14 @@ def problems_with_50pct_correct_solutions(
         .head(n_problem_ids)
     )
     return dataset.query("problem_id in @half_correct.problem_id")
+
+
+def extract_rating(x):
+    try:
+        return [mapping[r["rating"]] for r in x]
+    except Exception:
+        logger.warning("Could not parse: %s", repr(x))
+        return None
+
+
+mapping = {"great": 1, "ok": 0, "okay": 0, "bad": -1}
