@@ -39,7 +39,7 @@ def load_dataset(dataset: Dataset, split: Split) -> pd.DataFrame:
     df["tgt_has_holes"] = tgt_has_holes(df["target"])
     df["target_entropy"] = entropy(df["target"])
     df["dataset"] = dataset
-    df = assign_n_classes(df)
+    df = assign_col_n_classes(df)
     df["split"] = split
     cols = [
         "dataset",
@@ -58,7 +58,7 @@ def n_classes(dataset: Dataset) -> int:
     return len(soft_label_mapping[dataset])
 
 
-def assign_n_classes(df: pd.DataFrame) -> pd.DataFrame:
+def assign_col_n_classes(df: pd.DataFrame) -> pd.DataFrame:
     col = df["dataset"].apply(n_classes)
     return df.assign(n_classes=col)
 
@@ -171,9 +171,7 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
     rdf = rdf.assign(gen_kwargs=rdf["gen_kwargs"].replace(gen_kwargs_mapping))
 
     rdf = rdf.assign(success=rdf["success"].astype(bool).fillna(1.0))
-    failed = rdf.query("not success")
-    logger.info("Dropping %d rows with success=False", len(failed))
-    rdf = rdf.query("success")
+    rdf = drop_failed_rows(rdf)
 
     model_size_col = rdf["model_id"].str.extract(r"-(\d+(?:\.\d+)?)B$")[0].astype(float)
     rdf = rdf.assign(
@@ -181,16 +179,14 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
         template_id=as_categorical(rdf["template_id"].astype(int)),
     )
 
-    are_na = len(rdf.query("response.isna()"))
-    logger.info("Dropping %d rows with response NA", are_na)
-    rdf.query("~response.isna()", inplace=True)
+    rdf = drop_na_response_rows(rdf)
     rdf = rdf.assign(response=rdf["response"].str.strip())
 
     is_empty_str = len(rdf.query("response == ''"))
     logger.info("Dropping %d rows with empty response", is_empty_str)
     rdf.query("response != ''", inplace=True)
 
-    rdf = assign_n_classes(rdf)
+    rdf = assign_col_n_classes(rdf)
 
     rdf = assign_col_pred(rdf)
 
@@ -206,6 +202,18 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
     rdf = assign_col_template_alias(rdf)
     rdf = discard_unnecessary_cols(rdf)
     return rdf
+
+
+def drop_na_response_rows(rdf: pd.DataFrame, col: str = "response") -> pd.DataFrame:
+    are_na = len(rdf.query(f"{col}.isna()"))
+    logger.info("Dropping %d rows with col '%s' NA", are_na, col)
+    return rdf.query(f"~{col}.isna()")
+
+
+def drop_failed_rows(rdf: pd.DataFrame) -> pd.DataFrame:
+    failed = rdf.query("not success")
+    logger.info("Dropping %d rows with success=False", len(failed))
+    return rdf.query("success")
 
 
 def assign_col_pred(rdf: pd.DataFrame) -> pd.DataFrame:
@@ -420,7 +428,7 @@ def compute_target_entropy(ddf: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_unif_baseline_perf_metrics(ddf: pd.DataFrame):
-    bdf = assign_n_classes(ddf)
+    bdf = assign_col_n_classes(ddf)
     bdf = bdf.assign(pred=lambda row: row["n_classes"].apply(baseline_pred))
     bdf = assign_cols_perf_metrics(bdf)
     baseline_losses = bdf.groupby(["dataset", "split"], as_index=False).agg(
@@ -429,18 +437,21 @@ def compute_unif_baseline_perf_metrics(ddf: pd.DataFrame):
     return baseline_losses
 
 
-def compute_strong_baselines_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
+def agg_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
+    gby_cols = [c for c in _gby_example_cols if c in rdf.columns]
+    agg_df = rdf.groupby(gby_cols, as_index=False, observed=True).agg(
+        ws_loss=("ws_loss", "mean"), pred_entropy=("pred_entropy", "mean")
+    )
+    return agg_df
+
+
+def process_rdf_and_add_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
     rdf = (
         rdf.pipe(process_rdf)
         .pipe(join_correct_responses)
         .pipe(assign_cols_perf_metrics)
     )
-    agg_df = rdf.groupby(
-        ["model_id", "dataset", "split", "template_id", "template_alias"],
-        as_index=False,
-        observed=True,
-    ).agg(ws_loss=("ws_loss", "mean"), pred_entropy=("pred_entropy", "mean"))
-    return agg_df
+    return rdf
 
 
 def group_pred(preds: pd.Series) -> np.ndarray:
@@ -448,7 +459,8 @@ def group_pred(preds: pd.Series) -> np.ndarray:
 
 
 def compute_average_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
-    agg_df = rdf.groupby(_gby_example_cols, as_index=False, observed=True).agg(
+    gby_cols = [c for c in _gby_example_cols if c in rdf.columns]
+    agg_df = rdf.groupby(gby_cols, as_index=False, observed=True).agg(
         pred=("pred", group_pred)
     )
     agg_df = join_correct_responses(agg_df)

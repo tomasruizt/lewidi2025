@@ -1,0 +1,37 @@
+# Chain-of-Thought Reasoning Evaluation
+
+## Overview
+Your goal is to grade an LLM's step-by-step solution to a problem. The model will often say
+things that look ok at first, but will turn out to be wrong on closer inspection - stay vigilant!
+Please mark each step with (great, okay, bad).
+
+## Instructions
+A "great" step is anything a smart student would try. 
+Most of the time it's a clear cut step forward towards solving the problem. But it
+could also be a sub-optimal choice, as long as it looks like something a reasonably smart
+human might say while trying to solve the problem. An "okay" step is anything that's
+reasonable for a person to say, but it's not offering any insight, doesn't further the solution
+by exploring an option, performing a calculation, or offering an idea for the next step. A
+"bad" step is one that confidently says something incorrect, is off-topic/weird, leads
+the solution into a clear dead-end, or is not explained clearly enough for a human to follow
+along with (even if it is correct).
+
+## LLM Problem
+```
+{PROBLEM}
+```
+
+## LLM Chain-of-Thought Steps
+```
+{STEPS}
+```
+
+## Output Format
+Only output the step text and the rating, like this example below.
+[
+    {{"text": "step text", "rating": "great"}},
+    {{"text": "step text", "rating": "ok"}},
+    {{"text": "step text", "rating": "bad"}},
+    {{"text": "step text", "rating": "great"}}
+]
+Please verify that the step text is the same as in the input.
