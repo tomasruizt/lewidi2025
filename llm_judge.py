@@ -5,8 +5,6 @@ from lewidi_lib import (
     load_template,
     make_query_from_dict,
     postprocess_response,
-)
-from lewidi_lib import (
     enable_logging,
     join_correct_responses,
     load_preds,
@@ -14,30 +12,55 @@ from lewidi_lib import (
     make_gen_kwargs_from_str,
 )
 from prompt_templates import templates_root
-from llmlib.gemini.gemini_code import GeminiAPI, LlmReq, Message
+
+# from llmlib.gemini.gemini_code import GeminiAPI
+from llmlib.vllm_model import ModelvLLM
+from llmlib.base_llm import LlmReq, Message
+from pydantic import BaseModel
+from pydantic_settings import BaseSettings
 from tqdm import tqdm
 import nltk
+
+# from inference import using_vllm_server
 
 
 enable_logging()
 
+
+class JudgeArgs(BaseSettings, cli_parse_args=True):
+    n_dataset_examples: int = 100
+    n_samples_per_example: int = 5
+    judge_model_id: str = "Qwen/Qwen3-4B"
+    gen_kwargs_str: str = "set2"
+    vllm_remote_call_concurrency: int = 8
+    tgt_file: str = "./parquets/reasoning-ratings/responses.jsonl"
+
+
+args = JudgeArgs()
+
 judge_template = load_template_file(templates_root / "reasoning_trace_eval2.txt")
 llm_template = load_template("CSC", "31")
-rdf = load_preds(parquets_dir="./parquets")
+rdf = load_preds(parquets_dir="/mnt/disk16tb/globus_shared/from-lrz-ai-systems")
+rdf = rdf.drop_duplicates()
+
+# filter down
+desired_dataset_idx = rdf["dataset_idx"].unique()[: args.n_dataset_examples]
+desired_run_idx = list(range(args.n_samples_per_example))
+rdf = rdf.query("dataset_idx.isin(@desired_dataset_idx)")
+rdf = rdf.query("run_idx.isin(@desired_run_idx)")
 
 metadata = {
     "template_id": 31,
     "model_id": "Qwen/Qwen3-32B",
     "gen_kwargs": "set2",
     "dataset": "CSC",
-    "judge_model_id": "gemini-2.5-pro",
 }
 
 query = make_query_from_dict(metadata, rdf.columns)
 rdf = rdf.query(query).pipe(assign_col_n_classes)
 rdf = join_correct_responses(rdf)
 
-gen_kwargs: dict = make_gen_kwargs_from_str("gemini-defaults", max_tokens=10000)
+gen_kwargs: dict = make_gen_kwargs_from_str(args.gen_kwargs_str, max_tokens=10000)
 
 batch = []
 for _, row in rdf.iterrows():
@@ -51,17 +74,19 @@ for _, row in rdf.iterrows():
     req = LlmReq(convo=convo, gen_kwargs=gen_kwargs, metadata=md)
     batch.append(req)
 
-model = GeminiAPI(
-    model_id=metadata["judge_model_id"],
-    max_n_batching_threads=128,
-    include_thoughts=True,
-    location="global",
+# model = GeminiAPI(
+#     model_id=judge_model_id,
+#     max_n_batching_threads=128,
+#     include_thoughts=True,
+#     location="global",
+# )
+
+model = ModelvLLM(
+    model_id=args.judge_model_id,
+    remote_call_concurrency=args.vllm_remote_call_concurrency,
 )
 
 gen = model.complete_batchof_reqs(batch=batch)
 for response in tqdm(gen, total=len(batch)):
     response = postprocess_response(response)
-    dump_response(
-        response,
-        tgt_file="./parquets/reasoning-ratings/template-2-reasoning-judge-responses.jsonl",
-    )
+    dump_response(response, tgt_file=args.tgt_file)
