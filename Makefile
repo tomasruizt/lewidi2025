@@ -34,18 +34,18 @@ inference:
 
 gemini-inference:
 	python inference.py \
-		--model_id gemini-2.5-pro-preview-06-05 \
+		--model_id gemini-2.5-pro \
 		--gen_kwargs gemini-defaults \
 		--datasets CSC \
 		--splits train \
-		--template_ids 0,1,2,4,31,32 \
+		--template_ids 31 \
 		--n_examples 100 \
 		--n_loops 3 \
 		--n_fewshot_examples 0 \
 		--vllm_start_server False \
-		--only_run_missing_examples True \
+		--only_run_missing_examples False \
 		--max_tokens 10000 \
-		--tgt_file parquets/baseline/gemini-2.5-csc-train-alltemplates.jsonl
+		--tgt_file parquets/baseline/gemini-2.5-csc-train-template31.jsonl
 
 stapp:
 	python -m streamlit run st_app/app.py
