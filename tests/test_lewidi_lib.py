@@ -1,5 +1,5 @@
 from pathlib import Path
-from lewidi_lib import tgt_has_holes
+from lewidi_lib import extract_json_substring_from_response, tgt_has_holes
 import numpy as np
 import pandas as pd
 from sbatch_lib import sketch_sbatch_progress
@@ -38,3 +38,14 @@ def test_tgt_has_holes():
     tgts = pd.Series([arr for arr, _ in cases])
     expected = np.array([expected for _, expected in cases])
     assert np.allclose(tgt_has_holes(tgts), expected)
+
+
+def test_extract_json_substring_from_response():
+    response_col = [
+        "```json{a: 1}```",
+        "{b: 2}",
+        "hello! ```json{c: 3}``` something",
+    ]
+    rdf = pd.DataFrame({"response": response_col})
+    rdf = extract_json_substring_from_response(rdf)
+    assert rdf["response"].tolist() == ["{a: 1}", "{b: 2}", "{c: 3}"]

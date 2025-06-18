@@ -2,6 +2,7 @@ import datetime
 import json
 from multiprocessing import Pool
 import random
+import re
 from typing import Any, Callable, Literal
 import duckdb
 import json_repair
@@ -188,6 +189,7 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
 
     rdf = assign_col_n_classes(rdf)
 
+    rdf = extract_json_substring_from_response(rdf)
     rdf = assign_col_pred(rdf)
 
     logger.info("Dropping %d NA predictions", len(rdf.query("pred.isna()")))
@@ -438,8 +440,8 @@ def compute_unif_baseline_perf_metrics(ddf: pd.DataFrame):
 
 
 def agg_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
-    gby_cols = [c for c in _gby_example_cols if c in rdf.columns]
-    agg_df = rdf.groupby(gby_cols, as_index=False, observed=True).agg(
+    cols = ["model_id", "dataset", "split", "template_id", "template_alias"]
+    agg_df = rdf.groupby(cols, as_index=False, observed=True).agg(
         ws_loss=("ws_loss", "mean"), pred_entropy=("pred_entropy", "mean")
     )
     return agg_df
@@ -582,3 +584,12 @@ def tgt_has_holes(tgts: pd.Series) -> np.ndarray:
             len(arr) > 2 and len(nz) > 1 and np.any(arr[nz[0] : nz[-1] + 1] == 0)
         )
     return np.array(results)
+
+
+def extract_json_substring_from_response(df: pd.DataFrame) -> pd.DataFrame:
+    mask = df["response"].str.contains(r"```json.*?```", flags=re.DOTALL)
+    new_vals = df.loc[mask, "response"].str.extract(
+        r"```json(.*?)```", flags=re.DOTALL
+    )[0]
+    df.loc[mask, "response"] = new_vals
+    return df
