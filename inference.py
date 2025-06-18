@@ -143,6 +143,7 @@ def keep_only_missing_examples(
     run_idx: int,
     template_id: int,
 ) -> pd.DataFrame:
+    assert_file_exists(args.tgt_file)
     previous = pd.read_json(args.tgt_file, lines=True, dtype={"error": "string"})
     success = previous.query(
         "success == True and dataset == @dataset and split == @split and run_idx == @run_idx and template_id == @template_id"
@@ -157,6 +158,12 @@ def keep_only_missing_examples(
         template_id,
     )
     return df
+
+
+def assert_file_exists(file: str | Path) -> None:
+    file = Path(file)
+    if not file.exists():
+        raise FileNotFoundError(file.absolute())
 
 
 def run_many_inferences(args: Args) -> None:
