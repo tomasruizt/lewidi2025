@@ -555,6 +555,7 @@ def make_gen_kwargs_from_str(id_: GenKwargs, max_tokens: int) -> dict:
 
 def dump_response(response: dict, tgt_file: str) -> None:
     response["timestamp"] = datetime.datetime.now().isoformat()
+    Path(tgt_file).parent.mkdir(parents=True, exist_ok=True)
     with open(tgt_file, "at") as f:
         json_str = json.dumps(response, default=str)
         f.write(json_str + "\n")
