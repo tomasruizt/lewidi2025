@@ -26,6 +26,8 @@ import nltk
 
 enable_logging()
 
+nltk.download("punkt_tab")
+
 
 class JudgeArgs(BaseSettings, cli_parse_args=True):
     n_dataset_examples: int = 100
@@ -33,6 +35,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     judge_model_id: str = "Qwen/Qwen3-4B"
     gen_kwargs_str: str = "set2"
     vllm_remote_call_concurrency: int = 8
+    preds_dir: str = "/mnt/disk16tb/globus_shared/from-lrz-ai-systems"
     tgt_file: str = "./parquets/reasoning-ratings/responses.jsonl"
 
 
@@ -40,7 +43,7 @@ args = JudgeArgs()
 
 judge_template = load_template_file(templates_root / "reasoning_trace_eval2.txt")
 llm_template = load_template("CSC", "31")
-rdf = load_preds(parquets_dir="/mnt/disk16tb/globus_shared/from-lrz-ai-systems")
+rdf = load_preds(parquets_dir=args.preds_dir)
 rdf = rdf.drop_duplicates()
 
 # filter down
