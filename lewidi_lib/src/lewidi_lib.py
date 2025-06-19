@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import datetime
 import json
 from multiprocessing import Pool
@@ -6,6 +7,7 @@ import re
 from typing import Any, Callable, Literal
 import duckdb
 import json_repair
+from llmlib.vllmserver import spinup_vllm_server
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -13,7 +15,7 @@ import logging
 import os
 from pathlib import Path
 
-from pydantic import RootModel
+from pydantic import BaseModel, RootModel
 import scipy
 
 logger = logging.getLogger(__name__)
@@ -594,3 +596,42 @@ def extract_json_substring_from_response(df: pd.DataFrame) -> pd.DataFrame:
     )[0]
     df.loc[mask, "response"] = new_vals
     return df
+
+
+class VLLMArgs(BaseModel):
+    start_server: bool = True
+    enable_reasoning: bool = True
+    port: int = 8000
+
+    def dict_for_dump(self):
+        exclude = ["port"]
+        d: dict = self.model_dump(exclude=exclude)
+        return d
+
+
+def vllm_command(model_id: str, vllm_args: VLLMArgs) -> list[str]:
+    cmd = [
+        "vllm",
+        "serve",
+        model_id,
+        "--task=generate",
+        "--disable-log-requests",  # prevents logging the prompt
+        "--disable-uvicorn-access-log",  # prevents logging 200 OKs
+        "--max-model-len=16k",
+        "--max-num-seqs=1000",  # throttling is done client-side
+        "--gpu-memory-utilization=0.95",
+        "--host=127.0.0.1",  # prevents requests from outside the machine
+        f"--port={vllm_args.port}",
+    ]
+    if vllm_args.enable_reasoning:
+        cmd.extend(["--enable-reasoning", "--reasoning-parser=deepseek_r1"])
+    else:
+        cmd.extend(["--chat-template=" + str(nonthinking_chat_template.absolute())])
+    return cmd
+
+
+@contextmanager
+def using_vllm_server(model_id: str, vllm_args: VLLMArgs):
+    cmd: list[str] = vllm_command(model_id, vllm_args)
+    with spinup_vllm_server(no_op=not vllm_args.start_server, vllm_command=cmd):
+        yield
