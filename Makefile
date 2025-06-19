@@ -51,6 +51,7 @@ judge:
 		--vllm.port 8000 \
 		--vllm.start_server True \
 		--vllm.enforce_eager True \
+		--only_run_missing_examples True \
 		--preds_dir /mnt/disk16tb/globus_shared/from-lrz-ai-systems \
 		--tgt_file judge-responses.jsonl \
 		--data_rank 0 \

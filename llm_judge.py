@@ -23,6 +23,8 @@ from pydantic_settings import BaseSettings
 from tqdm import tqdm
 import nltk
 
+from lewidi_lib import keep_only_missing_examples
+
 # from inference import using_vllm_server
 
 
@@ -43,6 +45,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     data_rank: int = 0
     data_world_size: int = 1
     timeout_secs: int = 5 * 60
+    only_run_missing_examples: bool = False
 
 
 args = JudgeArgs()
@@ -63,11 +66,14 @@ metadata = {
     "model_id": "Qwen/Qwen3-32B",
     "gen_kwargs": "set2",
     "dataset": "CSC",
+    "split": "train",
 }
-
 query = make_query_from_dict(metadata, rdf.columns)
 rdf = rdf.query(query).pipe(assign_col_n_classes)
 rdf = join_correct_responses(rdf)
+
+if args.only_run_missing_examples:
+    rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec=metadata)
 
 gen_kwargs: dict = make_gen_kwargs_from_str(args.gen_kwargs_str, max_tokens=10000)
 

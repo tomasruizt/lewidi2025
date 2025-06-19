@@ -641,3 +641,28 @@ def using_vllm_server(model_id: str, vllm_args: VLLMArgs):
     cmd: list[str] = vllm_command(model_id, vllm_args)
     with spinup_vllm_server(no_op=not vllm_args.start_server, vllm_command=cmd):
         yield
+
+
+def keep_only_missing_examples(
+    df: pd.DataFrame, tgt_file: str, keep_spec: dict
+) -> pd.DataFrame:
+    tgt_file = Path(tgt_file)
+    if not tgt_file.exists():
+        logger.warning("No previous responses found: %s", tgt_file.absolute())
+        return df
+
+    previous = pd.read_json(tgt_file, lines=True, dtype={"error": "string"})
+    if len(previous) == 0:
+        logger.warning("Empty previous responses file: %s", tgt_file.absolute())
+        return df
+
+    spec = keep_spec | {"success": True}
+    query: str = make_query_from_dict(spec, previous.columns)
+    success = previous.query(query)
+    join_cols = [c for c in keep_spec if c in df.columns and c in success.columns]
+    join_cols.extend(["dataset_idx", "run_idx"])
+    joined = df.merge(success[join_cols], on=join_cols, how="outer", indicator=True)
+    assert len(joined) == len(df), (len(joined), len(df))
+    df = joined.query("_merge == 'left_only'").drop(columns=["_merge"])
+    logger.info("Keeping %d missing examples from spec %s", len(df), keep_spec)
+    return df

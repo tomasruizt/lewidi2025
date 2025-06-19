@@ -15,6 +15,7 @@ from lewidi_lib import (
     Split,
     GenKwargs,
     VLLMArgs,
+    keep_only_missing_examples,
     load_dataset,
     enable_logging,
     load_template,
@@ -78,7 +79,13 @@ def create_batch_for_model(
         df = df.tail(-args.n_fewshot_examples)
     df = df.head(args.n_examples)
     if args.only_run_missing_examples:
-        df = keep_only_missing_examples(df, args, dataset, split, run_idx, template_id)
+        sp = {
+            "dataset": dataset,
+            "split": split,
+            "run_idx": run_idx,
+            "template_id": template_id,
+        }
+        df = keep_only_missing_examples(df, args.tgt_file, keep_spec=sp)
 
     Path(args.tgt_file).parent.mkdir(parents=True, exist_ok=True)
 
@@ -132,31 +139,6 @@ def make_convo(
     final_msg = Message.from_prompt(prompt)
     convo = few_shot_msgs + [final_msg]
     return convo, prompt
-
-
-def keep_only_missing_examples(
-    df: pd.DataFrame,
-    args: Args,
-    dataset: Dataset,
-    split: Split,
-    run_idx: int,
-    template_id: int,
-) -> pd.DataFrame:
-    assert_file_exists(args.tgt_file)
-    previous = pd.read_json(args.tgt_file, lines=True, dtype={"error": "string"})
-    success = previous.query(
-        "success == True and dataset == @dataset and split == @split and run_idx == @run_idx and template_id == @template_id"
-    )
-    df = df.query("~dataset_idx.isin(@success.dataset_idx)")
-    logger.info(
-        "Keeping %d missing examples for dataset='%s', split='%s', run_idx=%d, template_id=%d",
-        len(df),
-        dataset,
-        split,
-        run_idx,
-        template_id,
-    )
-    return df
 
 
 def assert_file_exists(file: str | Path) -> None:
