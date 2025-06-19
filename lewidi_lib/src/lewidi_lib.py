@@ -167,6 +167,18 @@ def enable_logging():
     logging.basicConfig(level=logging.INFO, format=fmt)
 
 
+model_size_mapping = {
+    "Qwen/Qwen3-0.6B": 0.6,
+    "Qwen/Qwen3-1.7B": 1.7,
+    "Qwen/Qwen3-4B": 4.0,
+    "Qwen/Qwen3-8B": 8.0,
+    "Qwen/Qwen3-14B": 14.0,
+    "Qwen/Qwen3-32B": 32.0,
+    "Qwen/Qwen3-72B": 72.0,
+    "Qwen/Qwen3-235B-A22B": 235.0,
+}
+
+
 def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.DataFrame:
     """Process model results dataframe"""
     logger.info("Starting processing with %d rows", len(rdf))
@@ -178,7 +190,7 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
     rdf = rdf.assign(success=rdf["success"].astype(bool).fillna(1.0))
     rdf = drop_failed_rows(rdf)
 
-    model_size_col = rdf["model_id"].str.extract(r"-(\d+(?:\.\d+)?)B$")[0].astype(float)
+    model_size_col = rdf["model_id"].map(model_size_mapping)
     rdf = rdf.assign(
         model_size=as_categorical(model_size_col),
         template_id=as_categorical(rdf["template_id"].astype(int)),
