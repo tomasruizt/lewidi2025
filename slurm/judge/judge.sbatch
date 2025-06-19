@@ -39,6 +39,7 @@ enroot start --rw --root \
     --vllm.start_server True \
     --vllm.enforce_eager False \
     --vllm.tensor_parallel_size 2 \
+    --only_run_missing_examples True \
     --data_rank $SLURM_ARRAY_TASK_ID \
     --data_world_size $SLURM_ARRAY_TASK_COUNT \
     --preds_dir /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2 \
