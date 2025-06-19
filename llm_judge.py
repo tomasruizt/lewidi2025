@@ -1,5 +1,6 @@
 import json
 from lewidi_lib import (
+    VLLMArgs,
     assign_col_n_classes,
     dump_response,
     load_template,
@@ -10,13 +11,14 @@ from lewidi_lib import (
     load_preds,
     load_template_file,
     make_gen_kwargs_from_str,
+    using_vllm_server,
 )
 from prompt_templates import templates_root
 
 # from llmlib.gemini.gemini_code import GeminiAPI
 from llmlib.vllm_model import ModelvLLM
 from llmlib.base_llm import LlmReq, Message
-from pydantic import BaseModel
+from pydantic import Field
 from pydantic_settings import BaseSettings
 from tqdm import tqdm
 import nltk
@@ -34,9 +36,10 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     n_samples_per_example: int = 5
     judge_model_id: str = "Qwen/Qwen3-4B"
     gen_kwargs_str: str = "set2"
-    vllm_remote_call_concurrency: int = 8
     preds_dir: str = "/mnt/disk16tb/globus_shared/from-lrz-ai-systems"
-    tgt_file: str = "./parquets/reasoning-ratings/responses.jsonl"
+    tgt_file: str = "./judge-responses.jsonl"
+    remote_call_concurrency: int = 8
+    vllm: VLLMArgs = Field(default_factory=VLLMArgs)
 
 
 args = JudgeArgs()
@@ -86,10 +89,12 @@ for _, row in rdf.iterrows():
 
 model = ModelvLLM(
     model_id=args.judge_model_id,
-    remote_call_concurrency=args.vllm_remote_call_concurrency,
+    remote_call_concurrency=args.remote_call_concurrency,
+    port=args.vllm.port,
 )
 
-gen = model.complete_batchof_reqs(batch=batch)
-for response in tqdm(gen, total=len(batch)):
-    response = postprocess_response(response)
-    dump_response(response, tgt_file=args.tgt_file)
+with using_vllm_server(args.judge_model_id, args.vllm):
+    gen = model.complete_batchof_reqs(batch=batch)
+    for response in tqdm(gen, total=len(batch)):
+        response = postprocess_response(response)
+        dump_response(response, tgt_file=args.tgt_file)

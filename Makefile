@@ -1,4 +1,9 @@
 .PHONY: vllm-qwen3-thinking
+.PHONY: inference
+.PHONY: judge
+.PHONY: gemini-inference
+.PHONY: stapp
+.PHONY: rateapp
 
 vllm-qwen3-thinking:
 	vllm serve Qwen/Qwen3-4B \
@@ -11,6 +16,7 @@ vllm-qwen3-thinking:
 		--gpu-memory-utilization 0.8 \
 		--enable-chunked-prefill \
 		--disable-uvicorn-access-log \
+		--host 127.0.0.1 \
 		--enforce-eager \
 		--max-num-seqs 1000 \
 		--port 8000
@@ -34,6 +40,19 @@ inference:
 		--vllm.enforce_eager=True \
 		--max_tokens 10000 \
 		--include_prompt_in_output False
+
+judge:
+	python llm_judge.py \
+		--n_dataset_examples 3 \
+		--n_samples_per_example 2 \
+		--judge_model_id Qwen/Qwen3-4B \
+		--gen_kwargs_str set2 \
+		--remote_call_concurrency 10 \
+		--vllm.port 8001 \
+		--vllm.start_server True \
+		--vllm.enforce_eager True \
+		--preds_dir /mnt/disk16tb/globus_shared/from-lrz-ai-systems \
+		--tgt_file judge-responses.jsonl
 
 gemini-inference:
 	python inference.py \

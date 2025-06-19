@@ -34,7 +34,10 @@ enroot start --rw --root \
     --n_samples_per_example 5 \
     --judge_model_id Qwen/Qwen3-32B \
     --gen_kwargs_str set2 \
-    --vllm_remote_call_concurrency 32 \
+    --remote_call_concurrency 32 \
+    --vllm.port $VLLM_PORT \
+    --vllm.start_server True \
+    --vllm.enforce_eager False \
     --preds_dir /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2 \
     --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/llmjudge/responses.jsonl"
 
