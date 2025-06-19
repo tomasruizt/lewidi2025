@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --partition lrz-hgx-h100-94x4,lrz-dgx-a100-80x8,lrz-hgx-a100-80x4
-#SBATCH --gres=gpu:1
-#SBATCH --array=0-49  # Array job with 50 tasks (DATA_RANK 0-49)
-#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/out_%A_%a.logs
-#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/err_%A_%a.logs
+#SBATCH --gres=gpu:{N_GPUS}
+#SBATCH --array=0-9  # Array job with 10 tasks (DATA_RANK 0-9)
+#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/logs/%a_out.log
+#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/logs/%a_err.log
 #SBATCH --job-name {JOB_NAME}
 #SBATCH --time 5:00:00
 
@@ -37,14 +37,15 @@ enroot start --rw --root \
     --splits {SPLITS} \
     --n_examples 6000 \
     --n_fewshot_examples 0 \
-    --remote_call_concurrency 32 \
+    --remote_call_concurrency {REMOTE_CALL_CONCURRENCY} \
     --n_loops 20 \
     --data_rank $SLURM_ARRAY_TASK_ID \
-    --data_world_size 50 \
+    --data_world_size $SLURM_ARRAY_TASK_COUNT \
     --vllm.port $VLLM_PORT \
     --vllm.start_server True \
-    --only_run_missing_examples False \
-    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{JOB_NAME}/${{SLURM_ARRAY_TASK_ID}}_responses.jsonl"
+    --vllm.tensor_parallel_size {N_GPUS} \
+    --only_run_missing_examples True \
+    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{JOB_NAME}/responses.jsonl"
 
 # Clean up: remove the container after job completion
 echo "Cleaning up: removing container $CONTAINER_NAME..."

@@ -1,27 +1,37 @@
+from dataclasses import dataclass
 import os
 from pathlib import Path
 from itertools import product
-from pydantic_settings import BaseSettings
+import argparse
 
 
-class Args(BaseSettings, cli_parse_args=True):
-    launch: bool = False
+@dataclass
+class Case:
+    model: str
+    n_gpus: int
+    remote_call_concurrency: int = 32
 
 
-args = Args()
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--launch", action="store_true")
+    return parser.parse_args()
 
-MODELS = [
-    "Qwen/Qwen3-0.6B",
-    "Qwen/Qwen3-1.7B",
-    "Qwen/Qwen3-4B",
-    "Qwen/Qwen3-8B",
-    "Qwen/Qwen3-14B",
-    "Qwen/Qwen3-32B",
+
+args = parse_args()
+
+CASES = [
+    # Case("Qwen/Qwen3-0.6B", n_gpus=1),
+    Case("Qwen/Qwen3-1.7B", n_gpus=1, remote_call_concurrency=128),
+    # Case("Qwen/Qwen3-4B", n_gpus=1),
+    Case("Qwen/Qwen3-8B", n_gpus=1, remote_call_concurrency=128),
+    # Case("Qwen/Qwen3-14B", n_gpus=1),
+    # Case("Qwen/Qwen3-32B", n_gpus=2),
 ]
-DATASETS = ["MP"]
+DATASETS = ["CSC"]
 GEN_KWARGS = ["set2"]  # , "set1"]
 SPLITS = ["train"]  # "dev"]
-TEMPLATE_IDS = ["2", "3", "31", "32"]  # ["0", "1", "2", "3", "4"]
+TEMPLATE_IDS = ["31"]  # ["0", "1", "2", "3", "4"]
 BASE_PORT = 9000
 
 tgt_dir = Path("slurm_scripts")
@@ -31,20 +41,22 @@ os.makedirs(tgt_dir, exist_ok=True)
 for file in tgt_dir.glob("*.sbatch"):
     file.unlink()
 
-combinations = product(MODELS, GEN_KWARGS)
-for i, (model, gen_kwargs) in enumerate(combinations):
+combinations = product(CASES, GEN_KWARGS)
+for i, (case, gen_kwargs) in enumerate(combinations):
     # Base port for this combination - each array task will add its task ID to this
     port = BASE_PORT + (i * 100)  # Give enough space between job ports
-    jobname = f"{i}_cscfull_10loops_t31_{model.replace('/', '_')}_{gen_kwargs}"
+    jobname = f"{i}_cscfull_t31_{case.model.replace('/', '_')}_{gen_kwargs}"
     template: str = Path("template.sbatch").read_text()
     filled = template.format(
         JOB_NAME=jobname,
-        MODEL_ID=model,
+        MODEL_ID=case.model,
         GEN_KWARGS=gen_kwargs,
         DATASETS=",".join(DATASETS),
         SPLITS=",".join(SPLITS),
         TEMPLATE_IDS=",".join(TEMPLATE_IDS),
         VLLM_PORT=port,
+        N_GPUS=case.n_gpus,
+        REMOTE_CALL_CONCURRENCY=case.remote_call_concurrency,
     )
     script_path = Path(f"slurm_scripts/{jobname}.sbatch")
     script_path.write_text(filled)
@@ -53,4 +65,3 @@ for i, (model, gen_kwargs) in enumerate(combinations):
 
     if args.launch:
         os.system(f"sbatch {script_path}")
-        print(f"Launched array job: '{script_path}'")
