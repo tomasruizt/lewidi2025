@@ -369,14 +369,18 @@ def parse_keywords_from_string(s: str) -> dict:
 
 
 def load_preds(parquets_dir: str = "parquets") -> pd.DataFrame:
+    assert_path_exists(parquets_dir)
     con = duckdb.connect()
-    return con.sql(
+    rdf = con.sql(
         f"SELECT * FROM read_parquet('{parquets_dir}/*.parquet', union_by_name=True)"
     ).df()
+    logger.info("Loaded %d rows from %s", len(rdf), parquets_dir)
+    return rdf
 
 
 def join_correct_responses(rdf: pd.DataFrame) -> pd.DataFrame:
     ds = rdf[["dataset", "split"]].drop_duplicates()
+    assert len(ds) != 0, len(ds)
     datasets = []
     for dataset, split in ds.itertuples(index=False):
         df = load_dataset(dataset, split)
@@ -687,6 +691,8 @@ def load_preds_for_judge(
     desired_run_idx = list(range(n_samples_per_example))
     rdf = rdf.query("dataset_idx.isin(@desired_dataset_idx)")
     rdf = rdf.query("run_idx.isin(@desired_run_idx)")
+    assert len(rdf) != 0, len(rdf)
+    logger.info("Keeping %d examples for judge", len(rdf))
     return rdf
 
 
@@ -703,16 +709,16 @@ def keep_only_data_parallel_assigned(
     return assigned
 
 
-def assert_file_exists(file: str | Path) -> None:
-    file = Path(file)
-    if not file.exists():
-        raise FileNotFoundError(file.absolute())
+def assert_path_exists(path: str | Path) -> None:
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(path.absolute())
 
 
 def join_fewshot_solutions(
     examples_df: pd.DataFrame, solutions_file: str | Path
 ) -> pd.DataFrame:
-    assert_file_exists(solutions_file)
+    assert_path_exists(solutions_file)
     solutions = pd.read_json(solutions_file, lines=True)
     join_cols = ["dataset", "split", "dataset_idx"]
     joined = examples_df.merge(
