@@ -10,6 +10,7 @@ class Case:
     model: str
     n_gpus: int
     remote_call_concurrency: int = 32
+    enable_expert_parallel: bool = False
 
 
 def parse_args():
@@ -22,11 +23,17 @@ args = parse_args()
 
 CASES = [
     # Case("Qwen/Qwen3-0.6B", n_gpus=1),
-    Case("Qwen/Qwen3-1.7B", n_gpus=1, remote_call_concurrency=128),
+    # Case("Qwen/Qwen3-1.7B", n_gpus=1, remote_call_concurrency=128),
     # Case("Qwen/Qwen3-4B", n_gpus=1),
-    Case("Qwen/Qwen3-8B", n_gpus=1, remote_call_concurrency=128),
+    # Case("Qwen/Qwen3-8B", n_gpus=1, remote_call_concurrency=128),
     # Case("Qwen/Qwen3-14B", n_gpus=1),
     # Case("Qwen/Qwen3-32B", n_gpus=2),
+    Case(
+        "Qwen/Qwen3-235B-A22B",
+        n_gpus=8,
+        remote_call_concurrency=16,
+        enable_expert_parallel=True,
+    ),
 ]
 DATASETS = ["CSC"]
 GEN_KWARGS = ["set2"]  # , "set1"]
@@ -57,6 +64,7 @@ for i, (case, gen_kwargs) in enumerate(combinations):
         VLLM_PORT=port,
         N_GPUS=case.n_gpus,
         REMOTE_CALL_CONCURRENCY=case.remote_call_concurrency,
+        ENABLE_EXPERT_PARALLEL=case.enable_expert_parallel,
     )
     script_path = Path(f"slurm_scripts/{jobname}.sbatch")
     script_path.write_text(filled)

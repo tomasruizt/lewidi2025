@@ -611,6 +611,8 @@ class VLLMArgs(BaseModel):
     port: int = 8000
     enforce_eager: bool = False
     tensor_parallel_size: int = 1
+    enable_expert_parallel: bool = False
+    spinup_timeout_mins: int = 20
 
     def dict_for_dump(self):
         exclude = ["port", "enforce_eager", "tensor_parallel_size"]
@@ -633,6 +635,9 @@ def vllm_command(model_id: str, vllm_args: VLLMArgs) -> list[str]:
         f"--port={vllm_args.port}",
         f"--tensor-parallel-size={vllm_args.tensor_parallel_size}",
     ]
+    if vllm_args.enable_expert_parallel:
+        cmd.extend(["--enable-expert-parallel"])
+
     if vllm_args.enable_reasoning:
         cmd.extend(["--enable-reasoning", "--reasoning-parser=deepseek_r1"])
     else:
@@ -646,7 +651,11 @@ def vllm_command(model_id: str, vllm_args: VLLMArgs) -> list[str]:
 @contextmanager
 def using_vllm_server(model_id: str, vllm_args: VLLMArgs):
     cmd: list[str] = vllm_command(model_id, vllm_args)
-    with spinup_vllm_server(no_op=not vllm_args.start_server, vllm_command=cmd):
+    with spinup_vllm_server(
+        no_op=not vllm_args.start_server,
+        vllm_command=cmd,
+        timeout_mins=vllm_args.spinup_timeout_mins,
+    ):
         yield
 
 
