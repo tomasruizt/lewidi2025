@@ -38,6 +38,8 @@ enroot start --rw --root \
     --vllm.port $VLLM_PORT \
     --vllm.start_server True \
     --vllm.enforce_eager False \
+    --data_rank $SLURM_ARRAY_TASK_ID \
+    --data_world_size $SLURM_ARRAY_TASK_COUNT \
     --preds_dir /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2 \
     --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/llmjudge/responses.jsonl"
 

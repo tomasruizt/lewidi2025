@@ -48,11 +48,13 @@ judge:
 		--judge_model_id Qwen/Qwen3-4B \
 		--gen_kwargs_str set2 \
 		--remote_call_concurrency 10 \
-		--vllm.port 8001 \
+		--vllm.port 8000 \
 		--vllm.start_server True \
 		--vllm.enforce_eager True \
 		--preds_dir /mnt/disk16tb/globus_shared/from-lrz-ai-systems \
-		--tgt_file judge-responses.jsonl
+		--tgt_file judge-responses.jsonl \
+		--data_rank 0 \
+		--data_world_size 1
 
 gemini-inference:
 	python inference.py \

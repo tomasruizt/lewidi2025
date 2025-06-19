@@ -40,6 +40,8 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     tgt_file: str = "./judge-responses.jsonl"
     remote_call_concurrency: int = 8
     vllm: VLLMArgs = Field(default_factory=VLLMArgs)
+    data_rank: int = 0
+    data_world_size: int = 1
 
 
 args = JudgeArgs()
@@ -69,7 +71,10 @@ rdf = join_correct_responses(rdf)
 gen_kwargs: dict = make_gen_kwargs_from_str(args.gen_kwargs_str, max_tokens=10000)
 
 batch = []
-for _, row in rdf.iterrows():
+for data_idx, (_, row) in enumerate(rdf.iterrows()):
+    skip_this_row = data_idx % args.data_world_size != args.data_rank
+    if skip_this_row:  # because of data parallelism
+        continue
     llm_problem = llm_template.format(text=row["text"])
     steps: list[str] = [{"text": s} for s in nltk.sent_tokenize(row["reasoning"])]
     prompt = judge_template.format(
