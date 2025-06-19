@@ -603,9 +603,10 @@ class VLLMArgs(BaseModel):
     enable_reasoning: bool = True
     port: int = 8000
     enforce_eager: bool = False
+    tensor_parallel_size: int = 1
 
     def dict_for_dump(self):
-        exclude = ["port", "enforce_eager"]
+        exclude = ["port", "enforce_eager", "tensor_parallel_size"]
         d: dict = self.model_dump(exclude=exclude)
         return d
 
@@ -623,6 +624,7 @@ def vllm_command(model_id: str, vllm_args: VLLMArgs) -> list[str]:
         "--gpu-memory-utilization=0.95",
         "--host=127.0.0.1",  # prevents requests from outside the machine
         f"--port={vllm_args.port}",
+        f"--tensor-parallel-size={vllm_args.tensor_parallel_size}",
     ]
     if vllm_args.enable_reasoning:
         cmd.extend(["--enable-reasoning", "--reasoning-parser=deepseek_r1"])
