@@ -1,6 +1,7 @@
 from pathlib import Path
 from lewidi_lib import (
     extract_json_substring_from_response,
+    keep_only_data_parallel_assigned,
     keep_only_missing_examples,
     load_preds_for_judge,
     make_query_from_dict,
@@ -76,3 +77,9 @@ def test_keep_only_missing_examples():
     desired = desired.query(make_query_from_dict(spec, desired.columns))
     missing = keep_only_missing_examples(desired, tgt_file, keep_spec=spec)
     assert len(missing) == 175
+
+
+def test_keep_only_data_parallel_assigned():
+    xs = list(range(10, 20))
+    splits = [keep_only_data_parallel_assigned(xs, k, 3) for k in range(3)]
+    assert sorted([e for s in splits for e in s]) == xs

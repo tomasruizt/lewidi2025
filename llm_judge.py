@@ -3,6 +3,7 @@ from lewidi_lib import (
     VLLMArgs,
     assign_col_n_classes,
     dump_response,
+    keep_only_data_parallel_assigned,
     load_preds_for_judge,
     load_template,
     make_query_from_dict,
@@ -75,11 +76,11 @@ gen_kwargs: dict = make_gen_kwargs_from_str(args.gen_kwargs_str, max_tokens=1000
 judge_template = load_template_file(templates_root / "reasoning_trace_eval2.txt")
 llm_template = load_template("CSC", "31")
 
+rows = [row for _, row in rdf.iterrows()]
+rows = keep_only_data_parallel_assigned(rows, args.data_rank, args.data_world_size)
+
 batch = []
-for data_idx, (_, row) in enumerate(rdf.iterrows()):
-    skip_this_row = data_idx % args.data_world_size != args.data_rank
-    if skip_this_row:  # because of data parallelism
-        continue
+for row in rows:
     llm_problem = llm_template.format(text=row["text"])
     steps: list[str] = [{"text": s} for s in nltk.sent_tokenize(row["reasoning"])]
     prompt = judge_template.format(

@@ -15,6 +15,7 @@ from lewidi_lib import (
     Split,
     GenKwargs,
     VLLMArgs,
+    keep_only_data_parallel_assigned,
     keep_only_missing_examples,
     load_dataset,
     enable_logging,
@@ -96,10 +97,9 @@ def create_batch_for_model(
     fixed_data["split"] = split
     fixed_data["template_id"] = template_id
 
-    for data_idx, (_, row) in enumerate(df.iterrows()):
-        skip_this_row = data_idx % args.data_world_size != args.data_rank
-        if skip_this_row:  # because of data parallelism
-            continue
+    rows = [row for _, row in df.iterrows()]
+    rows = keep_only_data_parallel_assigned(rows, args.data_rank, args.data_world_size)
+    for row in rows:
         convo, prompt = make_convo(row["text"], dataset, examples_df, template_id)
         metadata = fixed_data | {"dataset_idx": row["dataset_idx"]}
         if args.include_prompt_in_output:

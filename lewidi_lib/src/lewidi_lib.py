@@ -679,3 +679,16 @@ def load_preds_for_judge(
     rdf = rdf.query("dataset_idx.isin(@desired_dataset_idx)")
     rdf = rdf.query("run_idx.isin(@desired_run_idx)")
     return rdf
+
+
+def keep_only_data_parallel_assigned(
+    xs: list[Any], data_rank: int, data_world_size: int
+):
+    assigned = xs[data_rank::data_world_size]
+    logger.info(
+        "Keeping %d entries for data rank %d out of %d",
+        len(assigned),
+        data_rank,
+        data_world_size,
+    )
+    return assigned
