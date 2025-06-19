@@ -92,7 +92,7 @@ for row in rows:
     row_metadata = {
         "dataset_idx": row["dataset_idx"],
         "run_idx": row["run_idx"],
-        "prompt": row["text"],
+        "prompt": prompt,
     }
     md = fixed_metadata | row_metadata
     req = LlmReq(convo=convo, gen_kwargs=gen_kwargs, metadata=md)
