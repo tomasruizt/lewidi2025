@@ -65,7 +65,6 @@ rdf = load_preds_for_judge(
 
 fixed_metadata = {
     "template_id": 31,
-    "model_id": "Qwen/Qwen3-32B",
     "judge_model_id": args.judge_model_id,
     "gen_kwargs": "set2",
     "dataset": "CSC",
@@ -116,6 +115,7 @@ for row in rows:
     row_metadata = {
         "dataset_idx": row["dataset_idx"],
         "run_idx": row["run_idx"],
+        "model_id": row["model_id"],
         "prompt": prompt,
     }
     md = fixed_metadata | row_metadata
