@@ -1,9 +1,9 @@
 #!/bin/bash
 #SBATCH --partition lrz-hgx-h100-94x4,lrz-dgx-a100-80x8,lrz-hgx-a100-80x4
 #SBATCH --gres=gpu:2
-#SBATCH --array=0
-#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/logs/out_%a.logs
-#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/%x/logs/err_%a.logs
+#SBATCH --array=0-3
+#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/1_cscfull_t31_Qwen_Qwen3-8B_set2/judge/logs/out_%a.logs
+#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/1_cscfull_t31_Qwen_Qwen3-8B_set2/judge/logs/err_%a.logs
 #SBATCH --job-name llmjudge
 #SBATCH --time 5:00:00
 
@@ -31,7 +31,7 @@ enroot start --rw --root \
     --env HF_HOME=$HF_HOME \
     $CONTAINER_NAME bash -c "source /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/llm_judge.py \
     --n_dataset_examples 100 \
-    --n_samples_per_example 5 \
+    --n_samples_per_example 10 \
     --judge_model_id Qwen/Qwen3-32B \
     --gen_kwargs_str set2 \
     --remote_call_concurrency 32 \
@@ -42,8 +42,8 @@ enroot start --rw --root \
     --only_run_missing_examples True \
     --data_rank $SLURM_ARRAY_TASK_ID \
     --data_world_size $SLURM_ARRAY_TASK_COUNT \
-    --preds_dir /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2 \
-    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/llmjudge/responses.jsonl"
+    --preds_dir /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/1_cscfull_t31_Qwen_Qwen3-8B_set2/preds \
+    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/1_cscfull_t31_Qwen_Qwen3-8B_set2/judge/Qwen3-32B.jsonl"
 
 # Clean up: remove the container after job completion
 echo "Cleaning up: removing container $CONTAINER_NAME..."
