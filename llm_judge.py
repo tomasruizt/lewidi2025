@@ -1,9 +1,11 @@
 import json
 import logging
+from typing import Mapping
 from lewidi_lib import (
     VLLMArgs,
     assign_col_n_classes,
     dump_response,
+    join_fewshot_solutions,
     keep_only_data_parallel_assigned,
     load_preds_for_judge,
     load_template,
@@ -17,7 +19,7 @@ from lewidi_lib import (
 )
 from prompt_templates import templates_root
 
-# from llmlib.gemini.gemini_code import GeminiAPI
+from llmlib.gemini.gemini_code import GeminiAPI
 from llmlib.vllm_model import ModelvLLM
 from llmlib.base_llm import LlmReq, Message
 from pydantic import Field
@@ -38,10 +40,12 @@ nltk.download("punkt_tab")
 class JudgeArgs(BaseSettings, cli_parse_args=True):
     n_dataset_examples: int = 100
     n_samples_per_example: int = 5
+    n_fewshot_examples: int = 0
     judge_model_id: str = "Qwen/Qwen3-4B"
     gen_kwargs_str: str = "set2"
     preds_dir: str = "/mnt/disk16tb/globus_shared/from-lrz-ai-systems"
     tgt_file: str = "./judge-responses.jsonl"
+    few_shots_solutions_file: str | None = None
     remote_call_concurrency: int = 8
     vllm: VLLMArgs = Field(default_factory=VLLMArgs)
     data_rank: int = 0
@@ -71,6 +75,13 @@ query = make_query_from_dict(fixed_metadata, rdf.columns)
 rdf = rdf.query(query).pipe(assign_col_n_classes)
 rdf = join_correct_responses(rdf)
 
+# Few Shot Examples
+examples_df = rdf.head(args.n_fewshot_examples)
+if args.n_fewshot_examples > 0:
+    assert args.few_shots_solutions_file is not None
+    rdf = rdf.tail(-args.n_fewshot_examples)
+    examples_df = join_fewshot_solutions(examples_df, args.few_shots_solutions_file)
+
 if args.only_run_missing_examples:
     rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec=fixed_metadata)
 
@@ -81,14 +92,27 @@ llm_template = load_template("CSC", "31")
 rows = [row for _, row in rdf.iterrows()]
 rows = keep_only_data_parallel_assigned(rows, args.data_rank, args.data_world_size)
 
-batch = []
-for row in rows:
+
+def make_prompt(judge_template: str, llm_template: str, row: Mapping) -> str:
     llm_problem = llm_template.format(text=row["text"])
     steps: list[str] = [{"text": s} for s in nltk.sent_tokenize(row["reasoning"])]
     prompt = judge_template.format(
         PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
     )
-    convo = [Message.from_prompt(prompt)]
+    return prompt
+
+
+batch = []
+for row in rows:
+    fewshot_msgs = []
+    for _, fs_row in examples_df.iterrows():
+        fewshot_msgs.append(
+            Message.from_prompt(make_prompt(judge_template, llm_template, fs_row))
+        )
+        fewshot_msgs.append(Message(role="assistant", msg=fs_row["response_judge"]))
+
+    prompt = make_prompt(judge_template, llm_template, row)
+    convo = [*fewshot_msgs, Message.from_prompt(prompt)]
     row_metadata = {
         "dataset_idx": row["dataset_idx"],
         "run_idx": row["run_idx"],
@@ -103,7 +127,7 @@ if len(batch) == 0:
     exit(0)
 
 # model = GeminiAPI(
-#     model_id=judge_model_id,
+#     model_id=args.judge_model_id,
 #     max_n_batching_threads=128,
 #     include_thoughts=True,
 #     location="global",

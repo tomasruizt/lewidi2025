@@ -141,12 +141,6 @@ def make_convo(
     return convo, prompt
 
 
-def assert_file_exists(file: str | Path) -> None:
-    file = Path(file)
-    if not file.exists():
-        raise FileNotFoundError(file.absolute())
-
-
 def run_many_inferences(args: Args) -> None:
     combinations = list(
         product(args.datasets, args.splits, args.template_ids, range(args.n_loops))

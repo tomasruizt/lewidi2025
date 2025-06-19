@@ -692,3 +692,25 @@ def keep_only_data_parallel_assigned(
         data_world_size,
     )
     return assigned
+
+
+def assert_file_exists(file: str | Path) -> None:
+    file = Path(file)
+    if not file.exists():
+        raise FileNotFoundError(file.absolute())
+
+
+def join_fewshot_solutions(
+    examples_df: pd.DataFrame, solutions_file: str | Path
+) -> pd.DataFrame:
+    assert_file_exists(solutions_file)
+    solutions = pd.read_json(solutions_file, lines=True)
+    join_cols = ["dataset", "split", "dataset_idx"]
+    joined = examples_df.merge(
+        solutions[[*join_cols, "response"]],
+        on=join_cols,
+        how="inner",
+        suffixes=("_llm", "_judge"),
+    )
+    assert len(joined) == len(examples_df), (len(joined), len(examples_df))
+    return joined
