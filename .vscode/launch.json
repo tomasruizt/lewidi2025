@@ -52,7 +52,7 @@
                 "--template_ids=31",
                 "--n_loops=20",
                 "--splits=train",
-                "--n_examples=5000",
+                "--n_examples=6000",
                 "--n_fewshot_examples=0",
                 "--only_run_missing_examples=true",
                 "--tgt_file=qwen-1.7-inference-responses.jsonl",
