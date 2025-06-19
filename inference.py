@@ -190,7 +190,7 @@ def convert_output_to_parquet(tgt_file: str) -> None:
 if __name__ == "__main__":
     enable_logging()
     args = Args()
-    logger.info(f"Args: {args.model_dump_json()}")
+    logger.info("Args: %s", args.model_dump_json())
     with using_vllm_server(args.model_id, args.vllm):
         run_many_inferences(args)
     convert_output_to_parquet(args.tgt_file)

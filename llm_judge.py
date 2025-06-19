@@ -56,6 +56,8 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
 
 args = JudgeArgs()
 
+logger.info("Args: %s", args.model_dump_json())
+
 
 rdf = load_preds_for_judge(
     preds_dir=args.preds_dir,
@@ -63,14 +65,13 @@ rdf = load_preds_for_judge(
     n_samples_per_example=args.n_samples_per_example,
 )
 
-fixed_metadata = {
+rdf_query = {
     "template_id": 31,
-    "judge_model_id": args.judge_model_id,
     "gen_kwargs": "set2",
     "dataset": "CSC",
     "split": "train",
 }
-query = make_query_from_dict(fixed_metadata, rdf.columns)
+query = make_query_from_dict(rdf_query, rdf.columns)
 rdf = rdf.query(query).pipe(assign_col_n_classes)
 rdf = join_correct_responses(rdf)
 
@@ -82,7 +83,7 @@ if args.n_fewshot_examples > 0:
     examples_df = join_fewshot_solutions(examples_df, args.few_shots_solutions_file)
 
 if args.only_run_missing_examples:
-    rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec=fixed_metadata)
+    rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec=rdf_query)
 
 gen_kwargs: dict = make_gen_kwargs_from_str(args.gen_kwargs_str, max_tokens=10000)
 judge_template = load_template_file(templates_root / "reasoning_trace_eval2.txt")
@@ -100,6 +101,11 @@ def make_prompt(judge_template: str, llm_template: str, row: Mapping) -> str:
     )
     return prompt
 
+
+fixed_metadata = {
+    "judge_model_id": args.judge_model_id,
+    "gen_kwargs": args.gen_kwargs_str,
+}
 
 batch = []
 for row in rows:
