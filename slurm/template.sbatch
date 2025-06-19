@@ -41,8 +41,8 @@ enroot start --rw --root \
     --n_loops 20 \
     --data_rank $SLURM_ARRAY_TASK_ID \
     --data_world_size 50 \
-    --vllm_port $VLLM_PORT \
-    --vllm_start_server True \
+    --vllm.port $VLLM_PORT \
+    --vllm.start_server True \
     --only_run_missing_examples False \
     --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{JOB_NAME}/${{SLURM_ARRAY_TASK_ID}}_responses.jsonl"
 

@@ -39,8 +39,8 @@ python inference.py \
     --template_id 01 \
     --remote_call_concurrency 10 \
     --n_examples 10 \
-    --vllm_port 8000 \
-    --vllm_start_server=False
+    --vllm.port 8000 \
+    --vllm.start_server=False
 ```
 
 # SLURM

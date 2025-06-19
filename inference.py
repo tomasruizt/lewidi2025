@@ -9,6 +9,7 @@ from llmlib.base_llm import Message, Conversation, LlmReq
 from llmlib.gemini.gemini_code import GeminiAPI
 import logging
 import pandas as pd
+from pydantic import BaseModel, Field
 from tqdm import tqdm
 from lewidi_lib import (
     Dataset,
@@ -29,6 +30,17 @@ from pydantic_settings import BaseSettings
 logger = logging.getLogger(__name__)
 
 
+class VLLMArgs(BaseModel):
+    start_server: bool = True
+    enable_reasoning: bool = True
+    port: int = 8000
+
+    def dict_for_dump(self):
+        exclude = ["port"]
+        d: dict = self.model_dump(exclude=exclude)
+        return d
+
+
 class Args(BaseSettings, cli_parse_args=True):
     model_id: str = "Qwen/Qwen3-0.6B"
     gen_kwargs: GenKwargs = "set2"
@@ -42,18 +54,16 @@ class Args(BaseSettings, cli_parse_args=True):
     max_tokens: int = 10000
     remote_call_concurrency: int = 64
     n_loops: int = 1
-    vllm_port: int = 8000
-    vllm_start_server: bool = True
-    vllm_enable_reasoning: bool = True
     tgt_file: str = "responses.jsonl"
     only_run_missing_examples: bool = False
     timeout_secs: int = 5 * 60
     enforce_json: bool = False
     include_prompt_in_output: bool = False
+    vllm: VLLMArgs = Field(default_factory=VLLMArgs)
 
     def dict_for_dump(self):
         exclude = [
-            "vllm_port",
+            "vllm",
             "datasets",
             "splits",
             "template_ids",
@@ -67,6 +77,7 @@ class Args(BaseSettings, cli_parse_args=True):
             "data_world_size",
         ]
         d: dict = self.model_dump(exclude=exclude)
+        d = d | self.vllm.dict_for_dump()
         return d
 
 
@@ -201,34 +212,34 @@ def make_model(args: Args):
     model = ModelvLLM(
         remote_call_concurrency=args.remote_call_concurrency,
         model_id=args.model_id,
-        port=args.vllm_port,
+        port=args.vllm.port,
         timeout_secs=args.timeout_secs,
     )
     return model
 
 
 @contextmanager
-def using_vllm_server(args: Args):
-    cmd: list[str] = vllm_command(args)
-    with spinup_vllm_server(no_op=not args.vllm_start_server, vllm_command=cmd):
+def using_vllm_server(model_id: str, vllm_args: VLLMArgs):
+    cmd: list[str] = vllm_command(model_id, vllm_args)
+    with spinup_vllm_server(no_op=not vllm_args.start_server, vllm_command=cmd):
         yield
 
 
-def vllm_command(args: Args) -> list[str]:
+def vllm_command(model_id: str, vllm_args: VLLMArgs) -> list[str]:
     cmd = [
         "vllm",
         "serve",
-        args.model_id,
+        model_id,
         "--task=generate",
         "--disable-log-requests",  # prevents logging the prompt
         "--disable-uvicorn-access-log",  # prevents logging 200 OKs
         "--max-model-len=16k",
         "--max-num-seqs=1000",  # throttling is done client-side
         "--gpu-memory-utilization=0.95",
-        "--host=127.0.0.1",
-        f"--port={args.vllm_port}",
+        "--host=127.0.0.1",  # prevents requests from outside the machine
+        f"--port={vllm_args.port}",
     ]
-    if args.vllm_enable_reasoning:
+    if vllm_args.enable_reasoning:
         cmd.extend(["--enable-reasoning", "--reasoning-parser=deepseek_r1"])
     else:
         cmd.extend(["--chat-template=" + str(nonthinking_chat_template.absolute())])
@@ -244,6 +255,6 @@ if __name__ == "__main__":
     enable_logging()
     args = Args()
     logger.info(f"Args: {args.model_dump_json()}")
-    with using_vllm_server(args):
+    with using_vllm_server(args.model_id, args.vllm):
         run_many_inferences(args)
     convert_output_to_parquet(args.tgt_file)
