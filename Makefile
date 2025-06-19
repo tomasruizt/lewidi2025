@@ -23,7 +23,7 @@ inference:
 		--datasets CSC \
 		--template_ids 31 \
 		--remote_call_concurrency 10 \
-		--n_examples 10 \
+		--n_examples 3 \
 		--n_loops 2 \
 		--data_rank 0 \
 		--data_world_size 1 \
@@ -31,6 +31,7 @@ inference:
 		--vllm.start_server=True \
 		--vllm.enable_reasoning=True \
 		--vllm.port=8001 \
+		--vllm.enforce_eager=True \
 		--max_tokens 10000 \
 		--include_prompt_in_output False
 

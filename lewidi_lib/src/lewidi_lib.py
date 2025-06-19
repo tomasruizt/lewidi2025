@@ -602,9 +602,10 @@ class VLLMArgs(BaseModel):
     start_server: bool = True
     enable_reasoning: bool = True
     port: int = 8000
+    enforce_eager: bool = False
 
     def dict_for_dump(self):
-        exclude = ["port"]
+        exclude = ["port", "enforce_eager"]
         d: dict = self.model_dump(exclude=exclude)
         return d
 
@@ -627,6 +628,9 @@ def vllm_command(model_id: str, vllm_args: VLLMArgs) -> list[str]:
         cmd.extend(["--enable-reasoning", "--reasoning-parser=deepseek_r1"])
     else:
         cmd.extend(["--chat-template=" + str(nonthinking_chat_template.absolute())])
+
+    if vllm_args.enforce_eager:
+        cmd.extend(["--enforce-eager"])
     return cmd
 
 
