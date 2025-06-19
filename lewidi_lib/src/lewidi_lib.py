@@ -659,8 +659,9 @@ def keep_only_missing_examples(
     spec = keep_spec | {"success": True}
     query: str = make_query_from_dict(spec, previous.columns)
     success = previous.query(query)
-    join_cols = [c for c in keep_spec if c in df.columns and c in success.columns]
-    join_cols.extend(["dataset_idx", "run_idx"])
+    join_cols = {c for c in keep_spec if c in df.columns and c in success.columns}
+    join_cols.update({"dataset_idx", "run_idx"})
+    join_cols = list(join_cols)
     joined = df.merge(success[join_cols], on=join_cols, how="outer", indicator=True)
     assert len(joined) == len(df), (len(joined), len(df))
     missing = joined.query("_merge == 'left_only'").drop(columns=["_merge"])
