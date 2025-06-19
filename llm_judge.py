@@ -3,12 +3,12 @@ from lewidi_lib import (
     VLLMArgs,
     assign_col_n_classes,
     dump_response,
+    load_preds_for_judge,
     load_template,
     make_query_from_dict,
     postprocess_response,
     enable_logging,
     join_correct_responses,
-    load_preds,
     load_template_file,
     make_gen_kwargs_from_str,
     using_vllm_server,
@@ -50,16 +50,12 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
 
 args = JudgeArgs()
 
-judge_template = load_template_file(templates_root / "reasoning_trace_eval2.txt")
-llm_template = load_template("CSC", "31")
-rdf = load_preds(parquets_dir=args.preds_dir)
-rdf = rdf.drop_duplicates()
 
-# filter down
-desired_dataset_idx = rdf["dataset_idx"].unique()[: args.n_dataset_examples]
-desired_run_idx = list(range(args.n_samples_per_example))
-rdf = rdf.query("dataset_idx.isin(@desired_dataset_idx)")
-rdf = rdf.query("run_idx.isin(@desired_run_idx)")
+rdf = load_preds_for_judge(
+    preds_dir=args.preds_dir,
+    n_dataset_examples=args.n_dataset_examples,
+    n_samples_per_example=args.n_samples_per_example,
+)
 
 metadata = {
     "template_id": 31,
@@ -76,6 +72,8 @@ if args.only_run_missing_examples:
     rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec=metadata)
 
 gen_kwargs: dict = make_gen_kwargs_from_str(args.gen_kwargs_str, max_tokens=10000)
+judge_template = load_template_file(templates_root / "reasoning_trace_eval2.txt")
+llm_template = load_template("CSC", "31")
 
 batch = []
 for data_idx, (_, row) in enumerate(rdf.iterrows()):

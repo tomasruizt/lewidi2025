@@ -663,6 +663,19 @@ def keep_only_missing_examples(
     join_cols.extend(["dataset_idx", "run_idx"])
     joined = df.merge(success[join_cols], on=join_cols, how="outer", indicator=True)
     assert len(joined) == len(df), (len(joined), len(df))
-    df = joined.query("_merge == 'left_only'").drop(columns=["_merge"])
-    logger.info("Keeping %d missing examples from spec %s", len(df), keep_spec)
-    return df
+    missing = joined.query("_merge == 'left_only'").drop(columns=["_merge"])
+    logger.info("Keeping %d missing examples from spec %s", len(missing), keep_spec)
+    return missing
+
+
+def load_preds_for_judge(
+    preds_dir: str, n_dataset_examples: int, n_samples_per_example: int
+):
+    rdf = load_preds(parquets_dir=preds_dir)
+    rdf = rdf.drop_duplicates()
+    # filter down
+    desired_dataset_idx = rdf["dataset_idx"].unique()[:n_dataset_examples]
+    desired_run_idx = list(range(n_samples_per_example))
+    rdf = rdf.query("dataset_idx.isin(@desired_dataset_idx)")
+    rdf = rdf.query("run_idx.isin(@desired_run_idx)")
+    return rdf

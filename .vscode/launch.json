@@ -20,8 +20,8 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "--n_dataset_examples=3",
-                "--n_samples_per_example=2",
+                "--n_dataset_examples=100", // depends on preds_dir
+                "--n_samples_per_example=5", // depends on preds_dir
                 "--judge_model_id=Qwen/Qwen3-4B",
                 "--gen_kwargs_str=set2",
                 "--remote_call_concurrency=10",

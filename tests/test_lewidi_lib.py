@@ -1,5 +1,11 @@
 from pathlib import Path
-from lewidi_lib import extract_json_substring_from_response, tgt_has_holes
+from lewidi_lib import (
+    extract_json_substring_from_response,
+    keep_only_missing_examples,
+    load_preds_for_judge,
+    make_query_from_dict,
+    tgt_has_holes,
+)
 import numpy as np
 import pandas as pd
 from sbatch_lib import sketch_sbatch_progress
@@ -49,3 +55,24 @@ def test_extract_json_substring_from_response():
     rdf = pd.DataFrame({"response": response_col})
     rdf = extract_json_substring_from_response(rdf)
     assert rdf["response"].tolist() == ["{a: 1}", "{b: 2}", "{c: 3}"]
+
+
+def test_keep_only_missing_examples():
+    tgt_file = (
+        Path(__file__).parent / "testfiles" / "judge-responses_with_timeouts.jsonl"
+    )
+    desired = load_preds_for_judge(
+        preds_dir="/mnt/disk16tb/globus_shared/from-lrz-ai-systems",
+        n_dataset_examples=100,
+        n_samples_per_example=5,
+    )
+    spec = {
+        "template_id": 31,
+        "model_id": "Qwen/Qwen3-32B",
+        "gen_kwargs": "set2",
+        "dataset": "CSC",
+        "split": "train",
+    }
+    desired = desired.query(make_query_from_dict(spec, desired.columns))
+    missing = keep_only_missing_examples(desired, tgt_file, keep_spec=spec)
+    assert len(missing) == 175
