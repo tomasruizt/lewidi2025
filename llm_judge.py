@@ -59,19 +59,20 @@ rdf = load_preds_for_judge(
     n_samples_per_example=args.n_samples_per_example,
 )
 
-metadata = {
+fixed_metadata = {
     "template_id": 31,
     "model_id": "Qwen/Qwen3-32B",
+    "judge_model_id": args.judge_model_id,
     "gen_kwargs": "set2",
     "dataset": "CSC",
     "split": "train",
 }
-query = make_query_from_dict(metadata, rdf.columns)
+query = make_query_from_dict(fixed_metadata, rdf.columns)
 rdf = rdf.query(query).pipe(assign_col_n_classes)
 rdf = join_correct_responses(rdf)
 
 if args.only_run_missing_examples:
-    rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec=metadata)
+    rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec=fixed_metadata)
 
 gen_kwargs: dict = make_gen_kwargs_from_str(args.gen_kwargs_str, max_tokens=10000)
 judge_template = load_template_file(templates_root / "reasoning_trace_eval2.txt")
@@ -88,7 +89,12 @@ for row in rows:
         PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
     )
     convo = [Message.from_prompt(prompt)]
-    md = metadata | {"dataset_idx": row["dataset_idx"], "run_idx": row["run_idx"]}
+    row_metadata = {
+        "dataset_idx": row["dataset_idx"],
+        "run_idx": row["run_idx"],
+        "prompt": row["text"],
+    }
+    md = fixed_metadata | row_metadata
     req = LlmReq(convo=convo, gen_kwargs=gen_kwargs, metadata=md)
     batch.append(req)
 
