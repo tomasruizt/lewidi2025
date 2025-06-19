@@ -42,6 +42,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     vllm: VLLMArgs = Field(default_factory=VLLMArgs)
     data_rank: int = 0
     data_world_size: int = 1
+    timeout_secs: int = 5 * 60
 
 
 args = JudgeArgs()
@@ -96,6 +97,7 @@ model = ModelvLLM(
     model_id=args.judge_model_id,
     remote_call_concurrency=args.remote_call_concurrency,
     port=args.vllm.port,
+    timeout_secs=args.timeout_secs,
 )
 
 with using_vllm_server(args.judge_model_id, args.vllm):
