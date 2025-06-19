@@ -1,4 +1,5 @@
 import json
+import logging
 from lewidi_lib import (
     VLLMArgs,
     assign_col_n_classes,
@@ -26,7 +27,7 @@ import nltk
 
 from lewidi_lib import keep_only_missing_examples
 
-# from inference import using_vllm_server
+logger = logging.getLogger(__name__)
 
 
 enable_logging()
@@ -90,6 +91,10 @@ for row in rows:
     md = metadata | {"dataset_idx": row["dataset_idx"], "run_idx": row["run_idx"]}
     req = LlmReq(convo=convo, gen_kwargs=gen_kwargs, metadata=md)
     batch.append(req)
+
+if len(batch) == 0:
+    logger.info("No examples to judge")
+    exit(0)
 
 # model = GeminiAPI(
 #     model_id=judge_model_id,
