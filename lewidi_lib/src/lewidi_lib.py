@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import datetime
+from itertools import product
 import json
 from multiprocessing import Pool
 import random
@@ -15,6 +16,7 @@ import logging
 import os
 from pathlib import Path
 
+from prm800k import extract_rating, mapping
 from pydantic import BaseModel, RootModel
 import scipy
 
@@ -210,7 +212,8 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
 
 def drop_na_response_rows(rdf: pd.DataFrame, col: str = "response") -> pd.DataFrame:
     are_na = len(rdf.query(f"{col}.isna()"))
-    logger.info("Dropping %d rows with col '%s' NA", are_na, col)
+    if are_na > 0:
+        logger.info("Dropping %d rows with col '%s' NA", are_na, col)
     return rdf.query(f"~{col}.isna()")
 
 
@@ -720,3 +723,40 @@ def join_fewshot_solutions(
     )
     assert len(joined) == len(examples_df), (len(joined), len(examples_df))
     return joined
+
+
+def process_ratings(
+    ratings: pd.DataFrame,
+    cat_mapping: dict | None = None,
+    operation: Literal["mean", "prod"] = np.mean,
+) -> pd.DataFrame:
+    ratings["step_ratings"] = ratings["response_parsed"].apply(
+        extract_rating, cat_mapping=cat_mapping
+    )
+    ratings = drop_na_response_rows(ratings, col="step_ratings")
+
+    ratings = ratings.assign(score=ratings["step_ratings"].apply(operation))
+    score_na = len(ratings.query("score.isna()"))
+    if score_na > 0:
+        logger.info("Dropping %d rows with score.isna()", score_na)
+    ratings = ratings.dropna(subset=["score"])
+    return ratings
+
+
+def create_rating_matrix(ratings: pd.DataFrame) -> pd.DataFrame:
+    cat_mappings = [
+        ("centered", mapping(ok=0, bad=-1)),
+        ("neutral=negative", mapping(ok=0, bad=0)),
+        ("neutral=positive", mapping(ok=1, bad=0)),
+    ]
+    operations = [("mean", np.mean), ("product", np.prod), ("min", np.min)]
+
+    all_best_rows = []
+    for (mapname, cat_mapping), (opname, operation) in product(
+        cat_mappings, operations
+    ):
+        ratings = process_ratings(ratings, cat_mapping=cat_mapping, operation=operation)
+        best_rows = ratings.loc[ratings.groupby("dataset_idx")["score"].idxmax()]
+        all_best_rows.append(best_rows.assign(rating_type=mapname, reduction=opname))
+    all_best_rows = pd.concat(all_best_rows)
+    return all_best_rows

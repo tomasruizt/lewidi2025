@@ -80,12 +80,15 @@ def problems_with_50pct_correct_solutions(
     return dataset.query("problem_id in @half_correct.problem_id")
 
 
-def extract_rating(x):
+def extract_rating(x, cat_mapping: dict | None = None):
+    if cat_mapping is None:
+        cat_mapping = mapping()
     try:
-        return [mapping[r["rating"]] for r in x]
+        return [cat_mapping[r["rating"]] for r in x]
     except Exception:
         logger.warning("Could not parse: %s", repr(x))
         return None
 
 
-mapping = {"great": 1, "ok": 0, "okay": 0, "bad": -1}
+def mapping(ok=0, bad=-1):
+    return {"great": 1, "ok": ok, "okay": ok, "bad": bad}
