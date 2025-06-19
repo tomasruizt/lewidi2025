@@ -686,7 +686,7 @@ def keep_only_data_parallel_assigned(
 ):
     assigned = xs[data_rank::data_world_size]
     logger.info(
-        "Keeping %d entries for data rank %d out of %d",
+        "Keeping %d entries for data parallelism (rank=%d, world_size=%d)",
         len(assigned),
         data_rank,
         data_world_size,
