@@ -1,7 +1,7 @@
 profiling/
 parquets*/
 backups/
-slurm/slurm_scripts/
+slurm/*/slurm_scripts/
 responses.jsonl
 responses.parquet
 *.jsonl
