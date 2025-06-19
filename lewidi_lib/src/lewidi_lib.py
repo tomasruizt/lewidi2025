@@ -735,6 +735,7 @@ def process_ratings(
     ratings: pd.DataFrame,
     cat_mapping: dict | None = None,
     operation: Literal["mean", "prod"] = np.mean,
+    drop_na_score: bool = True,
 ) -> pd.DataFrame:
     ratings["step_ratings"] = ratings["response_parsed"].apply(
         extract_rating, cat_mapping=cat_mapping
@@ -742,11 +743,16 @@ def process_ratings(
     ratings = drop_na_response_rows(ratings, col="step_ratings")
 
     ratings = ratings.assign(score=ratings["step_ratings"].apply(operation))
-    score_na = len(ratings.query("score.isna()"))
+    if drop_na_score:
+        ratings = drop_na_score_rows(ratings)
+    return ratings
+
+
+def drop_na_score_rows(df: pd.DataFrame) -> pd.DataFrame:
+    score_na = len(df.query("score.isna()"))
     if score_na > 0:
         logger.info("Dropping %d rows with score.isna()", score_na)
-    ratings = ratings.dropna(subset=["score"])
-    return ratings
+    return df.dropna(subset=["score"])
 
 
 def create_rating_matrix(ratings: pd.DataFrame) -> pd.DataFrame:
