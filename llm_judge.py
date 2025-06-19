@@ -105,6 +105,8 @@ def make_prompt(judge_template: str, llm_template: str, row: Mapping) -> str:
 fixed_metadata = {
     "judge_model_id": args.judge_model_id,
     "gen_kwargs": args.gen_kwargs_str,
+    "dataset": "CSC",
+    "split": "train",
 }
 
 batch = []
