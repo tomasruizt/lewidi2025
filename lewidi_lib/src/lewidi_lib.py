@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 import datetime
+from functools import lru_cache
 from itertools import product
 import json
 from multiprocessing import Pool
@@ -683,7 +684,7 @@ def keep_only_missing_examples(
         logger.warning("No previous responses found: %s", tgt_file.absolute())
         return df
 
-    previous = pd.read_json(tgt_file, lines=True, dtype={"error": "string"})
+    previous: pd.DataFrame = pd_read_json_cached(tgt_file)
     if len(previous) == 0:
         logger.warning("Empty previous responses file: %s", tgt_file.absolute())
         return df
@@ -703,6 +704,11 @@ def keep_only_missing_examples(
     missing = joined.query("_merge == 'left_only'").drop(columns=["_merge"])
     logger.info("Keeping %d missing examples from spec %s", len(missing), keep_spec)
     return missing
+
+
+@lru_cache
+def pd_read_json_cached(file: str | Path) -> pd.DataFrame:
+    return pd.read_json(file, lines=True, dtype={"error": "string"})
 
 
 def load_preds_for_judge(
