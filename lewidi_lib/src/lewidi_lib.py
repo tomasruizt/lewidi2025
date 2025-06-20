@@ -797,3 +797,8 @@ def create_rating_matrix(ratings: pd.DataFrame) -> pd.DataFrame:
         all_best_rows.append(best_rows.assign(rating_type=mapname, reduction=opname))
     all_best_rows = pd.concat(all_best_rows)
     return all_best_rows
+
+
+def convert_output_to_parquet(tgt_file: str) -> None:
+    df = pd.read_json(tgt_file, lines=True)
+    df.to_parquet(tgt_file.replace(".jsonl", ".parquet"))

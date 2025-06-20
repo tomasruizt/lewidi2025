@@ -15,6 +15,7 @@ from lewidi_lib import (
     Split,
     GenKwargs,
     VLLMArgs,
+    convert_output_to_parquet,
     keep_only_data_parallel_assigned,
     keep_only_missing_examples,
     load_dataset,
@@ -183,11 +184,6 @@ def make_model(args: Args):
         timeout_secs=args.timeout_secs,
     )
     return model
-
-
-def convert_output_to_parquet(tgt_file: str) -> None:
-    df = pd.read_json(tgt_file, lines=True)
-    df.to_parquet(tgt_file.replace(".jsonl", ".parquet"))
 
 
 if __name__ == "__main__":

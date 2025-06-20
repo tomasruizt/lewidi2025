@@ -4,6 +4,7 @@ from typing import Mapping
 from lewidi_lib import (
     VLLMArgs,
     assign_col_n_classes,
+    convert_output_to_parquet,
     dump_response,
     join_fewshot_solutions,
     keep_only_data_parallel_assigned,
@@ -153,3 +154,5 @@ with using_vllm_server(args.judge_model_id, args.vllm):
     for response in tqdm(gen, total=len(batch)):
         response = postprocess_response(response)
         dump_response(response, tgt_file=args.tgt_file)
+
+convert_output_to_parquet(args.tgt_file)
