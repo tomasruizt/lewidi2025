@@ -86,7 +86,7 @@ if args.n_fewshot_examples > 0:
 if args.only_run_missing_examples:
     rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec=rdf_query)
 
-gen_kwargs: dict = make_gen_kwargs_from_str(args.gen_kwargs_str, max_tokens=10000)
+gen_kwargs: dict = make_gen_kwargs_from_str(args.gen_kwargs_str, max_tokens=15000)
 judge_template = load_template_file(templates_root / "reasoning_trace_eval2.txt")
 llm_template = load_template("CSC", "31")
 
