@@ -26,7 +26,7 @@ inference:
 	python inference.py \
 		--model_id Qwen/Qwen3-4B \
 		--gen_kwargs set2 \
-		--datasets CSC \
+		--datasets Paraphrase,VariErrNLI \
 		--template_ids 31 \
 		--remote_call_concurrency 10 \
 		--n_examples 3 \
@@ -34,9 +34,9 @@ inference:
 		--data_rank 0 \
 		--data_world_size 1 \
 		--n_fewshot_examples 0 \
-		--vllm.start_server=True \
+		--vllm.start_server=False \
 		--vllm.enable_reasoning=True \
-		--vllm.port=8001 \
+		--vllm.port=8000 \
 		--vllm.enforce_eager=True \
 		--max_tokens 10000 \
 		--include_prompt_in_output False

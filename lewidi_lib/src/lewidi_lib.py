@@ -31,7 +31,9 @@ GenKwargs = Literal["set1", "set2", "random", "gemini-defaults"]
 nonthinking_chat_template = Path(__file__).parent / "qwen3_nonthinking.jinja"
 
 
-def load_dataset(dataset: Dataset, split: Split) -> pd.DataFrame:
+def load_dataset(
+    dataset: Dataset, split: Split, parse_tgt: bool = True
+) -> pd.DataFrame:
     root = (
         Path(os.environ["DSS_HOME"]) / "lewidi-data" / "data_practice_phase" / dataset
     )
@@ -40,9 +42,10 @@ def load_dataset(dataset: Dataset, split: Split) -> pd.DataFrame:
 
     df = pd.read_json(ds, orient="index")
     df.reset_index(inplace=True, names="dataset_idx")
-    df["target"] = df["soft_label"].apply(parse_soft_label, dataset=dataset)
-    df["tgt_has_holes"] = tgt_has_holes(df["target"])
-    df["target_entropy"] = entropy(df["target"])
+    if parse_tgt:
+        df["target"] = df["soft_label"].apply(parse_soft_label, dataset=dataset)
+        df["tgt_has_holes"] = tgt_has_holes(df["target"])
+        df["target_entropy"] = entropy(df["target"])
     df["dataset"] = dataset
     df = assign_col_n_classes(df)
     df["split"] = split
@@ -56,6 +59,7 @@ def load_dataset(dataset: Dataset, split: Split) -> pd.DataFrame:
         "tgt_has_holes",
         "target_entropy",
     ]
+    cols = [c for c in cols if c in df.columns]
     return df[cols]
 
 

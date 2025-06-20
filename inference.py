@@ -74,11 +74,14 @@ class Args(BaseSettings, cli_parse_args=True):
 def create_batch_for_model(
     args: Args, dataset: Dataset, split: Split, template_id: int, run_idx: int
 ) -> Iterable[LlmReq]:
-    df = load_dataset(dataset=dataset, split=split).assign(run_idx=run_idx)
+    df = load_dataset(dataset=dataset, split=split, parse_tgt=False)
+    df = df.assign(run_idx=run_idx)
+
     examples_df = df.head(args.n_fewshot_examples)
     if args.n_fewshot_examples > 0:
         df = df.tail(-args.n_fewshot_examples)
     df = df.head(args.n_examples)
+
     if args.only_run_missing_examples:
         sp = {
             "dataset": dataset,

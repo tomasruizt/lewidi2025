@@ -45,19 +45,19 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "--model_id=Qwen/Qwen3-1.7B",
+                "--model_id=Qwen/Qwen3-4B",
                 "--vllm.start_server=False",
                 "--gen_kwargs=set2",
-                "--datasets=CSC",
+                "--datasets=Paraphrase,VariErrNLI",
                 "--template_ids=31",
-                "--n_loops=20",
+                "--n_loops=2",
                 "--splits=train",
-                "--n_examples=6000",
+                "--n_examples=3",
                 "--n_fewshot_examples=0",
                 "--only_run_missing_examples=true",
-                "--tgt_file=qwen-1.7-inference-responses.jsonl",
+                "--tgt_file=responses.jsonl",
                 "--data_rank=0",
-                "--data_world_size=10"
+                "--data_world_size=1"
             ]
         },
         {
