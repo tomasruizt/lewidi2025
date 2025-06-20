@@ -43,17 +43,18 @@ inference:
 
 judge:
 	python llm_judge.py \
-		--n_dataset_examples 2 \
-		--n_samples_per_example 3 \
-		--judge_model_id Qwen/Qwen3-4B \
-		--gen_kwargs_str set2 \
+		--n_dataset_examples 100 \
+		--n_samples_per_example 10 \
+		--judge_model_id gemini-2.5-pro \
+		--gen_kwargs_str gemini-defaults \
+		--pred_model_id Qwen/Qwen3-32B \
 		--remote_call_concurrency 10 \
 		--vllm.port 8000 \
 		--vllm.start_server False \
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
-		--preds_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2/preds \
-		--tgt_file /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2/judge/Qwen3-4B.jsonl \
+		--preds_dir /home/tomasruiz/code/lewidi2025/parquets \
+		--tgt_file /home/tomasruiz/code/lewidi2025/parquets/reasoning-ratings/run2-template-2-reasoning-judge-responses.jsonl \
 		--data_rank 0 \
 		--data_world_size 1 \
 		--n_fewshot_examples 0 \
@@ -61,18 +62,18 @@ judge:
 
 gemini-inference:
 	python inference.py \
-		--model_id gemini-2.5-pro \
+		--model_id gemini-2.5-flash \
 		--gen_kwargs gemini-defaults \
 		--datasets CSC \
 		--splits train \
 		--template_ids 31 \
 		--n_examples 100 \
-		--n_loops 3 \
+		--n_loops 10 \
 		--n_fewshot_examples 0 \
 		--vllm.start_server False \
-		--only_run_missing_examples False \
-		--max_tokens 10000 \
-		--tgt_file parquets/baseline/gemini-2.5-csc-train-template31.jsonl
+		--only_run_missing_examples True \
+		--max_tokens 15000 \
+		--tgt_file parquets/baseline/gemini-2.5-flash-csc-train-template31.jsonl
 
 stapp:
 	python -m streamlit run st_app/app.py
