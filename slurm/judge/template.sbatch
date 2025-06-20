@@ -1,14 +1,14 @@
 #!/bin/bash
 #SBATCH --partition lrz-hgx-h100-94x4,lrz-dgx-a100-80x8,lrz-hgx-a100-80x4
 #SBATCH --gres=gpu:2
-#SBATCH --array=0-3
+#SBATCH --array=0-9
 #SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/{PREDS_DIRNAME}/judge/logs/out_%a.logs
 #SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/%u/{PREDS_DIRNAME}/judge/logs/err_%a.logs
 #SBATCH --job-name llmjudge
 #SBATCH --time 5:00:00
 
 # Set container name based on job name and array task ID to avoid conflicts
-CONTAINER_NAME="lewidi_llmjudge_${{SLURM_ARRAY_TASK_ID}}"
+CONTAINER_NAME="lewidi_judge_${{SLURM_ARRAY_TASK_ID}}"
 
 # Calculate port based on base port and array task ID to avoid conflicts
 VLLM_PORT=$((9000 + $SLURM_ARRAY_TASK_ID))
@@ -32,7 +32,7 @@ enroot start --rw --root \
     $CONTAINER_NAME bash -c "source /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/llm_judge.py \
     --n_dataset_examples 100 \
     --n_samples_per_example 10 \
-    --judge_model_id Qwen/Qwen3-32B \
+    --judge_model_id {JUDGE_MODEL_ID} \
     --gen_kwargs_str set2 \
     --remote_call_concurrency 32 \
     --vllm.port $VLLM_PORT \
@@ -43,7 +43,7 @@ enroot start --rw --root \
     --data_rank $SLURM_ARRAY_TASK_ID \
     --data_world_size $SLURM_ARRAY_TASK_COUNT \
     --preds_dir /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{PREDS_DIRNAME}/preds \
-    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{PREDS_DIRNAME}/judge/Qwen3-32B.jsonl"
+    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{PREDS_DIRNAME}/judge/{JUDGE_MODEL_ID}/set2/judge.jsonl"
 
 # Clean up: remove the container after job completion
 echo "Cleaning up: removing container $CONTAINER_NAME..."
