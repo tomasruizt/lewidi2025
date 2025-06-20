@@ -43,6 +43,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     n_samples_per_example: int = 5
     n_fewshot_examples: int = 0
     judge_model_id: str = "Qwen/Qwen3-4B"
+    pred_model_id: str = "Qwen/Qwen3-4B"
     gen_kwargs_str: str = "set2"
     preds_dir: str = "/mnt/disk16tb/globus_shared/from-lrz-ai-systems"
     tgt_file: str = "./judge-responses.jsonl"
@@ -69,11 +70,14 @@ rdf = load_preds_for_judge(
 rdf_query = {
     "template_id": 31,
     "gen_kwargs": "set2",
+    "model_id": args.pred_model_id,
     "dataset": "CSC",
     "split": "train",
 }
 query = make_query_from_dict(rdf_query, rdf.columns)
 rdf = rdf.query(query).pipe(assign_col_n_classes)
+logger.info("Keeping %d examples for judge after applying query: %s", len(rdf), query)
+
 rdf = join_correct_responses(rdf)
 
 # Few Shot Examples
@@ -135,7 +139,7 @@ if len(batch) == 0:
     logger.info("No examples to judge")
     exit(0)
 
-if "google" in args.judge_model_id:
+if "gemini" in args.judge_model_id:
     model = GeminiAPI(
         model_id=args.judge_model_id,
         max_n_batching_threads=args.remote_call_concurrency,

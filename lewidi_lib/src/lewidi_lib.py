@@ -758,7 +758,12 @@ def load_preds_for_judge(
     rdf = rdf.query("dataset_idx.isin(@desired_dataset_idx)")
     rdf = rdf.query("run_idx.isin(@desired_run_idx)")
     assert len(rdf) != 0, len(rdf)
-    logger.info("Keeping %d examples for judge", len(rdf))
+    logger.info(
+        "Keeping %d examples for judge after filtering n_dataset_examples=%d and n_samples_per_example=%d",
+        len(rdf),
+        n_dataset_examples,
+        n_samples_per_example,
+    )
     return rdf
 
 
