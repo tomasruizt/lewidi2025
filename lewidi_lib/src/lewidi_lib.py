@@ -645,7 +645,8 @@ def vllm_command(model_id: str, vllm_args: VLLMArgs) -> list[str]:
         "--task=generate",
         "--disable-log-requests",  # prevents logging the prompt
         "--disable-uvicorn-access-log",  # prevents logging 200 OKs
-        "--max-model-len=16k",
+        "--max-model-len=32768",
+        "--max-seq-len-to-capture=32768",
         "--max-num-seqs=1000",  # throttling is done client-side
         "--gpu-memory-utilization=0.95",
         "--host=127.0.0.1",  # prevents requests from outside the machine
