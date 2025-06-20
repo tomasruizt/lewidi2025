@@ -5,6 +5,7 @@ from lewidi_lib import (
     keep_only_missing_examples,
     load_preds_for_judge,
     make_query_from_dict,
+    soft_label_to_nparray,
     tgt_has_holes,
 )
 import numpy as np
@@ -83,3 +84,20 @@ def test_keep_only_data_parallel_assigned():
     xs = list(range(10, 20))
     splits = [keep_only_data_parallel_assigned(xs, k, 3) for k in range(3)]
     assert sorted([e for s in splits for e in s]) == xs
+
+
+def test_soft_label_to_nparray_case_varierrnli():
+    d = {
+        "entailment": {"0": 1.0, "1": 0.0},
+        "neutral": {"0": 0.5, "1": 0.5},
+        "contradiction": {"0": 0.0, "1": 1.0},
+    }
+    expected = {
+        "entailment": np.array([1.0, 0.0]),
+        "neutral": np.array([0.5, 0.5]),
+        "contradiction": np.array([0.0, 1.0]),
+    }
+    actual = soft_label_to_nparray(d, dataset="VariErrNLI")
+    assert actual.keys() == expected.keys()
+    for k in actual.keys():
+        assert np.allclose(actual[k], expected[k])

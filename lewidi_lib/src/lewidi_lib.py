@@ -6,7 +6,7 @@ import json
 from multiprocessing import Pool
 import random
 import re
-from typing import Any, Callable, Literal
+from typing import Any, Callable, Literal, TypedDict
 import duckdb
 import json_repair
 from llmlib.vllmserver import spinup_vllm_server
@@ -45,8 +45,8 @@ def load_dataset(
     df.reset_index(inplace=True, names="dataset_idx")
     if parse_tgt:
         df["target"] = df["soft_label"].apply(parse_soft_label, dataset=dataset)
-        df["tgt_has_holes"] = tgt_has_holes(df["target"])
-        df["target_entropy"] = entropy(df["target"])
+        df = assign_col_tgt_has_holes(df, dataset)
+        df = assign_col_target_entropy(df, dataset)
     df["dataset"] = dataset
     df = assign_col_n_classes(df)
     df["split"] = split
@@ -64,6 +64,25 @@ def load_dataset(
     return df[cols]
 
 
+def assign_col_tgt_has_holes(df: pd.DataFrame, dataset: Dataset) -> pd.DataFrame:
+    dataset_is_binary = dataset == "VariErrNLI" or dataset == "MP"
+    if dataset_is_binary:  # no holes in binary datasets
+        col = False
+    else:
+        col = tgt_has_holes(df["target"])
+    return df.assign(tgt_has_holes=col)
+
+
+def assign_col_target_entropy(df: pd.DataFrame, dataset: Dataset) -> pd.DataFrame:
+    if dataset == "VariErrNLI":
+        col = (
+            pd.DataFrame(df["target"].tolist()).apply(entropy).to_dict(orient="records")
+        )
+    else:
+        col = entropy(df["target"])
+    return df.assign(target_entropy=col)
+
+
 def n_classes(dataset: Dataset) -> int:
     return len(soft_label_mapping[dataset])
 
@@ -76,20 +95,13 @@ def assign_col_n_classes(df: pd.DataFrame) -> pd.DataFrame:
 def soft_label_to_nparray(
     d: dict | Any, dataset: Dataset, do_recurse: bool = True
 ) -> np.ndarray:
+    if not isinstance(d, dict):
+        return _non_dict_case(d)
+
     if dataset == "VariErrNLI" and do_recurse:
         return {
             k: soft_label_to_nparray(v, dataset, do_recurse=False) for k, v in d.items()
         }
-
-    if not isinstance(d, dict):
-        match d:
-            case "":
-                return pd.NA
-            case list():
-                return pd.NA
-            case _:
-                logger.info("Not a dict: %s", repr(d))
-                return pd.NA
 
     n_classes_ = n_classes(dataset)
     array = np.zeros(n_classes_)
@@ -108,6 +120,17 @@ def soft_label_to_nparray(
             logger.error("IndexError for: %s, n_classes: %d", repr(d), n_classes_)
             return pd.NA
     return array
+
+
+def _non_dict_case(d: Any) -> Any:
+    match d:
+        case "":
+            return pd.NA
+        case list():
+            return pd.NA
+        case _:
+            logger.info("Not a dict: %s", repr(d))
+            return pd.NA
 
 
 def parse_soft_label(d: dict, dataset: Dataset, do_recurse: bool = True) -> np.ndarray:
@@ -269,9 +292,19 @@ def discard_unnecessary_cols(rdf: pd.DataFrame) -> pd.DataFrame:
 
 
 def assign_col_is_valid_pred(rdf: pd.DataFrame) -> pd.DataFrame:
-    rdf = rdf.assign(pred_sum=rdf["pred"].apply(lambda x: x.sum()))
-    rdf = rdf.assign(is_valid_pred=(rdf["pred_sum"] - 1).abs() < 0.01)
-    return rdf
+    return rdf.assign(is_valid_pred=rdf["pred"].apply(is_valid_pred))
+
+
+class VariErrDict(TypedDict):
+    entailment: Any
+    neutral: Any
+    contradiction: Any
+
+
+def is_valid_pred(pred: np.ndarray | VariErrDict) -> bool:
+    if isinstance(pred, dict):
+        return all(is_valid_pred(v) for v in pred.values())
+    return np.abs(pred.sum() - 1) < 0.01
 
 
 def as_categorical(ss: pd.Series) -> pd.Categorical:
@@ -285,12 +318,13 @@ def assign_col_pred_entropy(df: pd.DataFrame) -> pd.DataFrame:
     return df.assign(pred_entropy=col)
 
 
-def l0_loss(tgt: np.ndarray | dict, pred: np.ndarray | dict, dataset: Dataset) -> float:
+def l0_loss(
+    tgt: np.ndarray | dict, pred: np.ndarray | dict, dataset: Dataset
+) -> np.ndarray:
     if dataset == "VariErrNLI":
-        dists = []
-        for k, tgt_val in tgt.items():
-            dists.append(np.abs(tgt_val - pred[k]).mean())
-        return np.mean(dists)
+        diffs = pd.json_normalize(tgt) - pd.json_normalize(pred)
+        absmean = diffs.apply(lambda s: np.abs(as_np(s)).mean(axis=1))
+        return absmean.to_dict(orient="records")
     return np.abs(as_np(tgt) - as_np(pred)).mean(axis=1)
 
 
@@ -542,7 +576,8 @@ def assign_col_template_alias(df: pd.DataFrame) -> pd.DataFrame:
             "template_alias": ["0 simple", "1 +def", "2 +pers", "3 +def+pers"],
         }
     )
-    alias_df = alias_df.merge(pd.DataFrame({"dataset": ["CSC", "MP"]}), how="cross")
+    datasets = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
+    alias_df = alias_df.merge(pd.DataFrame({"dataset": datasets}), how="cross")
     new_df = df.merge(alias_df, on=["dataset", "template_id"], how="left")
     assert new_df["template_alias"].notna().all()
     return new_df
