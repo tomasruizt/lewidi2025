@@ -691,12 +691,11 @@ def keep_only_missing_examples(
     spec = keep_spec | {"success": True}
     query: str = make_query_from_dict(spec, previous.columns)
     success = previous.query(query)
-    join_cols = {c for c in keep_spec if c in df.columns and c in success.columns}
-    join_cols.update({"dataset_idx", "run_idx"})
-    join_cols = list(join_cols)
+    # not including gen_kwargs, because whos? llm or judge?
+    join_cols = ["dataset", "split", "dataset_idx", "run_idx"]
     n_dups = success[join_cols].duplicated().sum()
     if n_dups > 0:
-        logger.warning("Duplicates in success: %s", n_dups)
+        logger.warning("Duplicate judgements in tgt_file: %s", n_dups)
     unique_success = success[join_cols].drop_duplicates()
 
     joined = df.merge(unique_success, on=join_cols, how="outer", indicator=True)

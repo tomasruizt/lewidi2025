@@ -84,7 +84,7 @@ if args.n_fewshot_examples > 0:
     examples_df = join_fewshot_solutions(examples_df, args.few_shots_solutions_file)
 
 if args.only_run_missing_examples:
-    rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec=rdf_query)
+    rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec={"success": True})
 
 gen_kwargs: dict = make_gen_kwargs_from_str(args.gen_kwargs_str, max_tokens=15000)
 judge_template = load_template_file(templates_root / "reasoning_trace_eval2.txt")
@@ -143,12 +143,12 @@ if "google" in args.judge_model_id:
         location="global",
     )
 else:
-model = ModelvLLM(
-    model_id=args.judge_model_id,
-    remote_call_concurrency=args.remote_call_concurrency,
-    port=args.vllm.port,
-    timeout_secs=args.timeout_secs,
-)
+    model = ModelvLLM(
+        model_id=args.judge_model_id,
+        remote_call_concurrency=args.remote_call_concurrency,
+        port=args.vllm.port,
+        timeout_secs=args.timeout_secs,
+    )
 
 with using_vllm_server(args.judge_model_id, args.vllm):
     gen = model.complete_batchof_reqs(batch=batch)

@@ -43,17 +43,17 @@ inference:
 
 judge:
 	python llm_judge.py \
-		--n_dataset_examples 3 \
-		--n_samples_per_example 2 \
-		--judge_model_id Qwen/Qwen3-4B \
-		--gen_kwargs_str set2 \
-		--remote_call_concurrency 10 \
+		--n_dataset_examples 2 \
+		--n_samples_per_example 3 \
+		--judge_model_id google/gemini-2.5-pro \
+		--gen_kwargs_str gemini-defaults \
+		--remote_call_concurrency 128 \
 		--vllm.port 8000 \
 		--vllm.start_server False \
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
-		--preds_dir /mnt/disk16tb/globus_shared/from-lrz-ai-systems/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2/preds \
-		--tgt_file /mnt/disk16tb/globus_shared/from-lrz-ai-systems/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2/judge/Qwen3-4B.jsonl \
+		--preds_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/1_cscfull_t31_Qwen_Qwen3-8B_set2/preds \
+		--tgt_file /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/1_cscfull_t31_Qwen_Qwen3-8B_set2/judge/gemini-2.5-pro.jsonl \
 		--data_rank 0 \
 		--data_world_size 1 \
 		--n_fewshot_examples 0 \
