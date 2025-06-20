@@ -135,13 +135,14 @@ if len(batch) == 0:
     logger.info("No examples to judge")
     exit(0)
 
-# model = GeminiAPI(
-#     model_id=args.judge_model_id,
-#     max_n_batching_threads=128,
-#     include_thoughts=True,
-#     location="global",
-# )
-
+if "google" in args.judge_model_id:
+    model = GeminiAPI(
+        model_id=args.judge_model_id,
+        max_n_batching_threads=args.remote_call_concurrency,
+        include_thoughts=True,
+        location="global",
+    )
+else:
 model = ModelvLLM(
     model_id=args.judge_model_id,
     remote_call_concurrency=args.remote_call_concurrency,
