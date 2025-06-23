@@ -12,7 +12,7 @@ vllm-qwen3-thinking:
 		--reasoning-parser deepseek_r1 \
 		--task generate \
 		--disable-log-requests \
-		--max-model-len 16k \
+		--max-model-len 32768 \
 		--gpu-memory-utilization 0.8 \
 		--enable-chunked-prefill \
 		--disable-uvicorn-access-log \
@@ -43,18 +43,23 @@ inference:
 
 judge:
 	python llm_judge.py \
-		--n_dataset_examples 100 \
-		--n_samples_per_example 10 \
-		--judge_model_id gemini-2.5-pro \
-		--gen_kwargs_str gemini-defaults \
-		--pred_model_id Qwen/Qwen3-32B \
+		--n_dataset_examples 2 \
+		--n_samples_per_example 3 \
+		--judge_model_id Qwen/Qwen3-4B \
+		--judge_gen_kwargs_str set2 \
+		--judge_template reasoning_trace_eval2.txt \
+		--pred_model_id Qwen/Qwen3-4B \
+		--pred_gen_kwargs_str set2 \
+		--pred_dataset CSC \
+		--pred_split train \
+		--pred_template_id 31 \
 		--remote_call_concurrency 10 \
 		--vllm.port 8000 \
 		--vllm.start_server False \
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
 		--preds_dir /home/tomasruiz/code/lewidi2025/parquets \
-		--tgt_file /home/tomasruiz/code/lewidi2025/parquets/reasoning-ratings/run2-template-2-reasoning-judge-responses.jsonl \
+		--tgt_file delme-judge-responses.jsonl \
 		--data_rank 0 \
 		--data_world_size 1 \
 		--n_fewshot_examples 0 \

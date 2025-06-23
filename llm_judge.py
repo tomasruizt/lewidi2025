@@ -1,7 +1,10 @@
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
 import json
 import logging
 from typing import Mapping
 from lewidi_lib import (
+    Dataset,
     VLLMArgs,
     assign_col_n_classes,
     convert_output_to_parquet,
@@ -42,10 +45,18 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     n_dataset_examples: int = 100
     n_samples_per_example: int = 5
     n_fewshot_examples: int = 0
+
     judge_model_id: str = "Qwen/Qwen3-4B"
+    judge_gen_kwargs_str: str = "set2"
+    judge_template: str = "reasoning_trace_eval2.txt"
+
     pred_model_id: str = "Qwen/Qwen3-4B"
-    gen_kwargs_str: str = "set2"
+    pred_gen_kwargs_str: str = "set2"
+    pred_dataset: Dataset = "CSC"
+    pred_split: str = "train"
+    pred_template_id: int = 31
     preds_dir: str = "/mnt/disk16tb/globus_shared/from-lrz-ai-systems"
+
     tgt_file: str = "./judge-responses.jsonl"
     few_shots_solutions_file: str | None = None
     remote_call_concurrency: int = 8
@@ -54,6 +65,48 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     data_world_size: int = 1
     timeout_secs: int = 5 * 60
     only_run_missing_examples: bool = False
+
+
+class Template(ABC):
+    @abstractmethod
+    def make_prompt(self, data: Mapping) -> str:
+        """Fill the template with data from the given row mapping."""
+        pass
+
+
+@dataclass
+class JudgeTemplate2(Template):
+    judge_template_file: str
+    dataset: Dataset
+    pred_template_id: str = "31"
+
+    def __post_init__(self):
+        self.judge_template = load_template_file(
+            templates_root / self.judge_template_file
+        )
+        self.pred_template = load_template(self.dataset, self.pred_template_id)
+
+    def make_prompt(self, data: Mapping) -> str:
+        llm_problem = self.pred_template.format(text=data["text"])
+        steps: list[str] = [{"text": s} for s in nltk.sent_tokenize(data["reasoning"])]
+        prompt = self.judge_template.format(
+            PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
+        )
+        return prompt
+
+
+def make_template(
+    judge_template: str, dataset: Dataset, pred_template_id: str
+) -> Template:
+    """Factory"""
+    if judge_template == "reasoning_trace_eval2.txt":
+        return JudgeTemplate2(
+            judge_template_file=judge_template,
+            dataset=dataset,
+            pred_template_id=pred_template_id,
+        )
+    else:
+        raise ValueError(f"Unknown judge template: {judge_template}")
 
 
 args = JudgeArgs()
@@ -68,11 +121,11 @@ rdf = load_preds_for_judge(
 )
 
 rdf_query = {
-    "template_id": 31,
-    "gen_kwargs": "set2",
+    "template_id": args.pred_template_id,
+    "gen_kwargs": args.pred_gen_kwargs_str,
     "model_id": args.pred_model_id,
-    "dataset": "CSC",
-    "split": "train",
+    "dataset": args.pred_dataset,
+    "split": args.pred_split,
 }
 query = make_query_from_dict(rdf_query, rdf.columns)
 rdf = rdf.query(query).pipe(assign_col_n_classes)
@@ -90,40 +143,31 @@ if args.n_fewshot_examples > 0:
 if args.only_run_missing_examples:
     rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec={"success": True})
 
-gen_kwargs: dict = make_gen_kwargs_from_str(args.gen_kwargs_str, max_tokens=15000)
-judge_template = load_template_file(templates_root / "reasoning_trace_eval2.txt")
-llm_template = load_template("CSC", "31")
+gen_kwargs: dict = make_gen_kwargs_from_str(args.judge_gen_kwargs_str, max_tokens=15000)
+template: Template = make_template(
+    args.judge_template, args.pred_dataset, args.pred_template_id
+)
 
 rows = [row for _, row in rdf.iterrows()]
 rows = keep_only_data_parallel_assigned(rows, args.data_rank, args.data_world_size)
 
 
-def make_prompt(judge_template: str, llm_template: str, row: Mapping) -> str:
-    llm_problem = llm_template.format(text=row["text"])
-    steps: list[str] = [{"text": s} for s in nltk.sent_tokenize(row["reasoning"])]
-    prompt = judge_template.format(
-        PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
-    )
-    return prompt
-
-
 fixed_metadata = {
     "judge_model_id": args.judge_model_id,
-    "gen_kwargs": args.gen_kwargs_str,
-    "dataset": "CSC",
-    "split": "train",
+    "gen_kwargs": args.judge_gen_kwargs_str,
+    "dataset": args.pred_dataset,
+    "split": args.pred_split,
 }
 
 batch = []
 for row in rows:
     fewshot_msgs = []
     for _, fs_row in examples_df.iterrows():
-        fewshot_msgs.append(
-            Message.from_prompt(make_prompt(judge_template, llm_template, fs_row))
-        )
+        prompt = template.make_prompt(fs_row)
+        fewshot_msgs.append(Message.from_prompt(prompt))
         fewshot_msgs.append(Message(role="assistant", msg=fs_row["response_judge"]))
 
-    prompt = make_prompt(judge_template, llm_template, row)
+    prompt = template.make_prompt(row)
     convo = [*fewshot_msgs, Message.from_prompt(prompt)]
     row_metadata = {
         "dataset_idx": row["dataset_idx"],
