@@ -75,19 +75,29 @@ class Template(ABC):
 
 
 @dataclass
+class PredTemplate(Template):
+    dataset: Dataset
+    template_id: str
+
+    def __post_init__(self):
+        self.template: str = load_template(self.dataset, self.template_id)
+
+    def make_prompt(self, data: Mapping) -> str:
+        return self.template.format(text=data["text"])
+
+
+@dataclass
 class JudgeTemplate2(Template):
     judge_template_file: str
-    dataset: Dataset
-    pred_template_id: str = "31"
+    pred_template: PredTemplate
 
     def __post_init__(self):
         self.judge_template = load_template_file(
             templates_root / self.judge_template_file
         )
-        self.pred_template = load_template(self.dataset, self.pred_template_id)
 
     def make_prompt(self, data: Mapping) -> str:
-        llm_problem = self.pred_template.format(text=data["text"])
+        llm_problem = self.pred_template.make_prompt(data)
         steps: list[str] = [{"text": s} for s in nltk.sent_tokenize(data["reasoning"])]
         prompt = self.judge_template.format(
             PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
@@ -99,11 +109,11 @@ def make_template(
     judge_template: str, dataset: Dataset, pred_template_id: str
 ) -> Template:
     """Factory"""
+    pred_template = PredTemplate(dataset=dataset, template_id=pred_template_id)
     if judge_template == "reasoning_trace_eval2.txt":
         return JudgeTemplate2(
             judge_template_file=judge_template,
-            dataset=dataset,
-            pred_template_id=pred_template_id,
+            pred_template=pred_template,
         )
     else:
         raise ValueError(f"Unknown judge template: {judge_template}")
