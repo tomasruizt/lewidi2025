@@ -527,6 +527,8 @@ def compute_average_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
     )
     agg_df = join_correct_responses(agg_df)
     agg_df = assign_cols_perf_metrics(agg_df)
+    if len(agg_df) == len(rdf):
+        logger.warning("No model-average reduction took place")
     return agg_df
 
 
@@ -848,3 +850,16 @@ def create_rating_matrix(ratings: pd.DataFrame) -> pd.DataFrame:
 def convert_output_to_parquet(tgt_file: str) -> None:
     df = pd.read_json(tgt_file, lines=True)
     df.to_parquet(tgt_file.replace(".jsonl", ".parquet"))
+
+
+def get_stable_random_subset(xs: np.ndarray, n: int) -> np.ndarray:
+    """
+    The dataset_idxs in the CSC dataset are not complete random, meaning the lowsest 100 dataset_idxs don't have 'random' difficulty.
+    They seem to be easier on average.
+    This can bias any evaluation that runs only on the first X examples due to limited resources.
+    """
+    sorted = np.sort(np.unique(xs))
+    np.random.seed(0)
+    full_permutation = np.random.permutation(sorted)
+    subset = full_permutation[:n]
+    return subset

@@ -13,9 +13,9 @@ They will be formatted as follows:
 ...solution...
 </solution>
 
-Your task is to score the solution from 0.0 (bad) to 1.0 (good).
+Your task is to score the solution from 0.0 to 1.0 based on how much you agree with it, where 0.0 means completely disagree and 1.0 means completely agree.
 
-* Respond with the score directly
+* Respond ONLY with the score directly, avoid any other text.
 
 --------------------------------------------------
 
@@ -24,11 +24,11 @@ The following is the problem and the solution for your task:
 [Problem]
 
 <problem>
-{problem}
+{llm_problem}
 </problem>
 
 [Solution]
 
 <solution>
-{solution}
+{llm_solution}
 </solution>

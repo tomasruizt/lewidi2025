@@ -45,10 +45,10 @@ judge:
 	python llm_judge.py \
 		--n_dataset_examples 2 \
 		--n_samples_per_example 3 \
-		--judge_model_id Qwen/Qwen3-4B \
-		--judge_gen_kwargs_str set2 \
-		--judge_template judge_eval.txt \
-		--pred_model_id Qwen/Qwen3-4B \
+		--judge_model_id gemini-2.5-flash \
+		--judge_gen_kwargs_str gemini-defaults \
+		--judge_template_id 3 \
+		--pred_model_id Qwen/Qwen3-32B \
 		--pred_gen_kwargs_str set2 \
 		--pred_dataset CSC \
 		--pred_split train \
@@ -58,8 +58,8 @@ judge:
 		--vllm.start_server False \
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
-		--preds_dir /home/tomasruiz/code/lewidi2025/parquets \
-		--tgt_file delme-judge-responses.jsonl \
+		--preds_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2/preds \
+		--tgt_file /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2/judge/template3/responses.jsonl \
 		--data_rank 0 \
 		--data_world_size 1 \
 		--n_fewshot_examples 0 \

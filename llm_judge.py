@@ -48,7 +48,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
 
     judge_model_id: str = "Qwen/Qwen3-4B"
     judge_gen_kwargs_str: str = "set2"
-    judge_template: str = "reasoning_trace_eval2.txt"
+    judge_template_id: int = 2
 
     pred_model_id: str = "Qwen/Qwen3-4B"
     pred_gen_kwargs_str: str = "set2"
@@ -88,8 +88,8 @@ class PredTemplate(Template):
 
 @dataclass
 class JudgeTemplate2(Template):
-    judge_template_file: str
     pred_template: PredTemplate
+    judge_template_file = "reasoning_trace_eval2.txt"
 
     def __post_init__(self):
         self.judge_template = load_template_file(
@@ -107,8 +107,8 @@ class JudgeTemplate2(Template):
 
 @dataclass
 class JudgeTemplate3(Template):
-    judge_template_file: str
     pred_template: PredTemplate
+    judge_template_file = "judge_eval.txt"
 
     def __post_init__(self):
         self.judge_template = load_template_file(
@@ -117,30 +117,35 @@ class JudgeTemplate3(Template):
 
     def make_prompt(self, data: Mapping) -> str:
         llm_problem = self.pred_template.make_prompt(data)
+        llm_solution = in_qwen3_format(data["reasoning"], data["response"])
         prompt = self.judge_template.format(
-            problem=llm_problem,
-            solution=data["reasoning"],
+            llm_problem=llm_problem,
+            llm_solution=llm_solution,
         )
         return prompt
 
 
+def in_qwen3_format(reasoning: str, output: str) -> str:
+    return f"""
+<think>
+{reasoning}
+</think>
+
+{output}
+"""
+
+
 def make_template(
-    judge_template: str, dataset: Dataset, pred_template_id: str
+    judge_template_id: int, dataset: Dataset, pred_template_id: str
 ) -> Template:
     """Factory"""
     pred_template = PredTemplate(dataset=dataset, template_id=pred_template_id)
-    if judge_template == "reasoning_trace_eval2.txt":
-        return JudgeTemplate2(
-            judge_template_file=judge_template,
-            pred_template=pred_template,
-        )
-    elif judge_template == "judge_eval.txt":
-        return JudgeTemplate3(
-            judge_template_file=judge_template,
-            pred_template=pred_template,
-        )
+    if judge_template_id == 2:
+        return JudgeTemplate2(pred_template=pred_template)
+    elif judge_template_id == 3:
+        return JudgeTemplate3(pred_template=pred_template)
     else:
-        raise ValueError(f"Unknown judge template: {judge_template}")
+        raise ValueError(f"Unknown judge template: {judge_template_id}")
 
 
 args = JudgeArgs()
@@ -179,7 +184,7 @@ if args.only_run_missing_examples:
 
 gen_kwargs: dict = make_gen_kwargs_from_str(args.judge_gen_kwargs_str, max_tokens=15000)
 template: Template = make_template(
-    args.judge_template, args.pred_dataset, args.pred_template_id
+    args.judge_template_id, args.pred_dataset, args.pred_template_id
 )
 
 rows = [row for _, row in rdf.iterrows()]
@@ -188,7 +193,8 @@ rows = keep_only_data_parallel_assigned(rows, args.data_rank, args.data_world_si
 
 fixed_metadata = {
     "judge_model_id": args.judge_model_id,
-    "gen_kwargs": args.judge_gen_kwargs_str,
+    "judge_gen_kwargs": args.judge_gen_kwargs_str,
+    "judge_template_id": args.judge_template_id,
     "dataset": args.pred_dataset,
     "split": args.pred_split,
 }
