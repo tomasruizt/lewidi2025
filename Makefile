@@ -47,7 +47,7 @@ judge:
 		--n_samples_per_example 3 \
 		--judge_model_id Qwen/Qwen3-4B \
 		--judge_gen_kwargs_str set2 \
-		--judge_template reasoning_trace_eval2.txt \
+		--judge_template judge_eval.txt \
 		--pred_model_id Qwen/Qwen3-4B \
 		--pred_gen_kwargs_str set2 \
 		--pred_dataset CSC \

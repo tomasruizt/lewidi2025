@@ -105,6 +105,25 @@ class JudgeTemplate2(Template):
         return prompt
 
 
+@dataclass
+class JudgeTemplate3(Template):
+    judge_template_file: str
+    pred_template: PredTemplate
+
+    def __post_init__(self):
+        self.judge_template = load_template_file(
+            templates_root / self.judge_template_file
+        )
+
+    def make_prompt(self, data: Mapping) -> str:
+        llm_problem = self.pred_template.make_prompt(data)
+        prompt = self.judge_template.format(
+            problem=llm_problem,
+            solution=data["reasoning"],
+        )
+        return prompt
+
+
 def make_template(
     judge_template: str, dataset: Dataset, pred_template_id: str
 ) -> Template:
@@ -112,6 +131,11 @@ def make_template(
     pred_template = PredTemplate(dataset=dataset, template_id=pred_template_id)
     if judge_template == "reasoning_trace_eval2.txt":
         return JudgeTemplate2(
+            judge_template_file=judge_template,
+            pred_template=pred_template,
+        )
+    elif judge_template == "judge_eval.txt":
+        return JudgeTemplate3(
             judge_template_file=judge_template,
             pred_template=pred_template,
         )

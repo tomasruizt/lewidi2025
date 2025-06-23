@@ -1,0 +1,34 @@
+I will provide a problem along with a solution to it given by an LLM. 
+They will be formatted as follows:
+
+[Problem]
+
+<problem>
+...problem...
+</problem>
+
+[Solution]
+
+<solution>
+...solution...
+</solution>
+
+Your task is to score the solution from 0.0 (bad) to 1.0 (good).
+
+* Respond with the score directly
+
+--------------------------------------------------
+
+The following is the problem and the solution for your task:
+
+[Problem]
+
+<problem>
+{problem}
+</problem>
+
+[Solution]
+
+<solution>
+{solution}
+</solution>
