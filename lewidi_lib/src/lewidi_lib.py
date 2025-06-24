@@ -6,7 +6,8 @@ import json
 from multiprocessing import Pool
 import random
 import re
-from typing import Any, Callable, Literal, TypedDict
+from scipy.stats import bootstrap
+from typing import Any, Callable, Iterable, Literal, TypedDict
 import duckdb
 import json_repair
 from llmlib.vllmserver import spinup_vllm_server
@@ -871,3 +872,10 @@ def get_stable_random_subset(xs: np.ndarray, n: int) -> np.ndarray:
     full_permutation = np.random.permutation(sorted)
     subset = full_permutation[:n]
     return subset
+
+
+def bootstrap_avg(xs: Iterable[float]) -> tuple[float, float, float]:
+    res = bootstrap([xs], np.mean, confidence_level=0.95)
+    mean = np.mean(xs)
+    low, high = res.confidence_interval
+    return low, mean, high
