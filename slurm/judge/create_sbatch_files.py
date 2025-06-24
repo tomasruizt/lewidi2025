@@ -1,49 +1,76 @@
 from pathlib import Path
 
 
-root = Path(
-    # "/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/Paraphrase/100exs_10_loops/"
-    "/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/1_cscfull_t31_Qwen_Qwen3-8B_set2"
-    # "/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/0_cscfull_t31_Qwen_Qwen3-235B-A22B_set2"
-)
-judge_model_id = "Qwen/Qwen3-8B"
-judge_gen_kwargs_str = "set2"
-n_dataset_examples = 100
-n_samples_per_example = 10
-slurm_array_size = 1
-n_gpus = 1
-enable_expert_parallel = False
-remote_call_concurrency = 64
+def shortform(model_id: str) -> str:
+    return model_id.split("/")[-1]
 
-jobname = f"judge_{judge_model_id.replace('/', '_')}_{n_dataset_examples}exs_{n_samples_per_example}loops"
 
-template_vars = {
-    "PREDS_DIR": str(root / "preds"),
-    "LOGS_DIR": str(root / "judge" / "logs"),
-    "JUDGE_MODEL_ID": judge_model_id,
-    "JUDGE_TGT_FILE": str(
-        root / "judge" / judge_model_id / judge_gen_kwargs_str / f"{jobname}.jsonl"
-    ),
-    "SLURM_ARRAY_SIZE": slurm_array_size - 1,
-    "N_DATASET_EXAMPLES": n_dataset_examples,
-    "N_SAMPLES_PER_EXAMPLE": n_samples_per_example,
-    "JUDGE_GEN_KWARGS_STR": judge_gen_kwargs_str,
-    "JOBNAME": jobname,
-    "N_GPUS": n_gpus,
-    "ENABLE_EXPERT_PARALLEL": enable_expert_parallel,
-    "REMOTE_CALL_CONCURRENCY": remote_call_concurrency,
-}
+def create_sbatch_file(model_id: str, judge_model_id: str, tgt_dir: Path) -> None:
+    dataset = "CSC"
+    root = Path(
+        f"/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{model_id.replace('/', '_')}/set2/t31/{dataset}/allex_20loops"
+    )
+    judge_gen_kwargs_str = "set2"
+    judge_template_id = 2
+    n_dataset_examples = 1000
+    n_samples_per_example = 10
+    if "32" in judge_model_id:
+        n_gpus = 2
+    else:
+        n_gpus = 1
+    slurm_array_size = 4
+    enable_expert_parallel = False
+    remote_call_concurrency = 32
 
-template = Path("template.sbatch").read_text()
-filled = template.format(**template_vars)
+    subset_str = f"{n_dataset_examples}exs_{n_samples_per_example}loops"
+    jobname = f"{shortform(judge_model_id)}_judging_{shortform(model_id)}_{subset_str}"
+    judge_tgt_dir = (
+        root
+        / "judge"
+        / judge_model_id
+        / judge_gen_kwargs_str
+        / f"t{judge_template_id}"
+        / subset_str
+    )
+
+    template_vars = {
+        "PREDS_DIR": str(root / "preds"),
+        "PRED_MODEL_ID": model_id,
+        "LOGS_DIR": str(judge_tgt_dir / "logs"),
+        "JUDGE_MODEL_ID": judge_model_id,
+        "JUDGE_TGT_FILE": str(judge_tgt_dir / "responses.jsonl"),
+        "SLURM_ARRAY_SIZE": slurm_array_size - 1,
+        "N_DATASET_EXAMPLES": n_dataset_examples,
+        "N_SAMPLES_PER_EXAMPLE": n_samples_per_example,
+        "JUDGE_GEN_KWARGS_STR": judge_gen_kwargs_str,
+        "JOBNAME": jobname,
+        "N_GPUS": n_gpus,
+        "ENABLE_EXPERT_PARALLEL": enable_expert_parallel,
+        "REMOTE_CALL_CONCURRENCY": remote_call_concurrency,
+    }
+
+    template = Path("template.sbatch").read_text()
+    filled = template.format(**template_vars)
+
+    tgt_dir.mkdir(parents=True, exist_ok=True)
+    tgt_file = tgt_dir / f"{jobname}.sbatch"
+    tgt_file.write_text(filled)
+
+    print(f"Created file: {tgt_file}")
+
+
+cases = [
+    # (pred_model, judge_model)
+    ("Qwen/Qwen3-8B", "Qwen/Qwen3-8B"),
+    ("Qwen/Qwen3-8B", "Qwen/Qwen3-32B"),
+    ("Qwen/Qwen3-32B", "Qwen/Qwen3-32B"),
+]
+
 
 tgt_dir = Path("slurm_scripts")
-tgt_dir.mkdir(parents=True, exist_ok=True)
 # Clear any existing .sbatch files
 for file in tgt_dir.glob("*.sbatch"):
-    file.unlink()  # clear existing sbtach files
+    file.unlink()
 
-tgt_file = tgt_dir / f"{jobname}.sbatch"
-tgt_file.write_text(filled)
-
-print(f"Created file: {tgt_file}")
+for model_id, judge_model_id in cases:
+    create_sbatch_file(model_id, judge_model_id, tgt_dir)

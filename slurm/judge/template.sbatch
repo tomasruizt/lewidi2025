@@ -2,13 +2,13 @@
 #SBATCH --partition lrz-hgx-h100-94x4,lrz-dgx-a100-80x8,lrz-hgx-a100-80x4
 #SBATCH --gres=gpu:{N_GPUS}
 #SBATCH --array=0-{SLURM_ARRAY_SIZE}
-#SBATCH -o {LOGS_DIR}/%u/%a_out.logs
-#SBATCH -e {LOGS_DIR}/%u/%a_err.logs
+#SBATCH -o {LOGS_DIR}/%a_out.logs
+#SBATCH -e {LOGS_DIR}/%a_err.logs
 #SBATCH --job-name {JOBNAME}
 #SBATCH --time 4:00:00
 
 # Set container name based on job name and array task ID to avoid conflicts
-CONTAINER_NAME="lewidi_judge_${{SLURM_ARRAY_TASK_ID}}"
+CONTAINER_NAME="{JOBNAME}_${{SLURM_ARRAY_TASK_ID}}"
 
 # Calculate port based on base port and array task ID to avoid conflicts
 VLLM_PORT=$((9000 + $SLURM_ARRAY_TASK_ID))
@@ -33,7 +33,13 @@ enroot start --rw --root \
     --n_dataset_examples {N_DATASET_EXAMPLES} \
     --n_samples_per_example {N_SAMPLES_PER_EXAMPLE} \
     --judge_model_id {JUDGE_MODEL_ID} \
-    --gen_kwargs_str {JUDGE_GEN_KWARGS_STR} \
+    --judge_gen_kwargs_str {JUDGE_GEN_KWARGS_STR} \
+    --judge_template_id 2 \
+    --pred_model_id {PRED_MODEL_ID} \
+    --pred_gen_kwargs_str set2 \
+    --pred_dataset CSC \
+    --pred_split train \
+    --pred_template_id 31 \
     --remote_call_concurrency {REMOTE_CALL_CONCURRENCY} \
     --vllm.port $VLLM_PORT \
     --vllm.start_server True \
@@ -41,6 +47,7 @@ enroot start --rw --root \
     --vllm.tensor_parallel_size {N_GPUS} \
     --vllm.enable_expert_parallel {ENABLE_EXPERT_PARALLEL} \
     --only_run_missing_examples True \
+    --include_prompt_in_metadata False \
     --data_rank $SLURM_ARRAY_TASK_ID \
     --data_world_size $SLURM_ARRAY_TASK_COUNT \
     --preds_dir {PREDS_DIR} \
