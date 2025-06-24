@@ -107,16 +107,15 @@ def soft_label_to_nparray(
 
     n_classes_ = n_classes(dataset)
     array = np.zeros(n_classes_)
+    mapping = soft_label_mapping[dataset]
     for k, v in d.items():
-        if k == "0.0":
-            k = 0
-        if k == "1.0":
-            k = 1
+        if isinstance(k, int):
+            k = str(k)
 
         try:
-            array[int(k)] = v
-        except ValueError:
-            logger.warning("Invalid key: '%s'", repr(k)[:30])
+            array[mapping[k]] = v
+        except (ValueError, KeyError):
+            logger.warning("Invalid key: '%s'. mapping: %s", repr(k)[:30], mapping)
             return pd.NA
         except IndexError:
             logger.error("IndexError for: %s, n_classes: %d", repr(d), n_classes_)
@@ -156,7 +155,9 @@ soft_label_mapping = {
         "6": 6,
     },
     "MP": {
+        "0": 0,
         "0.0": 0,
+        "1": 1,
         "1.0": 1,
     },
     "Paraphrase": {
