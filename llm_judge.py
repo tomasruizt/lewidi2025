@@ -47,6 +47,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     judge_model_id: str = "Qwen/Qwen3-4B"
     judge_gen_kwargs_str: str = "set2"
     judge_template_id: int = 2
+    use_random_stable_subset: bool = False
 
     pred_model_id: str = "Qwen/Qwen3-4B"
     pred_gen_kwargs_str: str = "set2"
@@ -109,6 +110,7 @@ rdf = load_preds_for_judge(
     preds_dir=args.preds_dir,
     n_dataset_examples=args.n_dataset_examples,
     n_samples_per_example=args.n_samples_per_example,
+    random_stable_subset=args.use_random_stable_subset,
 )
 
 rdf_query = {
