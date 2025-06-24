@@ -20,7 +20,7 @@ def create_sbatch_file(model_id: str, judge_model_id: str, tgt_dir: Path) -> Non
         n_gpus = 1
     slurm_array_size = 4
     enable_expert_parallel = False
-    remote_call_concurrency = 32
+    remote_call_concurrency = 20
 
     subset_str = f"{n_dataset_examples}exs_{n_samples_per_example}loops"
     jobname = f"{shortform(judge_model_id)}_judging_{shortform(model_id)}_{subset_str}"
