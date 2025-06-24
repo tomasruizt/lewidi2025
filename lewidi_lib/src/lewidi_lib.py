@@ -491,7 +491,8 @@ def compute_unif_baseline_perf_metrics(ddf: pd.DataFrame):
 
 def agg_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
     cols = ["model_id", "dataset", "split", "template_id", "template_alias"]
-    agg_df = rdf.groupby(cols, as_index=False, observed=True).agg(
+    gby_cols = [c for c in cols if c in rdf.columns]
+    agg_df = rdf.groupby(gby_cols, as_index=False, observed=True).agg(
         ws_loss=("ws_loss", "mean"), pred_entropy=("pred_entropy", "mean")
     )
     return agg_df
@@ -868,3 +869,12 @@ def bootstrap_avg(xs: Iterable[float]) -> tuple[float, float, float]:
     mean = np.mean(xs)
     low, high = res.confidence_interval
     return low, mean, high
+
+
+def compute_majority_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
+    majority_baseline = (
+        ddf.groupby("dataset", as_index=False)["target"]
+        .agg(lambda tgts: as_np(tgts).mean(axis=0))
+        .rename(columns={"target": "pred"})
+    )
+    return assign_cols_perf_metrics(ddf.merge(majority_baseline))
