@@ -36,10 +36,11 @@ CASES = [
     # ),
 ]
 DATASETS = ["Paraphrase", "VariErrNLI"]
-GEN_KWARGS = ["set2"]  # , "set1"]
-SPLITS = ["train"]  # "dev"]
-TEMPLATE_IDS = ["31"]  # ["0", "1", "2", "3", "4"]
+gen_kwargs = "set2"
+split = "train"
+template_id = 31
 BASE_PORT = 9000
+slurm_array_size = 0
 
 tgt_dir = Path("slurm_scripts")
 os.makedirs(tgt_dir, exist_ok=True)
@@ -48,23 +49,30 @@ os.makedirs(tgt_dir, exist_ok=True)
 for file in tgt_dir.glob("*.sbatch"):
     file.unlink()
 
-combinations = product(CASES, GEN_KWARGS)
-for i, (case, gen_kwargs) in enumerate(combinations):
+combinations = product(CASES, DATASETS)
+for i, (case, dataset) in enumerate(combinations):
     # Base port for this combination - each array task will add its task ID to this
     port = BASE_PORT + (i * 100)  # Give enough space between job ports
-    jobname = f"{i}_Paraphrase_and_VariErrNLI_100_t31_{case.model.replace('/', '_')}_{gen_kwargs}"
+    jobname = f"{dataset}_{case.model.replace('/', '_')}"
     template: str = Path("template.sbatch").read_text()
+    tgt_dir = Path(
+        f"/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{case.model.replace('/', '_')}/{gen_kwargs}/t{template_id}/{dataset}/allex_10loops/preds"
+    )
+
     filled = template.format(
-        JOB_NAME=jobname,
+        TGT_FILE=str(tgt_dir / "responses.jsonl"),
+        LOGS_DIR=str(tgt_dir / "logs"),
+        JOBNAME=jobname,
         MODEL_ID=case.model,
         GEN_KWARGS=gen_kwargs,
-        DATASETS=",".join(DATASETS),
-        SPLITS=",".join(SPLITS),
-        TEMPLATE_IDS=",".join(TEMPLATE_IDS),
+        DATASETS=dataset,
+        SPLITS=split,
+        TEMPLATE_IDS=template_id,
         VLLM_PORT=port,
         N_GPUS=case.n_gpus,
         REMOTE_CALL_CONCURRENCY=case.remote_call_concurrency,
         ENABLE_EXPERT_PARALLEL=case.enable_expert_parallel,
+        SLURM_ARRAY_SIZE=slurm_array_size,
     )
     script_path = Path(f"slurm_scripts/{jobname}.sbatch")
     script_path.write_text(filled)
