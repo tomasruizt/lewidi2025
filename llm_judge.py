@@ -63,6 +63,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     data_world_size: int = 1
     timeout_secs: int = 5 * 60
     only_run_missing_examples: bool = False
+    include_prompt_in_metadata: bool = False
 
 
 def make_template(
@@ -164,8 +165,9 @@ for row in rows:
         "dataset_idx": row["dataset_idx"],
         "run_idx": row["run_idx"],
         "model_id": row["model_id"],
-        "prompt": prompt,
     }
+    if args.include_prompt_in_metadata:
+        row_metadata["prompt"] = prompt
     md = fixed_metadata | row_metadata
     req = LlmReq(convo=convo, gen_kwargs=gen_kwargs, metadata=md)
     batch.append(req)

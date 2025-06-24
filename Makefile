@@ -58,6 +58,7 @@ judge:
 		--vllm.start_server False \
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
+		--include_prompt_in_metadata False \
 		--preds_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/preds \
 		--tgt_file test-responses.jsonl \
 		--data_rank 0 \
