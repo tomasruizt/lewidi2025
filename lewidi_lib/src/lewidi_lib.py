@@ -750,12 +750,20 @@ def pd_read_json_cached(file: str | Path) -> pd.DataFrame:
 
 
 def load_preds_for_judge(
-    preds_dir: str, n_dataset_examples: int, n_samples_per_example: int
+    preds_dir: str,
+    n_dataset_examples: int,
+    n_samples_per_example: int,
+    random_stable_subset: bool = False,
 ):
     rdf = load_preds(parquets_dir=preds_dir)
     rdf = rdf.drop_duplicates()
     # filter down
-    desired_dataset_idx = rdf["dataset_idx"].unique()[:n_dataset_examples]
+    if random_stable_subset:
+        desired_dataset_idx = get_stable_random_subset(
+            rdf["dataset_idx"], n=n_dataset_examples
+        )
+    else:
+        desired_dataset_idx = rdf["dataset_idx"].unique()[:n_dataset_examples]
     desired_run_idx = list(range(n_samples_per_example))
     rdf = rdf.query("dataset_idx.isin(@desired_dataset_idx)")
     rdf = rdf.query("run_idx.isin(@desired_run_idx)")
