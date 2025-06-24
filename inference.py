@@ -8,6 +8,7 @@ from llmlib.base_llm import Message, Conversation, LlmReq
 from llmlib.gemini.gemini_code import GeminiAPI
 import logging
 import pandas as pd
+from prompt_templates.template import load_template
 from pydantic import Field
 from tqdm import tqdm
 from lewidi_lib import (
@@ -20,7 +21,6 @@ from lewidi_lib import (
     keep_only_missing_examples,
     load_dataset,
     enable_logging,
-    load_template,
     BasicSchema,
     make_gen_kwargs_from_str,
     dump_response,

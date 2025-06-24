@@ -1,8 +1,4 @@
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-import json
 import logging
-from typing import Mapping
 from lewidi_lib import (
     Dataset,
     VLLMArgs,
@@ -12,33 +8,35 @@ from lewidi_lib import (
     join_fewshot_solutions,
     keep_only_data_parallel_assigned,
     load_preds_for_judge,
-    load_template,
     make_query_from_dict,
     postprocess_response,
     enable_logging,
     join_correct_responses,
-    load_template_file,
     make_gen_kwargs_from_str,
     using_vllm_server,
 )
-from prompt_templates import templates_root
 
 from llmlib.gemini.gemini_code import GeminiAPI
 from llmlib.vllm_model import ModelvLLM
 from llmlib.base_llm import LlmReq, Message
+from llmlib.mock_model import MockModel
+from prompt_templates.template import (
+    Template,
+    PredTemplate,
+    JudgeTemplate2,
+    JudgeTemplate3,
+)
 from pydantic import Field
 from pydantic_settings import BaseSettings
 from tqdm import tqdm
-import nltk
 
 from lewidi_lib import keep_only_missing_examples
+
 
 logger = logging.getLogger(__name__)
 
 
 enable_logging()
-
-nltk.download("punkt_tab")
 
 
 class JudgeArgs(BaseSettings, cli_parse_args=True):
@@ -67,74 +65,6 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     only_run_missing_examples: bool = False
 
 
-class Template(ABC):
-    @abstractmethod
-    def make_prompt(self, data: Mapping) -> str:
-        """Fill the template with data from the given row mapping."""
-        pass
-
-
-@dataclass
-class PredTemplate(Template):
-    dataset: Dataset
-    template_id: str
-
-    def __post_init__(self):
-        self.template: str = load_template(self.dataset, self.template_id)
-
-    def make_prompt(self, data: Mapping) -> str:
-        return self.template.format(text=data["text"])
-
-
-@dataclass
-class JudgeTemplate2(Template):
-    pred_template: PredTemplate
-    judge_template_file = "reasoning_trace_eval2.txt"
-
-    def __post_init__(self):
-        self.judge_template = load_template_file(
-            templates_root / self.judge_template_file
-        )
-
-    def make_prompt(self, data: Mapping) -> str:
-        llm_problem = self.pred_template.make_prompt(data)
-        steps: list[str] = [{"text": s} for s in nltk.sent_tokenize(data["reasoning"])]
-        prompt = self.judge_template.format(
-            PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
-        )
-        return prompt
-
-
-@dataclass
-class JudgeTemplate3(Template):
-    pred_template: PredTemplate
-    judge_template_file = "judge_eval.txt"
-
-    def __post_init__(self):
-        self.judge_template = load_template_file(
-            templates_root / self.judge_template_file
-        )
-
-    def make_prompt(self, data: Mapping) -> str:
-        llm_problem = self.pred_template.make_prompt(data)
-        llm_solution = in_qwen3_format(data["reasoning"], data["response"])
-        prompt = self.judge_template.format(
-            llm_problem=llm_problem,
-            llm_solution=llm_solution,
-        )
-        return prompt
-
-
-def in_qwen3_format(reasoning: str, output: str) -> str:
-    return f"""
-<think>
-{reasoning}
-</think>
-
-{output}
-"""
-
-
 def make_template(
     judge_template_id: int, dataset: Dataset, pred_template_id: str
 ) -> Template:
@@ -146,6 +76,27 @@ def make_template(
         return JudgeTemplate3(pred_template=pred_template)
     else:
         raise ValueError(f"Unknown judge template: {judge_template_id}")
+
+
+def make_judge_model(args: JudgeArgs):
+    if args.judge_model_id == "test":
+        model = MockModel()
+    elif "gemini" in args.judge_model_id:
+        model = GeminiAPI(
+            model_id=args.judge_model_id,
+            max_n_batching_threads=args.remote_call_concurrency,
+            include_thoughts=True,
+            location="global",
+        )
+    else:
+        model = ModelvLLM(
+            model_id=args.judge_model_id,
+            remote_call_concurrency=args.remote_call_concurrency,
+            port=args.vllm.port,
+            timeout_secs=args.timeout_secs,
+        )
+    logger.info("Using model class: %s", type(model).__name__)
+    return model
 
 
 args = JudgeArgs()
@@ -223,20 +174,8 @@ if len(batch) == 0:
     logger.info("No examples to judge")
     exit(0)
 
-if "gemini" in args.judge_model_id:
-    model = GeminiAPI(
-        model_id=args.judge_model_id,
-        max_n_batching_threads=args.remote_call_concurrency,
-        include_thoughts=True,
-        location="global",
-    )
-else:
-    model = ModelvLLM(
-        model_id=args.judge_model_id,
-        remote_call_concurrency=args.remote_call_concurrency,
-        port=args.vllm.port,
-        timeout_secs=args.timeout_secs,
-    )
+
+model = make_judge_model(args)
 
 with using_vllm_server(args.judge_model_id, args.vllm):
     gen = model.complete_batchof_reqs(batch=batch)

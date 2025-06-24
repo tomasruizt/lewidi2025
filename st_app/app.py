@@ -2,14 +2,13 @@ from lewidi_lib import (
     Dataset,
     assign_cols_perf_metrics,
     enable_logging,
-    load_template_file,
     max_entropy,
     max_ws_loss,
     parse_soft_label,
     uniform_baseline_pred,
     ws_loss,
 )
-from prompt_templates import all_templates
+from prompt_templates import all_templates, load_template_file
 import seaborn as sns
 from lewidi_st_lib import (
     load_dataset_cached,
