@@ -67,7 +67,7 @@
             "module": "streamlit",
             "args": [
                 "run",
-                "${workspaceFolder}/st_app/rate_reasoning.py"
+                "${workspaceFolder}/st_app/app.py"
             ],
             "console": "integratedTerminal",
             "justMyCode": false

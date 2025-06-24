@@ -53,6 +53,7 @@ def load_dataset(
     df["split"] = split
     cols = [
         "dataset",
+        "soft_label",
         "n_classes",
         "split",
         "dataset_idx",
@@ -264,7 +265,8 @@ def assign_col_mp(
     rdf: pd.DataFrame, input_cols: list[str], ouput_col: str, func: Callable
 ) -> pd.DataFrame:
     input_cols = [rdf[c].values for c in input_cols]
-    with Pool(n_cpus()) as p:
+    num_cpus = max(1, min(n_cpus(), len(rdf) // 1000))
+    with Pool(num_cpus) as p:
         col = p.starmap(func, zip(*input_cols))
     return rdf.assign(**{ouput_col: col})
 

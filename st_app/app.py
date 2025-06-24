@@ -8,11 +8,13 @@ from lewidi_lib import (
     uniform_baseline_pred,
     ws_loss,
 )
-from prompt_templates import all_templates, load_template_file
+from prompt_templates import all_templates
+from prompt_templates.template import load_template_file
 import seaborn as sns
 from lewidi_st_lib import (
     load_dataset_cached,
     load_preds_cached_subset,
+    process_rdf_cached,
 )
 from lewidi_st_lib import show_single_answer_stats
 from matplotlib import pyplot as plt
@@ -44,6 +46,7 @@ def show_single_example_agg_stats(dataset: Dataset, row: dict, match: pd.DataFra
         show_templates(dataset)
 
     tgt = parse_soft_label(row["soft_label"], dataset=dataset)
+    match = process_rdf_cached(match)
     match = match.query("is_valid_pred")
     match = match.assign(target=[tgt] * len(match))
     match = match.pipe(assign_cols_perf_metrics)

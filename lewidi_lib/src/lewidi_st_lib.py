@@ -17,7 +17,7 @@ from lewidi_lib import (
 
 @st.cache_data(show_spinner="Loading dataset...")
 def load_dataset_cached(dataset: str, split: str) -> pd.DataFrame:
-    return load_dataset(dataset=dataset, split=split)
+    return load_dataset(dataset=dataset, split=split, parse_tgt=False)
 
 
 @st.cache_data(show_spinner="Loading predictions...")
@@ -30,8 +30,13 @@ def load_preds_cached() -> pd.DataFrame:
 @st.cache_data(show_spinner="Loading predictions...")
 def load_preds_cached_subset(dataset: str, split: str, model: str) -> pd.DataFrame:
     rdf = load_preds_cached()
-    rdf = process_rdf(rdf)
-    return rdf.query("dataset == @dataset and split == @split and model_id == @model")
+    rdf = rdf.query("dataset == @dataset and split == @split and model_id == @model")
+    return rdf
+
+
+@st.cache_data(show_spinner="Processing predictions...")
+def process_rdf_cached(rdf: pd.DataFrame) -> pd.DataFrame:
+    return process_rdf(rdf)
 
 
 def fmt_perf_df(perf_df: pd.DataFrame) -> pd.DataFrame:
@@ -106,6 +111,7 @@ def show_single_answer_stats(dataset: str, row: dict, rdf: pd.DataFrame) -> None
     matches = rdf.query(
         "gen_kwargs == @gen_kwargs and template_id == @template_id and dataset_idx == @row['dataset_idx']"
     )
+    matches = process_rdf_cached(matches)
     ev2 = st.dataframe(
         matches,
         on_select="rerun",
@@ -133,4 +139,6 @@ def show_single_answer_stats(dataset: str, row: dict, rdf: pd.DataFrame) -> None
     styled_df = fmt_perf_df(perf_df)
     st.dataframe(styled_df, hide_index=True, use_container_width=False)
     st.write("**Wasserstein distance: %.3f**" % ws_loss(tgt, pred, dataset))
-    st.write("**Mean L0 distance: %.3f**" % l0_loss(tgt, pred, dataset))
+    st.write(
+        "**Mean L0 distance: %.3f**" % l0_loss(tgt[None, :], pred[None, :], dataset)
+    )
