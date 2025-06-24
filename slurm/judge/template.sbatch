@@ -32,6 +32,7 @@ enroot start --rw --root \
     $CONTAINER_NAME bash -c "source /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/llm_judge.py \
     --n_dataset_examples {N_DATASET_EXAMPLES} \
     --n_samples_per_example {N_SAMPLES_PER_EXAMPLE} \
+    --use_random_stable_subset True \
     --judge_model_id {JUDGE_MODEL_ID} \
     --judge_gen_kwargs_str {JUDGE_GEN_KWARGS_STR} \
     --judge_template_id 2 \
