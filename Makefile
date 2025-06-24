@@ -43,11 +43,11 @@ inference:
 
 judge:
 	python llm_judge.py \
-		--n_dataset_examples 2 \
+		--n_dataset_examples 10 \
 		--n_samples_per_example 3 \
 		--judge_model_id gemini-2.5-flash \
 		--judge_gen_kwargs_str gemini-defaults \
-		--judge_template_id 3 \
+		--judge_template_id 2 \
 		--pred_model_id Qwen/Qwen3-32B \
 		--pred_gen_kwargs_str set2 \
 		--pred_dataset CSC \
@@ -59,7 +59,7 @@ judge:
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
 		--preds_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2/preds \
-		--tgt_file /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2/judge/template3/responses.jsonl \
+		--tgt_file /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2/judge/template2/rand_stable_exs/responses.jsonl \
 		--data_rank 0 \
 		--data_world_size 1 \
 		--n_fewshot_examples 0 \
