@@ -136,6 +136,10 @@ if args.n_fewshot_examples > 0:
     rdf = rdf.tail(-args.n_fewshot_examples)
     examples_df = join_fewshot_solutions(examples_df, args.few_shots_solutions_file)
 
+ilocs = list(range(len(rdf)))
+ilocs = keep_only_data_parallel_assigned(ilocs, args.data_rank, args.data_world_size)
+rdf = rdf.iloc[ilocs]
+
 if args.only_run_missing_examples:
     rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec={"success": True})
 
@@ -143,9 +147,6 @@ gen_kwargs: dict = make_gen_kwargs_from_str(args.judge_gen_kwargs_str, max_token
 template: Template = make_template(
     args.judge_template_id, args.pred_dataset, args.pred_template_id
 )
-
-rows = [row for _, row in rdf.iterrows()]
-rows = keep_only_data_parallel_assigned(rows, args.data_rank, args.data_world_size)
 
 
 fixed_metadata = {
@@ -157,7 +158,7 @@ fixed_metadata = {
 }
 
 batch = []
-for row in rows:
+for _, row in rdf.iterrows():
     fewshot_msgs = []
     for _, fs_row in examples_df.iterrows():
         prompt = template.make_prompt(fs_row)
