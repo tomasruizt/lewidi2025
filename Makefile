@@ -12,7 +12,7 @@ vllm-qwen3-thinking:
 		--reasoning-parser deepseek_r1 \
 		--task generate \
 		--disable-log-requests \
-		--max-model-len 32768 \
+		--max-model-len 24576 \
 		--gpu-memory-utilization 0.8 \
 		--enable-chunked-prefill \
 		--disable-uvicorn-access-log \
@@ -45,9 +45,9 @@ judge:
 	python llm_judge.py \
 		--n_dataset_examples 10 \
 		--n_samples_per_example 3 \
-		--judge_model_id test \
-		--judge_gen_kwargs_str gemini-defaults \
-		--judge_template_id 2 \
+		--judge_model_id Qwen/Qwen3-4B \
+		--judge_gen_kwargs_str set2 \
+		--judge_template_id 3 \
 		--pred_model_id Qwen/Qwen3-32B \
 		--pred_gen_kwargs_str set2 \
 		--pred_dataset CSC \
@@ -58,9 +58,9 @@ judge:
 		--vllm.start_server False \
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
-		--include_prompt_in_metadata False \
+		--include_prompt_in_metadata True \
 		--preds_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/preds \
-		--tgt_file test-responses.jsonl \
+		--tgt_file judge-responses.jsonl \
 		--data_rank 0 \
 		--data_world_size 1 \
 		--n_fewshot_examples 0 \
