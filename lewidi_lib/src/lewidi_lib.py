@@ -892,3 +892,25 @@ def assert_correct_model_is_running(server: VLLMServer, model_id: str):
         raise ValueError(
             f"User requested model_id='{model_id}', but server (port={server.port}) hosts: {ids}"
         )
+
+
+def assing_col_score_from_json(ratings: pd.DataFrame) -> pd.DataFrame:
+    ratings["response_parsed"] = ratings["response"].apply(json_repair.loads)
+    ratings = process_ratings(
+        ratings, cat_mapping=mapping(ok=0, bad=0), drop_na_score=False
+    )
+    return ratings
+
+
+def assign_col_score_from_scalar(df: pd.DataFrame) -> pd.DataFrame:
+    df = df.assign(score=df["response"].str.strip().apply(parse_float))
+    df = drop_na_score_rows(df)
+    return df
+
+
+def parse_float(s: str) -> float | None:
+    try:
+        return float(s)
+    except ValueError:
+        logger.warning("Failed to parse float from %s", s)
+        return None
