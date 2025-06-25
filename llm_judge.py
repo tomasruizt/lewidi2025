@@ -30,7 +30,10 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 from tqdm import tqdm
 
-from lewidi_lib import keep_only_missing_examples
+from lewidi_lib import (
+    assert_correct_model_is_running,
+    keep_only_missing_examples,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -181,7 +184,8 @@ if len(batch) == 0:
 
 model = make_judge_model(args)
 
-with using_vllm_server(args.judge_model_id, args.vllm):
+with using_vllm_server(args.judge_model_id, args.vllm) as server:
+    assert_correct_model_is_running(server, args.judge_model_id)
     gen = model.complete_batchof_reqs(batch=batch)
     for response in tqdm(gen, total=len(batch)):
         response = postprocess_response(response)

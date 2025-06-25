@@ -10,7 +10,7 @@ from scipy.stats import bootstrap
 from typing import Any, Callable, Iterable, Literal, TypedDict
 import duckdb
 import json_repair
-from llmlib.vllmserver import spinup_vllm_server
+from llmlib.vllmserver import spinup_vllm_server, VLLMServer
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
@@ -696,14 +696,14 @@ def vllm_command(model_id: str, vllm_args: VLLMArgs) -> list[str]:
 
 
 @contextmanager
-def using_vllm_server(model_id: str, vllm_args: VLLMArgs):
+def using_vllm_server(model_id: str, vllm_args: VLLMArgs) -> VLLMServer:
     cmd: list[str] = vllm_command(model_id, vllm_args)
     with spinup_vllm_server(
         no_op=not vllm_args.start_server,
         vllm_command=cmd,
         timeout_mins=vllm_args.spinup_timeout_mins,
-    ):
-        yield
+    ) as server:
+        yield server
 
 
 def keep_only_missing_examples(
@@ -879,3 +879,16 @@ def compute_majority_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
         .rename(columns={"target": "pred"})
     )
     return assign_cols_perf_metrics(ddf.merge(majority_baseline))
+
+
+def assert_correct_model_is_running(server: VLLMServer, model_id: str):
+    if model_id == "test":
+        logger.info("Skipping model check for test model")
+        return
+
+    models = server.get_models()
+    ids = [m["id"] for m in models["data"]]
+    if model_id not in ids:
+        raise ValueError(
+            f"User requested model_id='{model_id}', but server (port={server.port}) hosts: {ids}"
+        )
