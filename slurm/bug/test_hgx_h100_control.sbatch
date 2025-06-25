@@ -1,16 +1,17 @@
 #!/bin/bash
 #SBATCH --partition lrz-hgx-h100-94x4
 #SBATCH --gres=gpu:2
-#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/bug_reproduction/hgx_h100_test/logs/out.logs
-#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/bug_reproduction/hgx_h100_test/logs/err.logs
+#SBATCH --array=0-1
+#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/bug_reproduction/hgx_h100_test/logs/out_%a.logs
+#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/bug_reproduction/hgx_h100_test/logs/err_%a.logs
 #SBATCH --job-name HGX_H100_Control_Test
 #SBATCH --time 0:30:00
 
-# Set container name based on job name to avoid conflicts
-CONTAINER_NAME="HGX_H100_Control_Test"
+# Set container name based on job name and array task ID to avoid conflicts
+CONTAINER_NAME="HGX_H100_Control_Test_${SLURM_ARRAY_TASK_ID}"
 
-# Calculate port
-VLLM_PORT=9100
+# Calculate port based on base port and array task ID to avoid conflicts
+VLLM_PORT=$((9100 + $SLURM_ARRAY_TASK_ID))
 
 # Create output directory
 mkdir -p /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/bug_reproduction/hgx_h100_test/logs
@@ -58,8 +59,8 @@ enroot start --rw --root \
     --vllm.enable_expert_parallel False \
     --only_run_missing_examples True \
     --include_prompt_in_metadata False \
-    --data_rank 0 \
-    --data_world_size 1 \
+    --data_rank $SLURM_ARRAY_TASK_ID \
+    --data_world_size $SLURM_ARRAY_TASK_COUNT \
     --preds_dir /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allex_20loops/preds \
     --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/bug_reproduction/hgx_h100_test/responses.jsonl"
 
