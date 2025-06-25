@@ -5,13 +5,14 @@ def shortform(model_id: str) -> str:
     return model_id.split("/")[-1]
 
 
-def create_sbatch_file(model_id: str, judge_model_id: str, tgt_dir: Path) -> None:
+def create_sbatch_file(
+    model_id: str, judge_model_id: str, tgt_dir: Path, judge_template_id: int = 2
+) -> None:
     dataset = "CSC"
     root = Path(
         f"/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{model_id.replace('/', '_')}/set2/t31/{dataset}/allex_20loops"
     )
     judge_gen_kwargs_str = "set2"
-    judge_template_id = 2
     n_dataset_examples = 1000
     n_samples_per_example = 10
     if "32" in judge_model_id:
@@ -23,7 +24,7 @@ def create_sbatch_file(model_id: str, judge_model_id: str, tgt_dir: Path) -> Non
     remote_call_concurrency = 20
 
     subset_str = f"{n_dataset_examples}exs_{n_samples_per_example}loops"
-    jobname = f"{shortform(judge_model_id)}_judging_{shortform(model_id)}_{subset_str}"
+    jobname = f"t{judge_template_id}_{shortform(judge_model_id)}_judging_{shortform(model_id)}_{subset_str}"
     judge_tgt_dir = (
         root
         / "judge"
@@ -39,6 +40,7 @@ def create_sbatch_file(model_id: str, judge_model_id: str, tgt_dir: Path) -> Non
         "LOGS_DIR": str(judge_tgt_dir / "logs"),
         "JUDGE_MODEL_ID": judge_model_id,
         "JUDGE_TGT_FILE": str(judge_tgt_dir / "responses.jsonl"),
+        "JUDGE_TEMPLATE_ID": judge_template_id,
         "SLURM_ARRAY_SIZE": slurm_array_size - 1,
         "N_DATASET_EXAMPLES": n_dataset_examples,
         "N_SAMPLES_PER_EXAMPLE": n_samples_per_example,
@@ -65,6 +67,7 @@ cases = [
     ("Qwen/Qwen3-8B", "Qwen/Qwen3-32B"),
     ("Qwen/Qwen3-32B", "Qwen/Qwen3-32B"),
 ]
+template_ids = [2, 3]
 
 
 tgt_dir = Path("slurm_scripts")
@@ -73,4 +76,5 @@ for file in tgt_dir.glob("*.sbatch"):
     file.unlink()
 
 for model_id, judge_model_id in cases:
-    create_sbatch_file(model_id, judge_model_id, tgt_dir)
+    for judge_template_id in template_ids:
+        create_sbatch_file(model_id, judge_model_id, tgt_dir, judge_template_id)

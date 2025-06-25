@@ -35,7 +35,7 @@ enroot start --rw --root \
     --use_random_stable_subset True \
     --judge_model_id {JUDGE_MODEL_ID} \
     --judge_gen_kwargs_str {JUDGE_GEN_KWARGS_STR} \
-    --judge_template_id 2 \
+    --judge_template_id {JUDGE_TEMPLATE_ID} \
     --pred_model_id {PRED_MODEL_ID} \
     --pred_gen_kwargs_str set2 \
     --pred_dataset CSC \
