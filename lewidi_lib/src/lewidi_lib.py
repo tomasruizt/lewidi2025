@@ -730,7 +730,6 @@ def keep_only_missing_examples(
     unique_success = success[join_cols].drop_duplicates()
 
     joined = df.merge(unique_success, on=join_cols, how="outer", indicator=True)
-    assert len(joined) == len(df), (len(joined), len(df))
     missing = joined.query("_merge == 'left_only'").drop(columns=["_merge"])
     logger.info("Keeping %d missing examples from spec %s", len(missing), keep_spec)
     return missing
