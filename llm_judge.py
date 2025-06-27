@@ -1,132 +1,31 @@
-from functools import singledispatch
 import logging
+from judge_lib import (
+    JudgeArgs,
+    make_judge_model,
+    make_template,
+    process_batch,
+)
 from lewidi_lib import (
-    Dataset,
-    VLLMArgs,
     assign_col_n_classes,
-    convert_output_to_parquet,
-    dump_response,
     join_fewshot_solutions,
     keep_only_data_parallel_assigned,
     load_preds_for_judge,
     make_query_from_dict,
-    postprocess_response,
     enable_logging,
     join_correct_responses,
     make_gen_kwargs_from_str,
-    using_vllm_server,
 )
 
-from llmlib.gemini.gemini_code import GeminiAPI
-from llmlib.vllm_model import ModelvLLM
-from llmlib.base_llm import LlmReq, Message, LLM
-from llmlib.mock_model import MockModel
-from prompt_templates.template import (
-    Template,
-    PredTemplate,
-    JudgeTemplate2,
-    JudgeTemplate3,
-)
-from pydantic import Field
-from pydantic_settings import BaseSettings
-from tqdm import tqdm
+from llmlib.base_llm import LlmReq, Message
+from prompt_templates.template import Template
 
-from lewidi_lib import (
-    assert_correct_model_is_running,
-    keep_only_missing_examples,
-)
+from lewidi_lib import keep_only_missing_examples
 
 
 logger = logging.getLogger(__name__)
 
 
 enable_logging()
-
-
-class JudgeArgs(BaseSettings, cli_parse_args=True):
-    n_dataset_examples: int = 100
-    n_samples_per_example: int = 5
-    n_fewshot_examples: int = 0
-
-    judge_model_id: str = "Qwen/Qwen3-4B"
-    judge_gen_kwargs_str: str = "set2"
-    judge_template_id: int = 2
-    use_random_stable_subset: bool = False
-
-    pred_model_id: str = "Qwen/Qwen3-4B"
-    pred_gen_kwargs_str: str = "set2"
-    pred_dataset: Dataset = "CSC"
-    pred_split: str = "train"
-    pred_template_id: int = 31
-    preds_dir: str = "/mnt/disk16tb/globus_shared/from-lrz-ai-systems"
-
-    tgt_file: str = "./judge-responses.jsonl"
-    few_shots_solutions_file: str | None = None
-    remote_call_concurrency: int = 8
-    vllm: VLLMArgs = Field(default_factory=VLLMArgs)
-    data_rank: int = 0
-    data_world_size: int = 1
-    timeout_secs: int = 5 * 60
-    only_run_missing_examples: bool = False
-    include_prompt_in_metadata: bool = False
-    use_async_batch_mode: bool = False
-
-
-def make_template(
-    judge_template_id: int, dataset: Dataset, pred_template_id: str
-) -> Template:
-    """Factory"""
-    pred_template = PredTemplate(dataset=dataset, template_id=pred_template_id)
-    if judge_template_id == 2:
-        return JudgeTemplate2(pred_template=pred_template)
-    elif judge_template_id == 3:
-        return JudgeTemplate3(pred_template=pred_template)
-    else:
-        raise ValueError(f"Unknown judge template: {judge_template_id}")
-
-
-def make_judge_model(args: JudgeArgs) -> LLM:
-    if args.judge_model_id == "test":
-        model = MockModel()
-    elif "gemini" in args.judge_model_id:
-        model = GeminiAPI(
-            model_id=args.judge_model_id,
-            max_n_batching_threads=args.remote_call_concurrency,
-            include_thoughts=True,
-            location="global",
-        )
-    else:
-        model = ModelvLLM(
-            model_id=args.judge_model_id,
-            remote_call_concurrency=args.remote_call_concurrency,
-            port=args.vllm.port,
-            timeout_secs=args.timeout_secs,
-        )
-    logger.info("Using model class: %s", type(model).__name__)
-    return model
-
-
-@singledispatch
-def process_batch(model: LLM, args: JudgeArgs, batch: list[LlmReq]) -> None:
-    return _process_batch(model, args, batch)
-
-
-def _process_batch(model: LLM, args: JudgeArgs, batch: list[LlmReq]) -> None:
-    with using_vllm_server(args.judge_model_id, args.vllm) as server:
-        assert_correct_model_is_running(server, args.judge_model_id)
-        gen = model.complete_batchof_reqs(batch=batch)
-        for response in tqdm(gen, total=len(batch)):
-            response = postprocess_response(response)
-            dump_response(response, tgt_file=args.tgt_file)
-
-    convert_output_to_parquet(args.tgt_file)
-
-
-@process_batch.register
-def _(model: GeminiAPI, args: JudgeArgs, batch: list[LlmReq]):
-    if not args.use_async_batch_mode:
-        return _process_batch(model, args, batch)
-    raise NotImplementedError()
 
 
 args = JudgeArgs()
