@@ -76,7 +76,7 @@ def make_judge_model(args: JudgeArgs) -> LLM:
             model_id=args.judge_model_id,
             max_n_batching_threads=args.remote_call_concurrency,
             include_thoughts=True,
-            location="global",
+            # location="global", # global does not work for batch jobs
         )
     else:
         model = ModelvLLM(
@@ -109,4 +109,4 @@ def process_batch(model: LLM, args: JudgeArgs, batch: list[LlmReq]) -> None:
 def _(model: GeminiAPI, args: JudgeArgs, batch: list[LlmReq]):
     if not args.use_async_batch_mode:
         return _process_batch(model, args, batch)
-    raise NotImplementedError()
+    model.submit_batch_job(entries=batch, tgt_dir=args.tgt_file)
