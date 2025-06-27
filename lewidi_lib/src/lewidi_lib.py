@@ -18,6 +18,7 @@ import pandas as pd
 import logging
 import os
 from pathlib import Path
+import nltk
 
 from prm800k import extract_rating, mapping
 from pydantic import BaseModel, RootModel
@@ -812,9 +813,10 @@ def process_ratings(
     operation: Literal["mean", "prod"] = np.mean,
     drop_na_score: bool = True,
 ) -> pd.DataFrame:
-    ratings["step_ratings"] = ratings["response_parsed"].apply(
+    step_ratings_col = ratings["response_parsed"].apply(
         extract_rating, cat_mapping=cat_mapping
     )
+    ratings = ratings.assign(step_ratings=step_ratings_col)
     ratings = drop_na_response_rows(ratings, col="step_ratings")
 
     ratings = ratings.assign(score=ratings["step_ratings"].apply(operation))
@@ -912,7 +914,7 @@ def assert_correct_model_is_running(server: VLLMServer, model_id: str):
 def assing_col_score_from_json(ratings: pd.DataFrame) -> pd.DataFrame:
     ratings["response_parsed"] = ratings["response"].apply(json_repair.loads)
     ratings = process_ratings(
-        ratings, cat_mapping=mapping(ok=0, bad=0), drop_na_score=False
+        ratings, cat_mapping=mapping(ok=0, bad=0), drop_na_score=True
     )
     return ratings
 
@@ -929,3 +931,12 @@ def parse_float(s: str) -> float | None:
     except ValueError:
         logger.warning("Failed to parse float from %s", s)
         return None
+
+
+def compute_n_steps_equality(joint: pd.DataFrame) -> float:
+    n_steps = joint["reasoning"].apply(lambda string: len(nltk.sent_tokenize(string)))
+    logger.info("avg n_steps: %.1f", n_steps.mean())
+    n_steps_according_to_judge = joint["step_ratings"].apply(len)
+    logger.info("avg n_steps (judge): %.1f", n_steps_according_to_judge.mean())
+    n_steps_equal = (n_steps_according_to_judge == n_steps).mean()
+    return n_steps_equal

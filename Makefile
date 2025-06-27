@@ -43,7 +43,7 @@ inference:
 
 judge:
 	python llm_judge.py \
-		--n_dataset_examples 100 \
+		--n_dataset_examples 500 \
 		--n_samples_per_example 10 \
 		--judge_model_id gemini-2.5-flash \
 		--judge_gen_kwargs_str gemini-defaults \
@@ -62,8 +62,8 @@ judge:
 		--only_run_missing_examples True \
 		--include_prompt_in_metadata False \
 		--preds_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/preds \
-		--tgt_file /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/judge/gemini-2.5-flash/t2/100ex-10loops/responses.jsonl \
-		--batch_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/judge/gemini-2.5-flash/t2/100ex-10loops/lewidi-judge-run3 \
+		--tgt_file /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/judge/gemini-2.5-flash/t2/500ex-10loops/responses.jsonl \
+		--batch_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/judge/gemini-2.5-flash/t2/500ex-10loops/lewidi-judge-run4 \
 		--data_rank 0 \
 		--data_world_size 1 \
 		--n_fewshot_examples 0 \
