@@ -1,3 +1,4 @@
+from itertools import product
 from pathlib import Path
 
 
@@ -6,7 +7,11 @@ def shortform(model_id: str) -> str:
 
 
 def create_sbatch_file(
-    model_id: str, judge_model_id: str, tgt_dir: Path, judge_template_id: int = 2
+    model_id: str,
+    judge_model_id: str,
+    tgt_dir: Path,
+    judge_template_id: int = 2,
+    vllm_starting_port: int = 9000,
 ) -> None:
     dataset = "CSC"
     root = Path(
@@ -49,6 +54,7 @@ def create_sbatch_file(
         "N_GPUS": n_gpus,
         "ENABLE_EXPERT_PARALLEL": enable_expert_parallel,
         "REMOTE_CALL_CONCURRENCY": remote_call_concurrency,
+        "VLLM_PORT": vllm_starting_port,
     }
 
     template = Path("template.sbatch").read_text()
@@ -75,6 +81,9 @@ tgt_dir = Path("slurm_scripts")
 for file in tgt_dir.glob("*.sbatch"):
     file.unlink()
 
-for model_id, judge_model_id in cases:
-    for judge_template_id in template_ids:
-        create_sbatch_file(model_id, judge_model_id, tgt_dir, judge_template_id)
+combs = product(template_ids, cases)
+for i, (judge_template_id, (model_id, judge_model_id)) in enumerate(combs):
+    vllm_starting_port = 9000 + i * 100
+    create_sbatch_file(
+        model_id, judge_model_id, tgt_dir, judge_template_id, vllm_starting_port
+    )

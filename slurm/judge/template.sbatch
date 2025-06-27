@@ -11,7 +11,7 @@
 CONTAINER_NAME="{JOBNAME}_${{SLURM_ARRAY_TASK_ID}}"
 
 # Calculate port based on base port and array task ID to avoid conflicts
-VLLM_PORT=$((9000 + $SLURM_ARRAY_TASK_ID))
+VLLM_PORT=$(({VLLM_PORT} + $SLURM_ARRAY_TASK_ID))
 
 # Delete any existing container with this name
 echo "Removing any existing container named $CONTAINER_NAME..."
