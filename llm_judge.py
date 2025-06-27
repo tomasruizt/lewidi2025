@@ -1,3 +1,4 @@
+from functools import singledispatch
 import logging
 from lewidi_lib import (
     Dataset,
@@ -18,7 +19,7 @@ from lewidi_lib import (
 
 from llmlib.gemini.gemini_code import GeminiAPI
 from llmlib.vllm_model import ModelvLLM
-from llmlib.base_llm import LlmReq, Message
+from llmlib.base_llm import LlmReq, Message, LLM
 from llmlib.mock_model import MockModel
 from prompt_templates.template import (
     Template,
@@ -68,6 +69,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     timeout_secs: int = 5 * 60
     only_run_missing_examples: bool = False
     include_prompt_in_metadata: bool = False
+    use_async_batch_mode: bool = False
 
 
 def make_template(
@@ -83,7 +85,7 @@ def make_template(
         raise ValueError(f"Unknown judge template: {judge_template_id}")
 
 
-def make_judge_model(args: JudgeArgs):
+def make_judge_model(args: JudgeArgs) -> LLM:
     if args.judge_model_id == "test":
         model = MockModel()
     elif "gemini" in args.judge_model_id:
@@ -102,6 +104,29 @@ def make_judge_model(args: JudgeArgs):
         )
     logger.info("Using model class: %s", type(model).__name__)
     return model
+
+
+@singledispatch
+def process_batch(model: LLM, args: JudgeArgs, batch: list[LlmReq]) -> None:
+    return _process_batch(model, args, batch)
+
+
+def _process_batch(model: LLM, args: JudgeArgs, batch: list[LlmReq]) -> None:
+    with using_vllm_server(args.judge_model_id, args.vllm) as server:
+        assert_correct_model_is_running(server, args.judge_model_id)
+        gen = model.complete_batchof_reqs(batch=batch)
+        for response in tqdm(gen, total=len(batch)):
+            response = postprocess_response(response)
+            dump_response(response, tgt_file=args.tgt_file)
+
+    convert_output_to_parquet(args.tgt_file)
+
+
+@process_batch.register
+def _(model: GeminiAPI, args: JudgeArgs, batch: list[LlmReq]):
+    if not args.use_async_batch_mode:
+        return _process_batch(model, args, batch)
+    raise NotImplementedError()
 
 
 args = JudgeArgs()
@@ -184,12 +209,4 @@ if len(batch) == 0:
 
 
 model = make_judge_model(args)
-
-with using_vllm_server(args.judge_model_id, args.vllm) as server:
-    assert_correct_model_is_running(server, args.judge_model_id)
-    gen = model.complete_batchof_reqs(batch=batch)
-    for response in tqdm(gen, total=len(batch)):
-        response = postprocess_response(response)
-        dump_response(response, tgt_file=args.tgt_file)
-
-convert_output_to_parquet(args.tgt_file)
+process_batch(model, args, batch)

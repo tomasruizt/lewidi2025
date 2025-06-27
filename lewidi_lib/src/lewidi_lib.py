@@ -7,7 +7,7 @@ from multiprocessing import Pool
 import random
 import re
 from scipy.stats import bootstrap
-from typing import Any, Callable, Iterable, Literal, TypedDict
+from typing import Any, Callable, Generator, Iterable, Literal, TypedDict
 import duckdb
 import json_repair
 from llmlib.vllmserver import spinup_vllm_server, VLLMServer
@@ -696,7 +696,9 @@ def vllm_command(model_id: str, vllm_args: VLLMArgs) -> list[str]:
 
 
 @contextmanager
-def using_vllm_server(model_id: str, vllm_args: VLLMArgs) -> VLLMServer:
+def using_vllm_server(
+    model_id: str, vllm_args: VLLMArgs
+) -> Generator[VLLMServer, None, None]:
     cmd: list[str] = vllm_command(model_id, vllm_args)
     with spinup_vllm_server(
         no_op=not vllm_args.start_server,
@@ -881,8 +883,8 @@ def compute_majority_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
 
 
 def assert_correct_model_is_running(server: VLLMServer, model_id: str):
-    if model_id == "test":
-        logger.info("Skipping model check for test model")
+    if model_id == "test" or "gemini" in model_id:
+        logger.info("Skipping model check on vLLM server.")
         return
 
     models = server.get_models()
