@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from dataclasses import dataclass
 import datetime
 from functools import lru_cache
 from itertools import product
@@ -866,11 +867,24 @@ def get_stable_random_subset(xs: np.ndarray, n: int) -> np.ndarray:
     return subset
 
 
-def bootstrap_avg(xs: Iterable[float]) -> tuple[float, float, float]:
-    res = bootstrap([xs], np.mean, confidence_level=0.95)
+@dataclass
+class BootstrapResult:
+    low: float
+    mean: float
+    high: float
+    confidence_level: float
+    n_samples: int
+
+    def __repr__(self):
+        return f"Mean: {self.mean:.3f}, {self.confidence_level * 100:.0f}% CI: {self.low:.3f} - {self.high:.3f}"
+
+
+def bootstrap_avg(xs: Iterable[float]) -> BootstrapResult:
+    ci = 0.95
+    res = bootstrap([xs], np.mean, confidence_level=ci)
     mean = np.mean(xs)
     low, high = res.confidence_interval
-    return low, mean, high
+    return BootstrapResult(low, mean, high, ci, len(xs))
 
 
 def compute_majority_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
