@@ -43,8 +43,8 @@ inference:
 
 judge:
 	python llm_judge.py \
-		--n_dataset_examples 3 \
-		--n_samples_per_example 3 \
+		--n_dataset_examples 100 \
+		--n_samples_per_example 10 \
 		--judge_model_id gemini-2.5-flash \
 		--judge_gen_kwargs_str gemini-defaults \
 		--judge_template_id 2 \
@@ -59,14 +59,16 @@ judge:
 		--vllm.port 8000 \
 		--vllm.start_server False \
 		--vllm.enforce_eager True \
-		--only_run_missing_examples False \
+		--only_run_missing_examples True \
 		--include_prompt_in_metadata False \
 		--preds_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/preds \
-		--tgt_file /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/judge/gemini-2.5-flash/t2/lewidi-judge-3ex-3loops \
+		--tgt_file /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/judge/gemini-2.5-flash/t2/100ex-10loops/responses.jsonl \
+		--batch_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/judge/gemini-2.5-flash/t2/100ex-10loops/lewidi-judge-run3 \
 		--data_rank 0 \
 		--data_world_size 1 \
 		--n_fewshot_examples 0 \
-		--few_shots_solutions_file none
+		--few_shots_solutions_file none \
+		--dry_run False
 
 gemini-inference:
 	python inference.py \

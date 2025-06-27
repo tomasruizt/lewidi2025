@@ -1,5 +1,6 @@
 from functools import singledispatch
 from logging import getLogger
+from pathlib import Path
 from lewidi_lib import (
     Dataset,
     VLLMArgs,
@@ -53,6 +54,9 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     only_run_missing_examples: bool = False
     include_prompt_in_metadata: bool = False
     use_async_batch_mode: bool = False
+    batch_dir: Path | None = None
+
+    dry_run: bool = False
 
 
 def make_template(
@@ -109,4 +113,4 @@ def process_batch(model: LLM, args: JudgeArgs, batch: list[LlmReq]) -> None:
 def _(model: GeminiAPI, args: JudgeArgs, batch: list[LlmReq]):
     if not args.use_async_batch_mode:
         return _process_batch(model, args, batch)
-    model.submit_batch_job(entries=batch, tgt_dir=args.tgt_file)
+    model.submit_batch_job(entries=batch, tgt_dir=args.batch_dir)

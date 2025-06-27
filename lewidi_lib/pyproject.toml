@@ -13,3 +13,4 @@ dependencies = [
 [project.scripts]
 lewidi-plot = "metrics_plotter:main"
 lewidi-sbatch-progress = "sbatch_lib:main"
+lewidi-extract-gemini-preds = "extract_gemini_preds:main"

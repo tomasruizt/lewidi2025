@@ -108,4 +108,8 @@ if len(batch) == 0:
 
 
 model = make_judge_model(args)
-process_batch(model, args, batch)
+
+if args.dry_run:
+    logger.info("Dry run. Not running the judge.")
+else:
+    process_batch(model, args, batch)
