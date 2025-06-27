@@ -26,7 +26,8 @@ inference:
 	python inference.py \
 		--model_id Qwen/Qwen3-4B \
 		--gen_kwargs set2 \
-		--datasets Paraphrase,VariErrNLI \
+		--datasets Paraphrase \
+		--splits test_clear \
 		--template_ids 31 \
 		--remote_call_concurrency 10 \
 		--n_examples 3 \
@@ -39,7 +40,8 @@ inference:
 		--vllm.port=8000 \
 		--vllm.enforce_eager=True \
 		--max_tokens 10000 \
-		--include_prompt_in_output False
+		--only_run_missing_examples=True \
+		--include_prompt_in_output=True
 
 judge:
 	python llm_judge.py \

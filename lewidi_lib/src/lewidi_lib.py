@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 Dataset = Literal["CSC", "MP", "Paraphrase", "VariErrNLI"]
 
-Split = Literal["train", "dev"]
+Split = Literal["train", "dev", "test_clear"]
 
 GenKwargs = Literal["set1", "set2", "random", "gemini-defaults"]
 
@@ -39,7 +39,7 @@ def load_dataset(
     dataset: Dataset, split: Split, parse_tgt: bool = True
 ) -> pd.DataFrame:
     root = (
-        Path(os.environ["DSS_HOME"]) / "lewidi-data" / "data_practice_phase" / dataset
+        Path(os.environ["DSS_HOME"]) / "lewidi-data" / "data_evaluation_phase" / dataset
     )
     ds = root / f"{dataset}_{split}.json"
     assert ds.exists(), ds.absolute()
