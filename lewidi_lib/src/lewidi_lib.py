@@ -56,6 +56,7 @@ def load_dataset(
     cols = [
         "dataset",
         "soft_label",
+        "annotations",
         "n_classes",
         "split",
         "dataset_idx",
@@ -483,13 +484,18 @@ def compute_target_entropy(ddf: pd.DataFrame) -> pd.DataFrame:
 
 
 def compute_unif_baseline_perf_metrics(ddf: pd.DataFrame):
-    bdf = assign_col_n_classes(ddf)
-    bdf = bdf.assign(pred=lambda row: row["n_classes"].apply(baseline_pred))
-    bdf = assign_cols_perf_metrics(bdf)
+    bdf = compute_unif_baseline(ddf)
     baseline_losses = bdf.groupby(["dataset", "split"], as_index=False).agg(
         {"ws_loss": "mean", "l0_loss": "mean"}
     )
     return baseline_losses
+
+
+def compute_unif_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
+    bdf = assign_col_n_classes(ddf)
+    bdf = bdf.assign(pred=lambda row: row["n_classes"].apply(baseline_pred))
+    bdf = assign_cols_perf_metrics(bdf)
+    return bdf
 
 
 def agg_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
