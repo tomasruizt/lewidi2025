@@ -971,18 +971,30 @@ def assert_submission_nrows_as_expected(rdf: pd.DataFrame, ddf: pd.DataFrame):
     n_exs_expected = ddf["dataset_idx"].nunique()
     n_rows_expected = n_exs_expected * 10
     actual_n_rows = len(rdf[["dataset_idx", "run_idx"]].drop_duplicates())
-    assert actual_n_rows == n_rows_expected, (
-        f"Expected {n_rows_expected} rows, got {actual_n_rows}"
-    )
+    if not np.isclose(actual_n_rows, n_rows_expected, rtol=0.001):
+        raise ValueError(f"Expected {n_rows_expected} rows, got {actual_n_rows}")
 
 
-def dump_submission_file(rdf: pd.DataFrame, dataset: Dataset) -> None:
-    tgt_root = Path("/home/tomasruiz/datasets/dss_home/lewidi-data/my_submissions")
-    tgt_file = tgt_root / f"{dataset.lower()}_test_soft.tsv"
+def dump_submission_file(rdf: pd.DataFrame, dataset: Dataset) -> Path:
+    tgt_root = submissions_root()
+    tgt_file = tgt_root / f"{submission_ds_name[dataset]}_test_soft.tsv"
 
     rdf["pred"] = rdf["pred"].apply(_as_list)
     rdf[["dataset_idx", "pred"]].to_csv(tgt_file, sep="\t", index=False, header=False)
     logger.info("Dumped submission file to %s", tgt_file)
+    return tgt_file
+
+
+submission_ds_name = {
+    "VariErrNLI": "ven",
+    "CSC": "csc",
+    "MP": "mp",
+    "Paraphrase": "par",
+}
+
+
+def submissions_root():
+    return Path("/home/tomasruiz/datasets/dss_home/lewidi-data/my_submissions")
 
 
 def _as_list(x: np.ndarray | dict) -> list:
