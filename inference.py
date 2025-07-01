@@ -6,6 +6,7 @@ from typing import Iterable
 from llmlib.vllm_model import ModelvLLM
 from llmlib.base_llm import Message, Conversation, LlmReq
 from llmlib.gemini.gemini_code import GeminiAPI
+from llmlib.mock_model import MockModel
 import logging
 import pandas as pd
 from prompt_templates.template import load_template
@@ -83,6 +84,12 @@ def create_batch_for_model(
         df = df.tail(-args.n_fewshot_examples)
     df = df.head(args.n_examples)
 
+    ilocs = list(range(len(df)))
+    ilocs = keep_only_data_parallel_assigned(
+        ilocs, args.data_rank, args.data_world_size
+    )
+    df = df.iloc[ilocs]
+
     if args.only_run_missing_examples:
         sp = {
             "dataset": dataset,
@@ -101,9 +108,7 @@ def create_batch_for_model(
     fixed_data["split"] = split
     fixed_data["template_id"] = template_id
 
-    rows = [row for _, row in df.iterrows()]
-    rows = keep_only_data_parallel_assigned(rows, args.data_rank, args.data_world_size)
-    for row in rows:
+    for _, row in df.iterrows():
         convo, prompt = make_convo(row["text"], dataset, examples_df, template_id)
         metadata = fixed_data | {"dataset_idx": row["dataset_idx"]}
         if args.include_prompt_in_output:
@@ -168,6 +173,9 @@ def run_many_inferences(args: Args) -> None:
 
 
 def make_model(args: Args):
+    if args.model_id == "test":
+        return MockModel()
+
     if args.model_id.startswith("gemini"):
         model = GeminiAPI(
             model_id=args.model_id,
