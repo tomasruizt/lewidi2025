@@ -517,7 +517,20 @@ def process_rdf_and_add_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
 
 
 def group_pred(preds: pd.Series) -> np.ndarray:
+    if isinstance(preds.iloc[0], dict):
+        data = pd.DataFrame(preds.tolist()).apply(group_pred).to_dict()
+        return {k: np.array(list(v.values())) for k, v in data.items()}
+
     return np.mean(preds.tolist(), axis=0)
+
+
+def compute_average_baseline_and_assing_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
+    agg_df = compute_average_baseline(rdf)
+    agg_df = join_correct_responses(agg_df)
+    agg_df = assign_cols_perf_metrics(agg_df)
+    if len(agg_df) == len(rdf):
+        logger.warning("No model-average reduction took place")
+    return agg_df
 
 
 def compute_average_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
@@ -525,10 +538,6 @@ def compute_average_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
     agg_df = rdf.groupby(gby_cols, as_index=False, observed=True).agg(
         pred=("pred", group_pred)
     )
-    agg_df = join_correct_responses(agg_df)
-    agg_df = assign_cols_perf_metrics(agg_df)
-    if len(agg_df) == len(rdf):
-        logger.warning("No model-average reduction took place")
     return agg_df
 
 
@@ -946,3 +955,44 @@ def compute_n_steps_equality(joint: pd.DataFrame) -> float:
     logger.info("avg n_steps (judge): %.1f", n_steps_according_to_judge.mean())
     n_steps_equal = (n_steps_according_to_judge == n_steps).mean()
     return n_steps_equal
+
+
+def load_preds_for_submission(dataset: Dataset, split: Split) -> pd.DataFrame:
+    file = f"/home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/{dataset}/{split}/allex_10loops/preds/responses.parquet"
+    rdf = pd.read_parquet(file)
+    rdf = process_rdf(rdf)
+    logger.info("Before dropping submission duplicates: %d", len(rdf))
+    rdf = rdf.drop_duplicates(subset=["dataset_idx", "run_idx"])
+    logger.info("After dropping submission duplicates: %d", len(rdf))
+    return rdf
+
+
+def assert_submission_nrows_as_expected(rdf: pd.DataFrame, ddf: pd.DataFrame):
+    n_exs_expected = ddf["dataset_idx"].nunique()
+    n_rows_expected = n_exs_expected * 10
+    actual_n_rows = len(rdf[["dataset_idx", "run_idx"]].drop_duplicates())
+    assert actual_n_rows == n_rows_expected, (
+        f"Expected {n_rows_expected} rows, got {actual_n_rows}"
+    )
+
+
+def dump_submission_file(rdf: pd.DataFrame, dataset: Dataset) -> None:
+    tgt_root = Path("/home/tomasruiz/datasets/dss_home/lewidi-data/my_submissions")
+    tgt_file = tgt_root / f"{dataset.lower()}_test_soft.tsv"
+
+    rdf["pred"] = rdf["pred"].apply(_as_list)
+    rdf[["dataset_idx", "pred"]].to_csv(tgt_file, sep="\t", index=False, header=False)
+    logger.info("Dumped submission file to %s", tgt_file)
+
+
+def _as_list(x: np.ndarray | dict) -> list:
+    if isinstance(x, dict):
+        return [_as_list(l) for l in x.values()]
+    return x.tolist()
+
+
+def reorder_like_ddf(rdf: pd.DataFrame, ddf: pd.DataFrame) -> pd.DataFrame:
+    order = ddf[["dataset_idx", "dataset"]]
+    ordered_rdf = order.merge(rdf, on="dataset_idx", how="left")
+    assert len(ordered_rdf) == len(ddf), (len(ordered_rdf), len(ddf))
+    return ordered_rdf
