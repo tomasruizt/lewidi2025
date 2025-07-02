@@ -61,6 +61,29 @@ class JudgeCoTSentencesTemplate(Template):
         return prompt
 
 
+@dataclass
+class JudgeCoTParagraphsTemplate(Template):
+    pred_template: PredTemplate
+    judge_template_file = "reasoning_trace_eval22.txt"
+
+    def __post_init__(self):
+        self.judge_template = load_template_file(
+            templates_root / self.judge_template_file
+        )
+
+    def make_prompt(self, data: Mapping) -> str:
+        llm_problem = self.pred_template.make_prompt(data)
+        steps = [
+            {"idx": i, "text": s}
+            for i, s in enumerate(data["reasoning"].split("\n\n"))
+            if s.strip()
+        ]
+        prompt = self.judge_template.format(
+            PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
+        )
+        return prompt
+
+
 def in_qwen3_format(reasoning: str, output: str) -> str:
     return f"""
 <think>

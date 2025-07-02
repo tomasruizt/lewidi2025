@@ -45,11 +45,11 @@ inference:
 
 judge:
 	python llm_judge.py \
-		--n_dataset_examples 5 \
+		--n_dataset_examples 100 \
 		--n_samples_per_example 1 \
 		--judge_model_id Qwen/Qwen3-4B \
 		--judge_gen_kwargs_str set2 \
-		--judge_template_id 10 \
+		--judge_template_id 22 \
 		--use_random_stable_subset True \
 		--use_async_batch_mode True \
 		--pred_model_id Qwen/Qwen3-32B \

@@ -15,6 +15,7 @@ from llmlib.gemini.gemini_code import GeminiAPI
 from llmlib.mock_model import MockModel
 from llmlib.vllm_model import ModelvLLM
 from prompt_templates.template import (
+    JudgeCoTParagraphsTemplate,
     JudgeCoTSentencesTemplate,
     JudgeOutcomeTemplate,
     PredTemplate,
@@ -67,6 +68,8 @@ def make_template(
     pred_template = PredTemplate(dataset=dataset, template_id=pred_template_id)
     if judge_template_id == 2:
         return JudgeCoTSentencesTemplate(pred_template=pred_template)
+    elif judge_template_id == 22:
+        return JudgeCoTParagraphsTemplate(pred_template=pred_template)
     elif judge_template_id == 3:
         return JudgeOutcomeTemplate(pred_template=pred_template)
     elif judge_template_id == 10:
