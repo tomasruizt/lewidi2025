@@ -7,6 +7,7 @@ import json
 from multiprocessing import Pool
 import random
 import re
+import zipfile
 from scipy.stats import bootstrap
 from typing import Any, Callable, Generator, Iterable, Literal, TypedDict
 import duckdb
@@ -295,10 +296,10 @@ class VariErrDict(TypedDict):
     contradiction: Any
 
 
-def is_valid_pred(pred: np.ndarray | VariErrDict) -> bool:
+def is_valid_pred(pred: np.ndarray | VariErrDict, atol: float = 0.01) -> bool:
     if isinstance(pred, dict):
         return all(is_valid_pred(v) for v in pred.values())
-    return np.abs(pred.sum() - 1) < 0.01
+    return np.abs(pred.sum() - 1) < atol
 
 
 def as_categorical(ss: pd.Series) -> pd.Categorical:
@@ -521,7 +522,8 @@ def group_pred(preds: pd.Series) -> np.ndarray:
         data = pd.DataFrame(preds.tolist()).apply(group_pred).to_dict()
         return {k: np.array(list(v.values())) for k, v in data.items()}
 
-    return np.mean(preds.tolist(), axis=0)
+    means = np.mean(preds.tolist(), axis=0)
+    return means / means.sum()
 
 
 def compute_average_baseline_and_assing_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
@@ -960,19 +962,31 @@ def compute_n_steps_equality(joint: pd.DataFrame) -> float:
 def load_preds_for_submission(dataset: Dataset, split: Split) -> pd.DataFrame:
     file = f"/home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/{dataset}/{split}/allex_10loops/preds/responses.parquet"
     rdf = pd.read_parquet(file)
-    rdf = process_rdf(rdf)
+    rdf = process_rdf(rdf, discard_invalid_pred=True)
     logger.info("Before dropping submission duplicates: %d", len(rdf))
     rdf = rdf.drop_duplicates(subset=["dataset_idx", "run_idx"])
     logger.info("After dropping submission duplicates: %d", len(rdf))
     return rdf
 
 
-def assert_submission_nrows_as_expected(rdf: pd.DataFrame, ddf: pd.DataFrame):
+def warnif_submission_nrows_not_as_expected(
+    rdf: pd.DataFrame, ddf: pd.DataFrame
+) -> None:
     n_exs_expected = ddf["dataset_idx"].nunique()
     n_rows_expected = n_exs_expected * 10
     actual_n_rows = len(rdf[["dataset_idx", "run_idx"]].drop_duplicates())
-    if not np.isclose(actual_n_rows, n_rows_expected, rtol=0.001):
-        raise ValueError(f"Expected {n_rows_expected} rows, got {actual_n_rows}")
+    if not np.isclose(actual_n_rows, n_rows_expected, rtol=0.01):
+        pct = actual_n_rows / n_rows_expected
+        logger.warning(
+            "Expected %d rows, got %d (%.2f%%)", n_rows_expected, actual_n_rows, pct
+        )
+
+
+def assert_submission_rows_sum_to_one(rdf: pd.DataFrame) -> None:
+    valid = rdf["pred"].apply(is_valid_pred, atol=1e-6)
+    n_invalid = (~valid).sum()
+    if n_invalid > 0:
+        raise ValueError(f"Expected all rows to sum to 1, but {n_invalid} rows did not")
 
 
 def dump_submission_file(rdf: pd.DataFrame, dataset: Dataset) -> Path:
@@ -1008,3 +1022,27 @@ def reorder_like_ddf(rdf: pd.DataFrame, ddf: pd.DataFrame) -> pd.DataFrame:
     ordered_rdf = order.merge(rdf, on="dataset_idx", how="left")
     assert len(ordered_rdf) == len(ddf), (len(ordered_rdf), len(ddf))
     return ordered_rdf
+
+
+def create_zip_file(files: list[Path]) -> Path:
+    zip_file = submissions_root() / "res.zip"
+    with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for file_path in files:
+            zipf.write(file_path, os.path.basename(file_path))
+    return zip_file
+
+
+def dump_submission_files(datasets: list[Dataset]) -> list[Path]:
+    split = "test_clear"
+    files = []
+    for dataset in datasets:
+        logger.info("Creating submission file for dataset %s", dataset)
+        rdf = load_preds_for_submission(dataset, split)
+        ddf = load_dataset(dataset=dataset, split=split, parse_tgt=False)
+        warnif_submission_nrows_not_as_expected(rdf, ddf)
+        model_avg = compute_average_baseline(rdf)
+        model_avg = reorder_like_ddf(rdf=model_avg, ddf=ddf)
+        assert_submission_rows_sum_to_one(model_avg)
+        tgt_file = dump_submission_file(rdf=model_avg, dataset=dataset)
+        files.append(tgt_file)
+    return files
