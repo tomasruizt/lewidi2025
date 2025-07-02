@@ -895,7 +895,7 @@ class BootstrapResult:
     n_samples: int
 
     def __repr__(self):
-        return f"Mean: {self.mean:.3f}, {self.confidence_level * 100:.0f}% CI: {self.low:.3f} - {self.high:.3f}"
+        return f"NumSamples: {self.n_samples}, Mean: {self.mean:.3f}, {self.confidence_level * 100:.0f}% CI: {self.low:.3f} - {self.high:.3f}"
 
 
 def bootstrap_avg(xs: Iterable[float]) -> BootstrapResult:
@@ -950,13 +950,22 @@ def parse_float(s: str) -> float | None:
         return None
 
 
-def compute_n_steps_equality(joint: pd.DataFrame) -> float:
-    n_steps = joint["reasoning"].apply(lambda string: len(nltk.sent_tokenize(string)))
+def compute_n_steps_equality(joint: pd.DataFrame, step_split_type="sent") -> float:
+    n_steps = joint["reasoning"].apply(step_split, step_split_type=step_split_type)
     logger.info("avg n_steps: %.1f", n_steps.mean())
     n_steps_according_to_judge = joint["step_ratings"].apply(len)
     logger.info("avg n_steps (judge): %.1f", n_steps_according_to_judge.mean())
     n_steps_equal = (n_steps_according_to_judge == n_steps).mean()
     return n_steps_equal
+
+
+def step_split(string: str, step_split_type: str) -> int:
+    if step_split_type == "sent":
+        return len(nltk.sent_tokenize(string))
+    elif step_split_type == "linebreaks":
+        return len(string.split("\n\n"))
+    else:
+        raise ValueError(f"Invalid step_split_type: {step_split_type}")
 
 
 def load_preds_for_submission(dataset: Dataset, split: Split) -> pd.DataFrame:
