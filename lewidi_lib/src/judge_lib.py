@@ -15,9 +15,10 @@ from llmlib.gemini.gemini_code import GeminiAPI
 from llmlib.mock_model import MockModel
 from llmlib.vllm_model import ModelvLLM
 from prompt_templates.template import (
-    JudgeTemplate2,
-    JudgeTemplate3,
+    JudgeCoTSentencesTemplate,
+    JudgeOutcomeTemplate,
     PredTemplate,
+    ReformatTemplate,
     Template,
 )
 from pydantic import Field
@@ -65,9 +66,11 @@ def make_template(
     """Factory"""
     pred_template = PredTemplate(dataset=dataset, template_id=pred_template_id)
     if judge_template_id == 2:
-        return JudgeTemplate2(pred_template=pred_template)
+        return JudgeCoTSentencesTemplate(pred_template=pred_template)
     elif judge_template_id == 3:
-        return JudgeTemplate3(pred_template=pred_template)
+        return JudgeOutcomeTemplate(pred_template=pred_template)
+    elif judge_template_id == 10:
+        return ReformatTemplate(pred_template=pred_template)
     else:
         raise ValueError(f"Unknown judge template: {judge_template_id}")
 

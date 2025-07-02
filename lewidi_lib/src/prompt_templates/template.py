@@ -42,7 +42,7 @@ def load_template_file(file: str | Path) -> str:
 
 
 @dataclass
-class JudgeTemplate2(Template):
+class JudgeCoTSentencesTemplate(Template):
     pred_template: PredTemplate
     judge_template_file = "reasoning_trace_eval2.txt"
 
@@ -72,7 +72,7 @@ def in_qwen3_format(reasoning: str, output: str) -> str:
 
 
 @dataclass
-class JudgeTemplate3(Template):
+class JudgeOutcomeTemplate(Template):
     pred_template: PredTemplate
     judge_template_file = "judge_eval.txt"
 
@@ -87,5 +87,25 @@ class JudgeTemplate3(Template):
         prompt = self.judge_template.format(
             llm_problem=llm_problem,
             llm_solution=llm_solution,
+        )
+        return prompt
+
+
+@dataclass
+class ReformatTemplate(Template):
+    pred_template: PredTemplate
+    reformat_template_file = "reformat.txt"
+
+    def __post_init__(self):
+        self.reformat_template = load_template_file(
+            templates_root / self.reformat_template_file
+        )
+
+    def make_prompt(self, data: Mapping) -> str:
+        llm_problem = self.pred_template.make_prompt(data)
+        llm_response = data["reasoning"]
+        prompt = self.reformat_template.format(
+            problem=llm_problem,
+            response=llm_response,
         )
         return prompt
