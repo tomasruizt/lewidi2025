@@ -73,7 +73,7 @@ cases = [
     ("Qwen/Qwen3-8B", "Qwen/Qwen3-32B"),
     ("Qwen/Qwen3-32B", "Qwen/Qwen3-32B"),
 ]
-template_ids = [2, 3]
+template_ids = [22]
 
 
 tgt_dir = Path("slurm_scripts")
