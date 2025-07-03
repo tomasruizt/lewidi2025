@@ -53,11 +53,14 @@ def load_dataset(
         df = assign_col_target_entropy(df, dataset)
     df["dataset"] = dataset
     df = assign_col_n_classes(df)
+    metadata = json.loads((root / f"{dataset}_annotators_meta.json").read_text())
+    df = assign_col_annotator_metadata(df, metadata)
     df["split"] = split
     cols = [
         "dataset",
         "soft_label",
         "annotations",
+        "annotator_metadata",
         "n_classes",
         "split",
         "dataset_idx",
@@ -68,6 +71,12 @@ def load_dataset(
     ]
     cols = [c for c in cols if c in df.columns]
     return df[cols]
+
+
+def assign_col_annotator_metadata(df: pd.DataFrame, metadata: dict) -> pd.DataFrame:
+    unknown = {"data": "there is no information about the annotator"}
+    col = df["annotations"].apply(lambda anns: [metadata.get(a, unknown) for a in anns])
+    return df.assign(annotator_metadata=col)
 
 
 def assign_col_tgt_has_holes(df: pd.DataFrame, dataset: Dataset) -> pd.DataFrame:

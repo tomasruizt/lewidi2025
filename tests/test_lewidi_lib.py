@@ -3,6 +3,7 @@ from lewidi_lib import (
     extract_json_substring_from_response,
     keep_only_data_parallel_assigned,
     keep_only_missing_examples,
+    load_dataset,
     load_preds_for_judge,
     make_query_from_dict,
     soft_label_to_nparray,
@@ -101,3 +102,10 @@ def test_soft_label_to_nparray_case_varierrnli():
     assert actual.keys() == expected.keys()
     for k in actual.keys():
         assert np.allclose(actual[k], expected[k])
+
+
+def test_join_annotator_metadata():
+    df = load_dataset("CSC", "test_clear", parse_tgt=False)
+    n_annotators_per_row = df["annotations"].apply(len)
+    n_metadata_per_row = df["annotator_metadata"].apply(len)
+    assert np.allclose(n_annotators_per_row, n_metadata_per_row)
