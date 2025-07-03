@@ -536,9 +536,11 @@ def agg_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
     return agg_df
 
 
-def process_rdf_and_add_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
+def process_rdf_and_add_perf_metrics(
+    rdf: pd.DataFrame, discard_invalid_pred: bool = False
+) -> pd.DataFrame:
     rdf = (
-        rdf.pipe(process_rdf)
+        rdf.pipe(process_rdf, discard_invalid_pred=discard_invalid_pred)
         .pipe(join_correct_responses)
         .pipe(assign_cols_perf_metrics)
     )
