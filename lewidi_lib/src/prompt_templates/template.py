@@ -34,6 +34,13 @@ class PredTemplate(Template):
         return self.template.format(text=data["text"])
 
 
+@dataclass
+class PredTemplateWithAnnotatorMetadata(PredTemplate):
+    def make_prompt(self, data: Mapping) -> str:
+        metadata = json.dumps(data["annotator_metadata"], indent=2)
+        return self.template.format(text=data["text"], annotator_metadata=metadata)
+
+
 def load_template_file(file: str | Path) -> str:
     file = Path(file)
     if not file.exists():
@@ -132,3 +139,11 @@ class ReformatTemplate(Template):
             response=llm_response,
         )
         return prompt
+
+
+def make_pred_template(dataset: Dataset, template_id: int) -> PredTemplate:
+    if template_id == 33:
+        return PredTemplateWithAnnotatorMetadata(
+            dataset=dataset, template_id=template_id
+        )
+    return PredTemplate(dataset=dataset, template_id=template_id)

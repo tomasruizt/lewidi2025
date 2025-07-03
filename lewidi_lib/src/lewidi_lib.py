@@ -53,8 +53,11 @@ def load_dataset(
         df = assign_col_target_entropy(df, dataset)
     df["dataset"] = dataset
     df = assign_col_n_classes(df)
-    metadata = json.loads((root / f"{dataset}_annotators_meta.json").read_text())
+
+    metadata_file = assert_path_exists(root / f"{dataset}_annotators_meta.json")
+    metadata = json_repair.loads(metadata_file.read_text())
     df = assign_col_annotator_metadata(df, metadata)
+
     df["split"] = split
     cols = [
         "dataset",
@@ -75,8 +78,24 @@ def load_dataset(
 
 def assign_col_annotator_metadata(df: pd.DataFrame, metadata: dict) -> pd.DataFrame:
     unknown = {"data": "there is no information about the annotator"}
-    col = df["annotations"].apply(lambda anns: [metadata.get(a, unknown) for a in anns])
+    col = df["annotations"].apply(
+        _extract_metadatas, all_metadata=metadata, default=unknown
+    )
     return df.assign(annotator_metadata=col)
+
+
+def _extract_metadatas(
+    annotations: dict, all_metadata: dict, default: dict
+) -> list[dict]:
+    md = []
+    for annotator in annotations.keys():
+        if annotator in all_metadata:
+            md.append(all_metadata[annotator])
+        elif annotator.replace("Ann", "") in all_metadata:
+            md.append(all_metadata[annotator.replace("Ann", "")])
+        else:
+            md.append(default)
+    return md
 
 
 def assign_col_tgt_has_holes(df: pd.DataFrame, dataset: Dataset) -> pd.DataFrame:
@@ -811,10 +830,11 @@ def keep_only_data_parallel_assigned(
     return assigned
 
 
-def assert_path_exists(path: str | Path) -> None:
+def assert_path_exists(path: str | Path) -> Path:
     path = Path(path)
     if not path.exists():
         raise FileNotFoundError(path.absolute())
+    return path
 
 
 def join_fewshot_solutions(

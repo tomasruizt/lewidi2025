@@ -18,9 +18,9 @@ from prompt_templates.template import (
     JudgeCoTParagraphsTemplate,
     JudgeCoTSentencesTemplate,
     JudgeOutcomeTemplate,
-    PredTemplate,
     ReformatTemplate,
     Template,
+    make_pred_template,
 )
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -65,7 +65,8 @@ def make_template(
     judge_template_id: int, dataset: Dataset, pred_template_id: str
 ) -> Template:
     """Factory"""
-    pred_template = PredTemplate(dataset=dataset, template_id=pred_template_id)
+    pred_template = make_pred_template(dataset, pred_template_id)
+
     if judge_template_id == 2:
         return JudgeCoTSentencesTemplate(pred_template=pred_template)
     elif judge_template_id == 22:

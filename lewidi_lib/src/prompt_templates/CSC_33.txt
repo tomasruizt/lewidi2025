@@ -1,0 +1,15 @@
+# Task
+
+Below is a context+response pair where human annotators rated the sarcasm level of the 'response' ranging from 1 (not at all) to 6 (completely). Please guess the rating given by each annotator and output them all in a list, in the same order as the annotators.
+
+Use this definition for sarcasm: "The use of remarks that clearly mean the opposite of what they say, made in order to hurt someone's feelings or to criticize something in a humorous way"
+
+Think about the perspectives that different annotators might have and how they could potentially interpret the context+response pair.
+
+# Annotator Metadata
+
+{annotator_metadata}
+
+# Context+Response Pair
+
+{text}

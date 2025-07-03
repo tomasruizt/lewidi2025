@@ -2,14 +2,14 @@ import datetime
 from itertools import product
 import json
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Mapping
 from llmlib.vllm_model import ModelvLLM
 from llmlib.base_llm import Message, Conversation, LlmReq
 from llmlib.gemini.gemini_code import GeminiAPI
 from llmlib.mock_model import MockModel
 import logging
 import pandas as pd
-from prompt_templates.template import load_template
+from prompt_templates.template import make_pred_template
 from pydantic import Field
 from tqdm import tqdm
 from lewidi_lib import (
@@ -109,7 +109,7 @@ def create_batch_for_model(
     fixed_data["template_id"] = template_id
 
     for _, row in df.iterrows():
-        convo, prompt = make_convo(row["text"], dataset, examples_df, template_id)
+        convo, prompt = make_convo(row, dataset, examples_df, template_id)
         metadata = fixed_data | {"dataset_idx": row["dataset_idx"]}
         if args.include_prompt_in_output:
             metadata["prompt"] = prompt
@@ -131,20 +131,20 @@ def make_gen_kwargs(args: Args) -> dict:
 
 
 def make_convo(
-    text: str,
+    row: Mapping,
     dataset: Dataset,
     examples_df: pd.DataFrame,
     template_id: str,
 ) -> tuple[Conversation, str]:
-    template = load_template(dataset=dataset, template_id=template_id)
+    template = make_pred_template(dataset=dataset, template_id=template_id)
 
     few_shot_msgs = []
-    for _, row in examples_df.iterrows():
-        few_shot_msgs.append(Message.from_prompt(template.format(text=row["text"])))
-        soft_label = {k: round(v, 3) for k, v in row["soft_label"].items()}
+    for _, few_shot_row in examples_df.iterrows():
+        few_shot_msgs.append(Message.from_prompt(template.make_prompt(few_shot_row)))
+        soft_label = {k: round(v, 3) for k, v in few_shot_row["soft_label"].items()}
         few_shot_msgs.append(Message(role="assistant", msg=json.dumps(soft_label)))
 
-    prompt = template.format(text=text)
+    prompt = template.make_prompt(row)
     final_msg = Message.from_prompt(prompt)
     convo = few_shot_msgs + [final_msg]
     return convo, prompt

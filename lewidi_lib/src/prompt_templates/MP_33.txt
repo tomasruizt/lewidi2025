@@ -1,0 +1,15 @@
+# Task
+
+Below is a post-reply pair where human annotators rated the irony of the 'reply' as either 0 (not ironic) or 1 (ironic). Please guess the rating given by each annotator and output them all in a list, in the same order as the annotators.
+
+Use this definition for irony: "a situation in which something which was intended to have a particular result has the opposite or a very different result"
+
+Think about the perspectives that different annotators might have and how they could potentially interpret the post-reply pair.
+
+# Annotator Metadata
+
+{annotator_metadata}
+
+# Post-Reply Pair
+
+{text}

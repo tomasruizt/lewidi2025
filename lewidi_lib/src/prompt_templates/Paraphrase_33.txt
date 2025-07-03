@@ -1,0 +1,13 @@
+# Task
+
+Below is a pair of questions where human annotators rated how strongly the questions are paraphrases of one another on a Likert scale score from -5 to 5. Please guess the rating given by each annotator and output them all in a list, in the same order as the annotators.
+
+Think about the perspectives that different annotators might have and how they could potentially interpret the pair of questions.
+
+# Annotator Metadata
+
+{annotator_metadata}
+
+# Pair of Questions
+
+{text}
