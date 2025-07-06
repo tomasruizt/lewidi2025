@@ -3,7 +3,7 @@ from typing import Any
 from pydantic_settings import BaseSettings
 
 from lewidi_lib import (
-    assign_cols_perf_metrics,
+    assign_cols_perf_metrics_softlabel,
     enable_logging,
     join_correct_responses,
     process_rdf,
@@ -21,7 +21,7 @@ def sketch_sbatch_progress(dir: str | Path) -> dict[str, Any]:
     validity_df = compute_validity_df(rdf)
     rdf = rdf.query("is_valid_pred == 1")
     rdf = join_correct_responses(rdf)
-    rdf = assign_cols_perf_metrics(rdf)
+    rdf = assign_cols_perf_metrics_softlabel(rdf)
     perf_metrics = compute_perf_metrics(rdf, gby_cols=_gby_cols)
     perf_metrics = validity_df.merge(perf_metrics, on=_gby_cols, how="left")
     return {"predictions_df": rdf, "perf_metrics": perf_metrics}

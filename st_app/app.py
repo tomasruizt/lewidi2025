@@ -1,6 +1,6 @@
 from lewidi_lib import (
     Dataset,
-    assign_cols_perf_metrics,
+    assign_cols_perf_metrics_softlabel,
     enable_logging,
     max_entropy,
     max_ws_loss,
@@ -49,7 +49,7 @@ def show_single_example_agg_stats(dataset: Dataset, row: dict, match: pd.DataFra
     match = process_rdf_cached(match)
     match = match.query("is_valid_pred")
     match = match.assign(target=[tgt] * len(match))
-    match = match.pipe(assign_cols_perf_metrics)
+    match = match.pipe(assign_cols_perf_metrics_softlabel)
 
     match.sort_values("template_id", inplace=True)
     fig, axs = plt.subplots(figsize=(4, 4))

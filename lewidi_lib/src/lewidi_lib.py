@@ -37,7 +37,7 @@ nonthinking_chat_template = Path(__file__).parent / "qwen3_nonthinking.jinja"
 
 
 def load_dataset(
-    dataset: Dataset, split: Split, parse_tgt: bool = True
+    dataset: Dataset, split: Split, parse_tgt: bool = True, task: "Task" = "soft-label"
 ) -> pd.DataFrame:
     root = (
         Path(os.environ["DSS_HOME"]) / "lewidi-data" / "data_evaluation_phase" / dataset
@@ -48,15 +48,26 @@ def load_dataset(
     df = pd.read_json(ds, orient="index")
     df.reset_index(inplace=True, names="dataset_idx")
     if parse_tgt:
-        df["target"] = df["soft_label"].apply(parse_soft_label, dataset=dataset)
-        df = assign_col_tgt_has_holes(df, dataset)
-        df = assign_col_target_entropy(df, dataset)
+        if task == "soft-label":
+            df["target"] = df["soft_label"].apply(parse_soft_label, dataset=dataset)
+            df = assign_col_tgt_has_holes(df, dataset)
+            df = assign_col_target_entropy(df, dataset)
+        elif task == "perspectivist":
+            if dataset == "VariErrNLI":
+                df["target"] = df["annotations"].apply(collect_varierr_nli_target)
+            else:
+                df["target"] = df["annotations"].apply(lambda d: list(d.values()))
+        else:
+            raise ValueError(f"Invalid task: {task}")
+
     df["dataset"] = dataset
     df = assign_col_n_classes(df)
 
     metadata_file = assert_path_exists(root / f"{dataset}_annotators_meta.json")
     metadata = json_repair.loads(metadata_file.read_text())
     df = assign_col_annotator_metadata(df, metadata)
+    df["n_annotations"] = df["number of annotations"]
+    df["n_annotators"] = df["number of annotators"]
 
     df["split"] = split
     cols = [
@@ -64,6 +75,8 @@ def load_dataset(
         "soft_label",
         "annotations",
         "annotator_metadata",
+        "n_annotations",
+        "n_annotators",
         "n_classes",
         "split",
         "dataset_idx",
@@ -74,6 +87,14 @@ def load_dataset(
     ]
     cols = [c for c in cols if c in df.columns]
     return df[cols]
+
+
+def collect_varierr_nli_target(annotations: dict) -> dict:
+    """Return {entailment: [...], neutral: [...], contradiction: [...]}"""
+    result = {}
+    for cat in ["entailment", "neutral", "contradiction"]:
+        result[cat] = [int(cat in labels_str) for labels_str in annotations.values()]
+    return result
 
 
 def assign_col_annotator_metadata(df: pd.DataFrame, metadata: dict) -> pd.DataFrame:
@@ -228,8 +249,12 @@ model_size_mapping = {
     "Qwen/Qwen3-235B-A22B": 235.0,
 }
 
+Task = Literal["soft-label", "perspectivist"]
 
-def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.DataFrame:
+
+def process_rdf(
+    rdf: pd.DataFrame, discard_invalid_pred: bool = False, task: Task = "soft-label"
+) -> pd.DataFrame:
     """Process model results dataframe"""
     logger.info("Starting processing with %d rows", len(rdf))
 
@@ -256,12 +281,19 @@ def process_rdf(rdf: pd.DataFrame, discard_invalid_pred: bool = False) -> pd.Dat
     rdf = assign_col_n_classes(rdf)
 
     rdf = extract_json_substring_from_response(rdf)
-    rdf = assign_col_pred(rdf)
+    rdf = assign_col_response_parsed(rdf)
+
+    if task == "soft-label":
+        rdf = assign_col_pred_softlabel(rdf)
+    elif task == "perspectivist":
+        rdf = assign_col_pred_perspectivist(rdf)
+    else:
+        raise ValueError(f"Invalid task: {task}")
 
     logger.info("Dropping %d NA predictions", len(rdf.query("pred.isna()")))
     rdf.query("~pred.isna()", inplace=True)
 
-    rdf = assign_col_is_valid_pred(rdf)
+    rdf = assign_col_is_valid_pred(rdf, task=task)
     if discard_invalid_pred:
         invalid_preds = rdf.query("~is_valid_pred")
         logger.info("Dropping %d invalid predictions", len(invalid_preds))
@@ -285,13 +317,26 @@ def drop_failed_rows(rdf: pd.DataFrame) -> pd.DataFrame:
     return rdf.query("success")
 
 
-def assign_col_pred(rdf: pd.DataFrame) -> pd.DataFrame:
+def assign_col_response_parsed(rdf: pd.DataFrame) -> pd.DataFrame:
     return assign_col_mp(
         rdf,
-        input_cols=["response", "dataset"],
-        ouput_col="pred",
-        func=parse_row,
+        input_cols=["response"],
+        ouput_col="response_parsed",
+        func=json_repair.loads,
     )
+
+
+def assign_col_pred_softlabel(rdf: pd.DataFrame) -> pd.DataFrame:
+    return assign_col_mp(
+        rdf,
+        input_cols=["response_parsed", "dataset"],
+        ouput_col="pred",
+        func=soft_label_to_nparray,
+    )
+
+
+def assign_col_pred_perspectivist(rdf: pd.DataFrame) -> pd.DataFrame:
+    return rdf.assign(pred=rdf["response_parsed"])
 
 
 def assign_col_mp(
@@ -304,18 +349,23 @@ def assign_col_mp(
     return rdf.assign(**{ouput_col: col})
 
 
-def parse_row(response: str, dataset: str) -> np.ndarray:
-    return soft_label_to_nparray(json_repair.loads(response), dataset=dataset)
-
-
 def discard_unnecessary_cols(rdf: pd.DataFrame) -> pd.DataFrame:
     to_discard = ["model", "pred_sum", "request_idx"]
     to_discard = [c for c in to_discard if c in rdf.columns]
     return rdf.drop(columns=to_discard)
 
 
-def assign_col_is_valid_pred(rdf: pd.DataFrame) -> pd.DataFrame:
-    return rdf.assign(is_valid_pred=rdf["pred"].apply(is_valid_pred))
+def assign_col_is_valid_pred(rdf: pd.DataFrame, task: Task) -> pd.DataFrame:
+    if task == "perspectivist":
+        return rdf.assign(is_valid_pred=rdf["pred"].apply(is_listof_ints))
+    return rdf.assign(is_valid_pred=rdf["pred"].apply(sums_to_one))
+
+
+def is_listof_ints(pred: Any) -> bool:
+    is_varierr_nli = isinstance(pred, dict)
+    if is_varierr_nli:
+        return all(is_listof_ints(v) for v in pred.values())
+    return isinstance(pred, list) and all(isinstance(x, int) for x in pred)
 
 
 class VariErrDict(TypedDict):
@@ -324,9 +374,9 @@ class VariErrDict(TypedDict):
     contradiction: Any
 
 
-def is_valid_pred(pred: np.ndarray | VariErrDict, atol: float = 0.01) -> bool:
+def sums_to_one(pred: np.ndarray | VariErrDict, atol: float = 0.01) -> bool:
     if isinstance(pred, dict):
-        return all(is_valid_pred(v) for v in pred.values())
+        return all(sums_to_one(v) for v in pred.values())
     return np.abs(pred.sum() - 1) < atol
 
 
@@ -452,12 +502,14 @@ def load_preds(parquets_dir: str = "parquets") -> pd.DataFrame:
     return rdf
 
 
-def join_correct_responses(rdf: pd.DataFrame) -> pd.DataFrame:
+def join_correct_responses(
+    rdf: pd.DataFrame, task: Task = "soft-label"
+) -> pd.DataFrame:
     ds = rdf[["dataset", "split"]].drop_duplicates()
     assert len(ds) != 0, len(ds)
     datasets = []
     for dataset, split in ds.itertuples(index=False):
-        df = load_dataset(dataset, split)
+        df = load_dataset(dataset, split, task=task)
         datasets.append(df)
     ddf = pd.concat(datasets)
     joint = join_dataset_and_preds(ddf, rdf)
@@ -473,7 +525,7 @@ def join_dataset_and_preds(ddf: pd.DataFrame, rdf: pd.DataFrame) -> pd.DataFrame
     return joint_df
 
 
-def assign_cols_perf_metrics(joint_df: pd.DataFrame) -> pd.DataFrame:
+def assign_cols_perf_metrics_softlabel(joint_df: pd.DataFrame) -> pd.DataFrame:
     joint_df = assign_col_l0_loss(joint_df)
     joint_df = assign_col_ws_loss(joint_df)
     joint_df = assign_col_pred_entropy(joint_df)
@@ -523,7 +575,7 @@ def compute_unif_baseline_perf_metrics(ddf: pd.DataFrame):
 def compute_unif_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
     bdf = assign_col_n_classes(ddf)
     bdf = bdf.assign(pred=lambda row: row["n_classes"].apply(baseline_pred))
-    bdf = assign_cols_perf_metrics(bdf)
+    bdf = assign_cols_perf_metrics_softlabel(bdf)
     return bdf
 
 
@@ -542,7 +594,7 @@ def process_rdf_and_add_perf_metrics(
     rdf = (
         rdf.pipe(process_rdf, discard_invalid_pred=discard_invalid_pred)
         .pipe(join_correct_responses)
-        .pipe(assign_cols_perf_metrics)
+        .pipe(assign_cols_perf_metrics_softlabel)
     )
     return rdf
 
@@ -559,7 +611,7 @@ def group_pred(preds: pd.Series) -> np.ndarray:
 def compute_average_baseline_and_assing_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
     agg_df = compute_average_baseline(rdf)
     agg_df = join_correct_responses(agg_df)
-    agg_df = assign_cols_perf_metrics(agg_df)
+    agg_df = assign_cols_perf_metrics_softlabel(agg_df)
     if len(agg_df) == len(rdf):
         logger.warning("No model-average reduction took place")
     return agg_df
@@ -587,7 +639,7 @@ def compute_smoothed_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
     smoothed = assign_col_is_valid_pred(smoothed)
     assert smoothed["is_valid_pred"].all()
     smoothed = join_correct_responses(smoothed)
-    smoothed = assign_cols_perf_metrics(smoothed)
+    smoothed = assign_cols_perf_metrics_softlabel(smoothed)
     return smoothed
 
 
@@ -615,8 +667,14 @@ def assign_col_template_alias(df: pd.DataFrame) -> pd.DataFrame:
     assert "template_id" in df.columns
     alias_df = pd.DataFrame(
         {
-            "template_id": as_categorical(pd.Series([2, 3, 32, 31])),
-            "template_alias": ["0 simple", "1 +def", "2 +pers", "3 +def+pers"],
+            "template_id": as_categorical(pd.Series([2, 3, 32, 31, 33])),
+            "template_alias": [
+                "0 simple",
+                "1 +def",
+                "2 +pers",
+                "3 +def+pers",
+                "perspectivist",
+            ],
         }
     )
     datasets = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
@@ -943,7 +1001,7 @@ def compute_majority_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
         .agg(lambda tgts: as_np(tgts).mean(axis=0))
         .rename(columns={"target": "pred"})
     )
-    return assign_cols_perf_metrics(ddf.merge(majority_baseline))
+    return assign_cols_perf_metrics_softlabel(ddf.merge(majority_baseline))
 
 
 def assert_correct_model_is_running(server: VLLMServer, model_id: str):
@@ -1023,7 +1081,7 @@ def warnif_submission_nrows_not_as_expected(
 
 
 def assert_submission_rows_sum_to_one(rdf: pd.DataFrame) -> None:
-    valid = rdf["pred"].apply(is_valid_pred, atol=1e-6)
+    valid = rdf["pred"].apply(sums_to_one, atol=1e-6)
     n_invalid = (~valid).sum()
     if n_invalid > 0:
         raise ValueError(f"Expected all rows to sum to 1, but {n_invalid} rows did not")
