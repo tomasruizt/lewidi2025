@@ -1,6 +1,6 @@
 # Task
 
-Below is a natural language inference (NLI) task where human annotators labeled if the "statement" followed from the "context". They labeled each category (entailment, neutral, contradiction) separately as either 0 (present) or 1 (absent). Please guess for each category the label given by each annotator and output them all in a list, in the same order as the annotators. For example, for 4 annotators:
+Below is a natural language inference (NLI) task where human annotators labeled if the "statement" followed from the "context". They labeled each category (entailment, neutral, contradiction) separately as either 0 (absent) or 1 (present). Please guess for each category the label given by each annotator and output them all in a list, in the same order as the annotators. For example, for 4 annotators:
 
 {{ "entailment": [0, 1, 0, 1], "neutral": [1, 0, 1, 0], "contradiction": [0, 0, 0, 1] }}
 
