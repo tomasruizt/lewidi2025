@@ -66,8 +66,12 @@ def load_dataset(
     metadata_file = assert_path_exists(root / f"{dataset}_annotators_meta.json")
     metadata = json_repair.loads(metadata_file.read_text())
     df = assign_col_annotator_metadata(df, metadata)
-    df["n_annotations"] = df["number of annotations"]
-    df["n_annotators"] = df["number of annotators"]
+
+    col_rename = {
+        "number of annotations": "n_annotations",
+        "number of annotators": "n_annotators",
+    }
+    df = df.rename(columns=col_rename)
 
     df["split"] = split
     cols = [
