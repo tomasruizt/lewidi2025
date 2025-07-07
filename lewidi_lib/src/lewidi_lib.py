@@ -56,7 +56,9 @@ def load_dataset(
             if dataset == "VariErrNLI":
                 df["target"] = df["annotations"].apply(collect_varierr_nli_target)
             else:
-                df["target"] = df["annotations"].apply(lambda d: list(d.values()))
+                df["target"] = df["annotations"].apply(
+                    lambda d: [int(v) for v in d.values()]
+                )
         else:
             raise ValueError(f"Invalid task: {task}")
 
@@ -1148,3 +1150,43 @@ def dump_submission_files(datasets: list[Dataset]) -> list[Path]:
         tgt_file = dump_submission_file(rdf=model_avg, dataset=dataset)
         files.append(tgt_file)
     return files
+
+
+def n_annotators_perspectivist(pred: list | VariErrDict) -> int:
+    if isinstance(pred, list):
+        return len(pred)
+    elif isinstance(pred, dict):
+        lens = {len(v) for v in pred.values()}
+        if len(lens) != 1:
+            logger.warning("Distinct lengths")
+            return None
+        return lens.pop()
+    else:
+        raise ValueError(f"Invalid type: {type(pred)}")
+
+
+def discard_rows_with_distinct_n_annotators(joint_df: pd.DataFrame) -> pd.DataFrame:
+    n_pred_annotators = joint_df["pred"].apply(n_annotators_perspectivist)
+    equal_n_annotators = n_pred_annotators == joint_df["n_annotators"]
+    logger.info(
+        "Discarding %d rows with distinct n_annotators", (~equal_n_annotators).sum()
+    )
+    return joint_df[equal_n_annotators]
+
+
+def assign_col_avg_abs_diff(joint_df: pd.DataFrame) -> pd.DataFrame:
+    res = []
+    for tgt, pred in zip(joint_df["target"], joint_df["pred"]):
+        if isinstance(tgt, dict):
+            by_cat = []
+            for cat, tgt_anns in tgt.items():
+                pred_anns = pred[cat]
+                by_cat.append(mean_abs_diff(tgt_anns, pred_anns))
+            res.append(np.mean(by_cat))
+        else:
+            res.append(mean_abs_diff(tgt, pred))
+    return joint_df.assign(avg_abs_diff=res)
+
+
+def mean_abs_diff(tgt: list[int], pred: list[int]) -> float:
+    return np.abs(np.array(tgt) - np.array(pred)).mean()
