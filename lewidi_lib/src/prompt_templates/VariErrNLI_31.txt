@@ -1,5 +1,5 @@
 # Task
-Below is a natural language inference (NLI) task where human annotators labeled if the "statement" followed from the "context". They labeled each category (entailment, neutral, contradiction) separately as either 0 (present) or 1 (absent). Please guess the distribution of labels for each category and output it in JSON format like this: {{ "entailment": {{ "0": p0, "1": p1 }}, "neutral": {{ "0": p0, "1": p1 }}, "contradiction": {{ "0": p0, "1": p1 }} }}, where p0 and p1 are each probabilities. The sum of probabilities must equal 1.0 for each category.
+Below is a natural language inference (NLI) task where human annotators labeled if the "statement" followed from the "context". They labeled each category (entailment, neutral, contradiction) separately as either 0 (absent) or 1 (present). Please guess the distribution of labels for each category and output it in JSON format like this: {{ "entailment": {{ "0": p0, "1": p1 }}, "neutral": {{ "0": p0, "1": p1 }}, "contradiction": {{ "0": p0, "1": p1 }} }}, where p0 and p1 are each probabilities. The sum of probabilities must equal 1.0 for each category.
 
 Think about the perspectives that different annotators might have and how they could potentially interpret the NLI task.
 
