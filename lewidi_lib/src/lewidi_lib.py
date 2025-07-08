@@ -302,13 +302,17 @@ def process_rdf(
 
     rdf = assign_col_is_valid_pred(rdf, task=task)
     if discard_invalid_pred:
-        invalid_preds = rdf.query("~is_valid_pred")
-        logger.info("Dropping %d invalid predictions", len(invalid_preds))
-        rdf.query("is_valid_pred", inplace=True)
+        rdf = discard_invalid_preds(rdf)
 
     rdf = assign_col_template_alias(rdf)
     rdf = discard_unnecessary_cols(rdf)
     return rdf
+
+
+def discard_invalid_preds(rdf: pd.DataFrame) -> pd.DataFrame:
+    invalid_preds = rdf.query("~is_valid_pred")
+    logger.info("Dropping %d invalid predictions", len(invalid_preds))
+    return rdf.query("is_valid_pred")
 
 
 def drop_na_response_rows(rdf: pd.DataFrame, col: str = "response") -> pd.DataFrame:
@@ -343,7 +347,14 @@ def assign_col_pred_softlabel(rdf: pd.DataFrame) -> pd.DataFrame:
 
 
 def assign_col_pred_perspectivist(rdf: pd.DataFrame) -> pd.DataFrame:
-    return rdf.assign(pred=rdf["response_parsed"])
+    return rdf.assign(pred=rdf["response_parsed"].apply(try_list_of_ints))
+
+
+def try_list_of_ints(pred: Any) -> Any:
+    try:
+        return list(map(int, pred))
+    except Exception:
+        return pred
 
 
 def assign_col_mp(
@@ -372,7 +383,8 @@ def is_listof_ints(pred: Any) -> bool:
     is_varierr_nli = isinstance(pred, dict)
     if is_varierr_nli:
         return all(is_listof_ints(v) for v in pred.values())
-    return isinstance(pred, list) and all(isinstance(x, int) for x in pred)
+    valid = isinstance(pred, list) and all(isinstance(x, int) for x in pred)
+    return valid
 
 
 class VariErrDict(TypedDict):
