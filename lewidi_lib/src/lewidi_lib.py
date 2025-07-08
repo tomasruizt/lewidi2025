@@ -55,9 +55,13 @@ def load_dataset(
         elif task == "perspectivist":
             if dataset == "VariErrNLI":
                 df["target"] = df["annotations"].apply(collect_varierr_nli_target)
+                df["n_annotators"] = df["number of annotators"]
             else:
                 df["target"] = df["annotations"].apply(
                     lambda d: [int(v) for v in d.values()]
+                )
+                df["n_annotators"] = df["annotations"].apply(
+                    lambda d: len(set(d.keys()))
                 )
         else:
             raise ValueError(f"Invalid task: {task}")
@@ -69,10 +73,7 @@ def load_dataset(
     metadata = json_repair.loads(metadata_file.read_text())
     df = assign_col_annotator_metadata(df, metadata)
 
-    col_rename = {
-        "number of annotations": "n_annotations",
-        "number of annotators": "n_annotators",
-    }
+    col_rename = {"number of annotations": "n_annotations"}
     df = df.rename(columns=col_rename)
 
     df["split"] = split
