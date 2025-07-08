@@ -69,9 +69,10 @@ def load_dataset(
                 )
                 df["n_annotators"] = df["number of annotators"]
             else:
-                df["target"] = df["annotations"].apply(
-                    lambda d: [int(v) for v in d.values()]
-                )
+                if split != "test_clear":
+                    df["target"] = df["annotations"].apply(
+                        lambda d: [int(v) for v in d.values()]
+                    )
                 df["n_annotators"] = df["annotations"].apply(
                     lambda d: len(set(d.keys()))
                 )
@@ -1199,6 +1200,8 @@ def dump_submission_files_perspectivist(datasets: list[Dataset]) -> list[Path]:
         ddf = load_dataset(
             dataset=dataset, split=split, parse_tgt=False, task="perspectivist"
         )
+        rdf = join_dataset(rdf, task="perspectivist")
+        rdf = discard_rows_with_distinct_n_annotators(rdf)
         warnif_submission_nrows_not_as_expected(rdf, ddf)
         preds = rdf.groupby("dataset_idx", as_index=False).first()
         preds = reorder_like_ddf(rdf=preds, ddf=ddf)
@@ -1212,12 +1215,14 @@ def dump_submission_files_perspectivist(datasets: list[Dataset]) -> list[Path]:
 
 def assert_correct_n_annotators(rdf: pd.DataFrame, ddf: pd.DataFrame) -> None:
     """num annotators in preds must match num annotators in ddf"""
-    n_annotators_preds = rdf["pred"].apply(n_annotators_perspectivist)
-    n_annotators_ddf = ddf["annotations"].apply(len)
-    assert n_annotators_preds.equals(n_annotators_ddf), (
-        n_annotators_preds,
-        n_annotators_ddf,
+    joined = rdf[["dataset_idx", "pred"]].merge(
+        ddf[["dataset_idx", "annotations"]], on="dataset_idx", how="left"
     )
+    n_annotators_preds = joined["pred"].apply(n_annotators_perspectivist)
+    n_annotators_ddf = joined["annotations"].apply(len)
+    incompatible = n_annotators_preds != n_annotators_ddf
+    if incompatible.any():
+        raise ValueError(f"{incompatible.sum()} rows have incompatible n_annotators")
 
 
 def n_annotators_perspectivist(pred: list | VariErrDict) -> int:

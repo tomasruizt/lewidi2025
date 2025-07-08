@@ -7,7 +7,7 @@ from lewidi_lib import (
 
 enable_logging()
 
-datasets = ["VariErrNLI", "Paraphrase"]  # "CSC", "MP"]
+datasets = ["VariErrNLI", "Paraphrase", "CSC", "MP"]
 files_pe = dump_submission_files_perspectivist(datasets)
 files_soft = dump_submission_files_softlabel(datasets)
 zip_file = create_zip_file(files_pe + files_soft)
