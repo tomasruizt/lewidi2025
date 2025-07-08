@@ -1084,10 +1084,14 @@ def step_split(string: str, step_split_type: str) -> int:
         raise ValueError(f"Invalid step_split_type: {step_split_type}")
 
 
-def load_preds_for_submission(dataset: Dataset, split: Split) -> pd.DataFrame:
-    file = f"/home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/{dataset}/{split}/allex_10loops/preds/responses.parquet"
+def load_preds_for_submission(
+    dataset: Dataset, split: Split, task: Task
+) -> pd.DataFrame:
+    template_id = {"soft-label": 31, "perspectivist": 33}
+    template_id = template_id[task]
+    file = f"/home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t{template_id}/{dataset}/{split}/allex_10loops/preds/responses.parquet"
     rdf = pd.read_parquet(file)
-    rdf = process_rdf(rdf, discard_invalid_pred=True)
+    rdf = process_rdf(rdf, discard_invalid_pred=True, task=task)
     logger.info("Before dropping submission duplicates: %d", len(rdf))
     rdf = rdf.drop_duplicates(subset=["dataset_idx", "run_idx"])
     logger.info("After dropping submission duplicates: %d", len(rdf))
@@ -1114,11 +1118,13 @@ def assert_submission_rows_sum_to_one(rdf: pd.DataFrame) -> None:
         raise ValueError(f"Expected all rows to sum to 1, but {n_invalid} rows did not")
 
 
-def dump_submission_file(rdf: pd.DataFrame, dataset: Dataset) -> Path:
+def dump_submission_file(rdf: pd.DataFrame, dataset: Dataset, task: Task) -> Path:
     tgt_root = submissions_root()
-    tgt_file = tgt_root / f"{submission_ds_name[dataset]}_test_soft.tsv"
+    task_suffix = {"soft-label": "soft", "perspectivist": "pe"}[task]
+    tgt_file = tgt_root / f"{submission_ds_name[dataset]}_test_{task_suffix}.tsv"
 
     rdf["pred"] = rdf["pred"].apply(_as_list)
+    tgt_file.parent.mkdir(parents=True, exist_ok=True)
     rdf[["dataset_idx", "pred"]].to_csv(tgt_file, sep="\t", index=False, header=False)
     logger.info("Dumped submission file to %s", tgt_file)
     return tgt_file
@@ -1136,9 +1142,13 @@ def submissions_root():
     return Path("/home/tomasruiz/datasets/dss_home/lewidi-data/my_submissions")
 
 
-def _as_list(x: np.ndarray | dict) -> list:
-    if isinstance(x, dict):
-        return [_as_list(l) for l in x.values()]
+def _as_list(x: np.ndarray | dict | list) -> list:
+    if isinstance(x, list):
+        return x
+    if isinstance(x, dict):  # VariErrNLI
+        # order from: https://colab.research.google.com/drive/1VJhZ5ilfE9Qdjbr3DaonaoN9i5LLp636?usp=chrome_ntp#scrollTo=N_rA8tMCDPf4
+        cat_order = ["contradiction", "entailment", "neutral"]
+        return [_as_list(x[cat]) for cat in cat_order]
     return x.tolist()
 
 
@@ -1157,20 +1167,52 @@ def create_zip_file(files: list[Path]) -> Path:
     return zip_file
 
 
-def dump_submission_files(datasets: list[Dataset]) -> list[Path]:
+def dump_submission_files_softlabel(datasets: list[Dataset]) -> list[Path]:
     split = "test_clear"
     files = []
     for dataset in datasets:
-        logger.info("Creating submission file for dataset %s", dataset)
-        rdf = load_preds_for_submission(dataset, split)
+        logger.info("Softlabel: Creating submission file for dataset %s", dataset)
+        rdf = load_preds_for_submission(dataset, split, task="soft-label")
         ddf = load_dataset(dataset=dataset, split=split, parse_tgt=False)
         warnif_submission_nrows_not_as_expected(rdf, ddf)
         model_avg = compute_average_baseline(rdf)
         model_avg = reorder_like_ddf(rdf=model_avg, ddf=ddf)
         assert_submission_rows_sum_to_one(model_avg)
-        tgt_file = dump_submission_file(rdf=model_avg, dataset=dataset)
+        tgt_file = dump_submission_file(
+            rdf=model_avg, dataset=dataset, task="soft-label"
+        )
         files.append(tgt_file)
     return files
+
+
+def dump_submission_files_perspectivist(datasets: list[Dataset]) -> list[Path]:
+    split = "test_clear"
+    files = []
+    for dataset in datasets:
+        logger.info("Perspectivist: Creating submission file for dataset %s", dataset)
+        rdf = load_preds_for_submission(dataset, split, task="perspectivist")
+        ddf = load_dataset(
+            dataset=dataset, split=split, parse_tgt=False, task="perspectivist"
+        )
+        warnif_submission_nrows_not_as_expected(rdf, ddf)
+        preds = rdf.groupby("dataset_idx", as_index=False).first()
+        preds = reorder_like_ddf(rdf=preds, ddf=ddf)
+        assert_correct_n_annotators(preds, ddf)
+        tgt_file = dump_submission_file(
+            rdf=preds, dataset=dataset, task="perspectivist"
+        )
+        files.append(tgt_file)
+    return files
+
+
+def assert_correct_n_annotators(rdf: pd.DataFrame, ddf: pd.DataFrame) -> None:
+    """num annotators in preds must match num annotators in ddf"""
+    n_annotators_preds = rdf["pred"].apply(n_annotators_perspectivist)
+    n_annotators_ddf = ddf["annotations"].apply(len)
+    assert n_annotators_preds.equals(n_annotators_ddf), (
+        n_annotators_preds,
+        n_annotators_ddf,
+    )
 
 
 def n_annotators_perspectivist(pred: list | VariErrDict) -> int:
