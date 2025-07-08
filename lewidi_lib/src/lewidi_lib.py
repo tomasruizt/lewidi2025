@@ -1,3 +1,4 @@
+from collections import defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
 import datetime
@@ -9,7 +10,7 @@ import random
 import re
 import zipfile
 from scipy.stats import bootstrap
-from typing import Any, Callable, Generator, Iterable, Literal, TypedDict
+from typing import Any, Callable, Generator, Iterable, Literal, Mapping, TypedDict
 import duckdb
 import json_repair
 from llmlib.vllmserver import spinup_vllm_server, VLLMServer
@@ -36,6 +37,15 @@ GenKwargs = Literal["set1", "set2", "random", "gemini-defaults"]
 nonthinking_chat_template = Path(__file__).parent / "qwen3_nonthinking.jinja"
 
 
+class VariErrDict(TypedDict):
+    entailment: Any
+    neutral: Any
+    contradiction: Any
+
+
+NLICat = Literal["entailment", "neutral", "contradiction"]
+
+
 def load_dataset(
     dataset: Dataset, split: Split, parse_tgt: bool = True, task: "Task" = "soft-label"
 ) -> pd.DataFrame:
@@ -54,7 +64,9 @@ def load_dataset(
             df = assign_col_target_entropy(df, dataset)
         elif task == "perspectivist":
             if dataset == "VariErrNLI":
-                df["target"] = df["annotations"].apply(collect_varierr_nli_target)
+                df["target"] = df["annotations"].apply(
+                    lambda d: collect_varierr_nli_target(d.values())
+                )
                 df["n_annotators"] = df["number of annotators"]
             else:
                 df["target"] = df["annotations"].apply(
@@ -96,11 +108,11 @@ def load_dataset(
     return df[cols]
 
 
-def collect_varierr_nli_target(annotations: dict) -> dict:
+def collect_varierr_nli_target(annotations: list[NLICat]) -> VariErrDict:
     """Return {entailment: [...], neutral: [...], contradiction: [...]}"""
     result = {}
     for cat in ["entailment", "neutral", "contradiction"]:
-        result[cat] = [int(cat in labels_str) for labels_str in annotations.values()]
+        result[cat] = [int(cat in labels_str) for labels_str in annotations]
     return result
 
 
@@ -311,7 +323,9 @@ def process_rdf(
 
 def discard_invalid_preds(rdf: pd.DataFrame) -> pd.DataFrame:
     invalid_preds = rdf.query("~is_valid_pred")
-    logger.info("Dropping %d invalid predictions", len(invalid_preds))
+    logger.info(
+        "Dropping %d invalid predictions out of %d", len(invalid_preds), len(rdf)
+    )
     return rdf.query("is_valid_pred")
 
 
@@ -385,12 +399,6 @@ def is_listof_ints(pred: Any) -> bool:
         return all(is_listof_ints(v) for v in pred.values())
     valid = isinstance(pred, list) and all(isinstance(x, int) for x in pred)
     return valid
-
-
-class VariErrDict(TypedDict):
-    entailment: Any
-    neutral: Any
-    contradiction: Any
 
 
 def sums_to_one(pred: np.ndarray | VariErrDict, atol: float = 0.01) -> bool:
@@ -477,6 +485,8 @@ def entropy(s: pd.Series) -> np.ndarray:
 def plot_horizontal_lines(
     g, data: pd.DataFrame, label: str, color: str, data_col: str, **keywords
 ):
+    if len(data) > 20:
+        logger.warning("len(data)=%d. Sure you passed the right data?", len(data))
     for ax in g.axes.flat:
         ax.grid(alpha=0.5)
         keywords = keywords | parse_keywords_from_string(ax.title.get_text())
@@ -1203,3 +1213,64 @@ def assign_col_avg_abs_diff(joint_df: pd.DataFrame) -> pd.DataFrame:
 
 def mean_abs_diff(tgt: list[int], pred: list[int]) -> float:
     return np.abs(np.array(tgt) - np.array(pred)).mean()
+
+
+def gen_random_perspespectivist_pred(row: Mapping) -> list | dict:
+    dataset = row["dataset"]
+    n_annotators = row["n_annotators"]
+    if dataset == "CSC":
+        return np.random.randint(1, 6 + 1, size=n_annotators)
+    elif dataset == "MP":
+        return np.random.randint(0, 1 + 1, size=n_annotators)
+    elif dataset == "Paraphrase":
+        return np.random.randint(-5, 5 + 1, size=n_annotators)
+    elif dataset == "VariErrNLI":
+        cats = ["entailment", "neutral", "contradiction"]
+        return {cat: np.random.randint(0, 1 + 1, size=n_annotators) for cat in cats}
+    else:
+        raise NotImplementedError()
+
+
+def compute_pe_rand_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
+    rand_baseline = ddf.assign(pred=ddf.apply(gen_random_perspespectivist_pred, axis=1))
+    rand_baseline = assign_col_avg_abs_diff(rand_baseline)
+    rand_baseline = rand_baseline.groupby("dataset", as_index=False)[
+        "avg_abs_diff"
+    ].mean()
+    return rand_baseline
+
+
+def compute_most_frequent_baseline_by_dataset(
+    dataset: Dataset, ddf: pd.DataFrame
+) -> pd.DataFrame:
+    ann_label_count = defaultdict(lambda: defaultdict(int))
+    for row_anns in ddf["annotations"]:
+        for annotator, annotation in row_anns.items():
+            ann_label_count[annotator][annotation] += 1
+
+    most_frequent = {
+        person: max(anns, key=anns.get) for person, anns in ann_label_count.items()
+    }
+    preds = ddf["annotations"].apply(
+        lambda d: [try_int(most_frequent[person]) for person in d.keys()]
+    )
+    if dataset == "VariErrNLI":
+        preds = preds.apply(collect_varierr_nli_target)
+    return ddf.assign(pred=preds)
+
+
+def try_int(x):
+    try:
+        return int(x)
+    except ValueError:
+        return x
+
+
+def compute_most_frequent_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
+    dfs = []
+    for dataset, group in ddf.groupby("dataset"):
+        dfs.append(compute_most_frequent_baseline_by_dataset(dataset, group))
+    baseline = pd.concat(dfs)
+    baseline = assign_col_avg_abs_diff(baseline)
+    baseline = baseline.groupby("dataset", as_index=False)["avg_abs_diff"].mean()
+    return baseline
