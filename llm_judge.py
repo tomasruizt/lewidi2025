@@ -12,7 +12,7 @@ from lewidi_lib import (
     load_preds_for_judge,
     make_query_from_dict,
     enable_logging,
-    join_correct_responses,
+    join_dataset,
     make_gen_kwargs_from_str,
 )
 
@@ -51,7 +51,7 @@ query = make_query_from_dict(rdf_query, rdf.columns)
 rdf = rdf.query(query).pipe(assign_col_n_classes)
 logger.info("Keeping %d examples for judge after applying query: %s", len(rdf), query)
 
-rdf = join_correct_responses(rdf)
+rdf = join_dataset(rdf)
 
 # Few Shot Examples
 examples_df = rdf.head(args.n_fewshot_examples)

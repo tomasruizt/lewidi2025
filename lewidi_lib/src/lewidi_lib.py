@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import Counter, defaultdict
 from contextlib import contextmanager
 from dataclasses import dataclass
 import datetime
@@ -531,9 +531,7 @@ def load_preds(parquets_dir: str = "parquets") -> pd.DataFrame:
     return rdf
 
 
-def join_correct_responses(
-    rdf: pd.DataFrame, task: Task = "soft-label"
-) -> pd.DataFrame:
+def join_dataset(rdf: pd.DataFrame, task: Task = "soft-label") -> pd.DataFrame:
     ds = rdf[["dataset", "split"]].drop_duplicates()
     assert len(ds) != 0, len(ds)
     datasets = []
@@ -622,7 +620,7 @@ def process_rdf_and_add_perf_metrics(
 ) -> pd.DataFrame:
     rdf = (
         rdf.pipe(process_rdf, discard_invalid_pred=discard_invalid_pred)
-        .pipe(join_correct_responses)
+        .pipe(join_dataset)
         .pipe(assign_cols_perf_metrics_softlabel)
     )
     return rdf
@@ -639,7 +637,7 @@ def group_pred(preds: pd.Series) -> np.ndarray:
 
 def compute_average_baseline_and_assing_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
     agg_df = compute_average_baseline(rdf)
-    agg_df = join_correct_responses(agg_df)
+    agg_df = join_dataset(agg_df)
     agg_df = assign_cols_perf_metrics_softlabel(agg_df)
     if len(agg_df) == len(rdf):
         logger.warning("No model-average reduction took place")
@@ -667,7 +665,7 @@ def compute_smoothed_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
     smoothed = rdf.assign(pred=rdf.groupby("n_classes")["pred"].transform(smoothen))
     smoothed = assign_col_is_valid_pred(smoothed)
     assert smoothed["is_valid_pred"].all()
-    smoothed = join_correct_responses(smoothed)
+    smoothed = join_dataset(smoothed)
     smoothed = assign_cols_perf_metrics_softlabel(smoothed)
     return smoothed
 
@@ -1274,3 +1272,33 @@ def compute_most_frequent_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
     baseline = assign_col_avg_abs_diff(baseline)
     baseline = baseline.groupby("dataset", as_index=False)["avg_abs_diff"].mean()
     return baseline
+
+
+def maj_vote_many_runs(dataset: Dataset, x: np.ndarray, recurse=True) -> np.ndarray:
+    if dataset == "VariErrNLI" and recurse:
+        matrix = pd.DataFrame(list(x))
+        maj_labels = {
+            cat: maj_vote_many_runs(dataset, matrix[cat], recurse=False)
+            for cat in matrix.columns
+        }
+        return maj_labels
+    x_np = as_np(x)
+    by_annotator = x_np.T
+    maj_labels = [int(maj_vote_single_person(ratings)) for ratings in by_annotator]
+    return maj_labels
+
+
+def maj_vote_single_person(ratings: list):
+    counter = Counter(ratings)
+    label, freq = counter.most_common(1)[0]
+    return label
+
+
+def compute_maj_vote_baseline(joint_df: pd.DataFrame) -> pd.DataFrame:
+    maj_vote_baseline = joint_df.groupby(
+        ["dataset", "n_classes", "split", "model_id", "model_size", "dataset_idx"],
+        observed=True,
+    )[joint_df.columns].apply(
+        lambda df: maj_vote_many_runs(df["dataset"].values[0], df["pred"])
+    )
+    return maj_vote_baseline

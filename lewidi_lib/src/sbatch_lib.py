@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings
 from lewidi_lib import (
     assign_cols_perf_metrics_softlabel,
     enable_logging,
-    join_correct_responses,
+    join_dataset,
     process_rdf,
 )
 import pandas as pd
@@ -20,7 +20,7 @@ def sketch_sbatch_progress(dir: str | Path) -> dict[str, Any]:
     rdf = process_rdf(rdf)
     validity_df = compute_validity_df(rdf)
     rdf = rdf.query("is_valid_pred == 1")
-    rdf = join_correct_responses(rdf)
+    rdf = join_dataset(rdf)
     rdf = assign_cols_perf_metrics_softlabel(rdf)
     perf_metrics = compute_perf_metrics(rdf, gby_cols=_gby_cols)
     perf_metrics = validity_df.merge(perf_metrics, on=_gby_cols, how="left")
