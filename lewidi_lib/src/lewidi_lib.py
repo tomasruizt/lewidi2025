@@ -389,14 +389,19 @@ def discard_unnecessary_cols(rdf: pd.DataFrame) -> pd.DataFrame:
 
 def assign_col_is_valid_pred(rdf: pd.DataFrame, task: Task) -> pd.DataFrame:
     if task == "perspectivist":
-        return rdf.assign(is_valid_pred=rdf["pred"].apply(is_listof_ints))
+        is_valid_pred = []
+        for pred, ds in zip(rdf["pred"], rdf["dataset"]):
+            is_valid_pred.append(has_correct_shape(pred, ds))
+        return rdf.assign(is_valid_pred=is_valid_pred)
     return rdf.assign(is_valid_pred=rdf["pred"].apply(sums_to_one))
 
 
-def is_listof_ints(pred: Any) -> bool:
-    is_varierr_nli = isinstance(pred, dict)
-    if is_varierr_nli:
-        return all(is_listof_ints(v) for v in pred.values())
+def has_correct_shape(pred: Any, dataset: Dataset, recurse=True) -> bool:
+    if dataset == "VariErrNLI" and recurse:
+        n_varierr_cats = 3
+        if not isinstance(pred, dict) or len(pred) != n_varierr_cats:
+            return False
+        return all(has_correct_shape(v, dataset, recurse=False) for v in pred.values())
     valid = isinstance(pred, list) and all(isinstance(x, int) for x in pred)
     return valid
 
@@ -1243,7 +1248,11 @@ def assign_col_avg_abs_diff(joint_df: pd.DataFrame) -> pd.DataFrame:
         if isinstance(tgt, dict):
             by_cat = []
             for cat, tgt_anns in tgt.items():
-                pred_anns = pred[cat]
+                try:
+                    pred_anns = pred[cat]
+                except Exception:
+                    pass
+
                 by_cat.append(mean_abs_diff(tgt_anns, pred_anns))
             res.append(np.mean(by_cat))
         else:
