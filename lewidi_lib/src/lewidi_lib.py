@@ -669,7 +669,7 @@ def smoothen(preds: pd.Series) -> pd.Series:
 
 def compute_smoothed_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
     smoothed = rdf.assign(pred=rdf.groupby("n_classes")["pred"].transform(smoothen))
-    smoothed = assign_col_is_valid_pred(smoothed)
+    smoothed = assign_col_is_valid_pred(smoothed, task="soft-label")
     assert smoothed["is_valid_pred"].all()
     smoothed = join_dataset(smoothed)
     smoothed = assign_cols_perf_metrics_softlabel(smoothed)
@@ -1358,3 +1358,22 @@ def compute_maj_vote_baseline(joint_df: pd.DataFrame) -> pd.DataFrame:
         lambda df: maj_vote_many_runs(df["dataset"].values[0], df["pred"])
     )
     return maj_vote_baseline
+
+
+def preds_file(
+    dataset: Dataset, split: Split, template: str, model_id: str, run_name: str
+) -> Path:
+    return (
+        Path(os.environ["DSS_HOME"])
+        / "lewidi-data"
+        / "sbatch"
+        / "di38bec"
+        / model_id.replace("/", "_")
+        / "set2"
+        / f"t{template}"
+        / dataset
+        / split
+        / run_name
+        / "preds"
+        / "responses.parquet"
+    )
