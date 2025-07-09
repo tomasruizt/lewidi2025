@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import json
 from pathlib import Path
-from typing import Mapping
+from typing import Iterable, Mapping
 import nltk
 
 from lewidi_lib import Dataset
@@ -89,6 +89,33 @@ class JudgeCoTParagraphsTemplate(Template):
             PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
         )
         return prompt
+
+
+@dataclass
+class JudgeRankingTemplate(Template):
+    pred_template: PredTemplate
+    judge_template_file = "judge_ranking.txt"
+
+    def __post_init__(self):
+        self.judge_template = load_template_file(
+            templates_root / self.judge_template_file
+        )
+
+    def make_prompt(self, data: Mapping) -> str:
+        llm_data = {"text": data["text"][0]}
+        llm_problem: str = self.pred_template.make_prompt(llm_data)
+        llm_solutions: list[dict] = list(make_llm_solutions(data))
+        filled = self.judge_template.format(
+            llm_problem=llm_problem, llm_solutions=json.dumps(llm_solutions, indent=2)
+        )
+        return filled
+
+
+def make_llm_solutions(data: Mapping) -> Iterable[dict]:
+    for i, reasoning, response in zip(
+        data["run_idx"], data["reasoning"], data["response"]
+    ):
+        yield {"run_idx": i, "reasoning": reasoning, "response": response}
 
 
 def in_qwen3_format(reasoning: str, output: str) -> str:

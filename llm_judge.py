@@ -1,6 +1,7 @@
 import logging
 from judge_lib import (
     JudgeArgs,
+    collect_all_solutions_per_example,
     make_judge_model,
     make_template,
     process_batch,
@@ -53,6 +54,9 @@ logger.info("Keeping %d examples for judge after applying query: %s", len(rdf), 
 
 rdf = join_dataset(rdf)
 
+if args.collect_all_solutions_per_example:
+    rdf = collect_all_solutions_per_example(rdf)
+
 # Few Shot Examples
 examples_df = rdf.head(args.n_fewshot_examples)
 if args.n_fewshot_examples > 0:
@@ -65,6 +69,8 @@ ilocs = keep_only_data_parallel_assigned(ilocs, args.data_rank, args.data_world_
 rdf = rdf.iloc[ilocs]
 
 if args.only_run_missing_examples:
+    if args.collect_all_solutions_per_example:
+        raise NotImplementedError("Join previous solution not compatible")
     rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec={"success": True})
 
 gen_kwargs: dict = make_gen_kwargs_from_str(args.judge_gen_kwargs_str, max_tokens=15000)

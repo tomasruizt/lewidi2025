@@ -1,0 +1,40 @@
+I will provide a problem along with multiple solutions for it.
+They will be formatted as follows:
+
+[Problem]
+
+<problem>
+...problem...
+</problem>
+
+[Solutions]
+
+<solutions>
+...solutions...
+</solutions>
+
+Your task is to rank the solutions from best to worst, starting with the best.
+Please respond in JSON format like below, and explain why you ranked each explanation.
+
+[
+    {{ "run_idx": <run_idx>, "explanation": <explanation> }},
+    {{ "run_idx": <run_idx>, "explanation": <explanation> }},
+    {{ "run_idx": <run_idx>, "explanation": <explanation> }},
+    ...
+]
+
+--------------------------------------------------
+
+The following is the problem and the solutions for your task:
+
+[Problem]
+
+<problem>
+{llm_problem}
+</problem>
+
+[Solutions]
+
+<solutions>
+{llm_solutions}
+</solutions>

@@ -14,10 +14,12 @@ from llmlib.base_llm import LLM, LlmReq
 from llmlib.gemini.gemini_code import GeminiAPI
 from llmlib.mock_model import MockModel
 from llmlib.vllm_model import ModelvLLM
+import pandas as pd
 from prompt_templates.template import (
     JudgeCoTParagraphsTemplate,
     JudgeCoTSentencesTemplate,
     JudgeOutcomeTemplate,
+    JudgeRankingTemplate,
     ReformatTemplate,
     Template,
     make_pred_template,
@@ -37,6 +39,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     judge_model_id: str = "Qwen/Qwen3-4B"
     judge_gen_kwargs_str: str = "set2"
     judge_template_id: int = 2
+    collect_all_solutions_per_example: bool = False
     use_random_stable_subset: bool = False
 
     pred_model_id: str = "Qwen/Qwen3-4B"
@@ -75,6 +78,8 @@ def make_template(
         return JudgeOutcomeTemplate(pred_template=pred_template)
     elif judge_template_id == 10:
         return ReformatTemplate(pred_template=pred_template)
+    elif judge_template_id == 50:
+        return JudgeRankingTemplate(pred_template=pred_template)
     else:
         raise ValueError(f"Unknown judge template: {judge_template_id}")
 
@@ -121,3 +126,10 @@ def _(model: GeminiAPI, args: JudgeArgs, batch: list[LlmReq]):
     if not args.use_async_batch_mode:
         return _process_batch(model, args, batch)
     model.submit_batch_job(entries=batch, tgt_dir=args.batch_dir)
+
+
+def collect_all_solutions_per_example(rdf: pd.DataFrame) -> pd.DataFrame:
+    cols = ["run_idx", "model_id", "text", "response", "reasoning"]
+    rdf = rdf.assign(model_id=rdf["model_id"].astype("string"))
+    new = rdf.groupby("dataset_idx", as_index=False)[cols].agg(lambda s: s.to_list())
+    return new

@@ -20,19 +20,23 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "args": [
-                "--n_dataset_examples=2", // depends on preds_dir
+                "--n_dataset_examples=10", // depends on preds_dir
                 "--n_samples_per_example=3", // depends on preds_dir
                 "--n_fewshot_examples=0",
+                "--include_prompt_in_metadata=True",
                 "--few_shots_solutions_file=/mnt/disk16tb/globus_shared/from-lrz-ai-systems/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2/judge/Qwen3-4B.jsonl",
                 "--judge_model_id=Qwen/Qwen3-4B",
-                "--gen_kwargs_str=set2",
+                "--judge_template_id=50",
+                "--judge_gen_kwargs_str=set2",
+                "--collect_all_solutions_per_example=True",
+                "--pred_model_id=Qwen/Qwen3-32B",
                 "--remote_call_concurrency=10",
                 "--vllm.port=8000",
                 "--vllm.start_server=False",
                 "--vllm.enforce_eager=True",
-                "--only_run_missing_examples=True",
-                "--preds_dir=/home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2/preds",
-                "--tgt_file=/home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/tasks_0_cscfull_t31_Qwen_Qwen3-32B_set2/judge/Qwen3-4B.jsonl",
+                "--only_run_missing_examples=False",
+                "--preds_dir=/mnt/md0/tomasruiz/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/train/allex_20loops/preds",
+                "--tgt_file=/mnt/md0/tomasruiz/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/train/allex_20loops/judge/Qwen/Qwen3-4B/set2/t50/testing/responses.jsonl",
                 "--data_rank=0",
                 "--data_world_size=1"
             ]
