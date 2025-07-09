@@ -1095,7 +1095,10 @@ def load_preds_for_submission(
 ) -> pd.DataFrame:
     template_id = {"soft-label": 31, "perspectivist": 33}
     template_id = template_id[task]
-    file = f"/home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t{template_id}/{dataset}/{split}/allex_10loops/preds/responses.parquet"
+    file = (
+        Path(os.environ["DSS_HOME"])
+        / f"lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t{template_id}/{dataset}/{split}/allex_10loops/preds/responses.parquet"
+    )
     rdf = pd.read_parquet(file)
     rdf = process_rdf(rdf, discard_invalid_pred=True, task=task)
     logger.info("Before dropping submission duplicates: %d", len(rdf))
@@ -1144,8 +1147,8 @@ submission_ds_name = {
 }
 
 
-def submissions_root():
-    return Path("/home/tomasruiz/datasets/dss_home/lewidi-data/my_submissions")
+def submissions_root() -> Path:
+    return Path(os.environ["DSS_HOME"]) / "lewidi-data/my_submissions"
 
 
 def _as_list(x: np.ndarray | dict | list) -> list:
