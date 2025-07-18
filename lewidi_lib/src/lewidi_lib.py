@@ -169,7 +169,7 @@ def assign_col_n_classes(df: pd.DataFrame) -> pd.DataFrame:
 
 def soft_label_to_nparray(
     d: dict | Any, dataset: Dataset, do_recurse: bool = True
-) -> np.ndarray:
+) -> np.ndarray | dict:
     if not isinstance(d, dict):
         return _non_dict_case(d)
 
@@ -1380,3 +1380,33 @@ def preds_file(
         / "preds"
         / "responses.parquet"
     )
+
+
+def list_preds() -> pd.DataFrame:
+    models = [
+        "Qwen/Qwen3-0.6B",
+        "Qwen/Qwen3-1.7B",
+        "Qwen/Qwen3-4B",
+        "Qwen/Qwen3-8B",
+        "Qwen/Qwen3-14B",
+        "Qwen/Qwen3-32B",
+    ]
+    datasets: list[Dataset] = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
+    splits: list[Split] = ["train"]
+    templates = ["31"]
+    combinations = product(datasets, splits, models, templates)
+    df = pd.DataFrame(
+        combinations, columns=["dataset", "split", "model_id", "template_id"]
+    )
+    df["preds_file"] = df.apply(
+        lambda row: preds_file(
+            dataset=row["dataset"],
+            split=row["split"],
+            template=row["template_id"],
+            model_id=row["model_id"],
+            run_name="allex_10loops",
+        ),
+        axis=1,
+    )
+    df["exists"] = df["preds_file"].apply(Path.exists)
+    return df

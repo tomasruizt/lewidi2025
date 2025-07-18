@@ -3,6 +3,7 @@ from lewidi_lib import (
     extract_json_substring_from_response,
     keep_only_data_parallel_assigned,
     keep_only_missing_examples,
+    list_preds,
     load_dataset,
     load_preds_for_judge,
     make_query_from_dict,
@@ -109,3 +110,16 @@ def test_join_annotator_metadata():
     n_annotators_per_row = df["annotations"].apply(len)
     n_metadata_per_row = df["annotator_metadata"].apply(len)
     assert np.allclose(n_annotators_per_row, n_metadata_per_row)
+
+
+def test_list_preds():
+    df = list_preds()
+    expected_cols = {
+        "dataset",
+        "split",
+        "model_id",
+        "template_id",
+        "preds_file",
+        "exists",
+    }
+    assert expected_cols.issubset(df.columns)
