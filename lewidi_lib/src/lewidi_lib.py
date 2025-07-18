@@ -397,9 +397,11 @@ def assign_col_is_valid_pred(rdf: pd.DataFrame, task: Task) -> pd.DataFrame:
     return rdf.assign(is_valid_pred=rdf["pred"].apply(sums_to_one))
 
 
+n_varierr_cats = 3
+
+
 def has_correct_shape(pred: Any, dataset: Dataset, recurse=True) -> bool:
     if dataset == "VariErrNLI" and recurse:
-        n_varierr_cats = 3
         if not isinstance(pred, dict) or len(pred) != n_varierr_cats:
             return False
         return all(has_correct_shape(v, dataset, recurse=False) for v in pred.values())
@@ -409,7 +411,8 @@ def has_correct_shape(pred: Any, dataset: Dataset, recurse=True) -> bool:
 
 def sums_to_one(pred: np.ndarray | VariErrDict, atol: float = 0.01) -> bool:
     if isinstance(pred, dict):
-        return all(sums_to_one(v) for v in pred.values())
+        all_sum_to_1 = all(sums_to_one(v) for v in pred.values())
+        return len(pred) == n_varierr_cats and all_sum_to_1
     return np.abs(pred.sum() - 1) < atol
 
 
@@ -485,11 +488,32 @@ class BasicSchema(RootModel):
 
 def entropy(s: pd.Series) -> np.ndarray:
     """Input is series of numpy arrays"""
+    is_varierr = isinstance(s.iloc[0], dict)
+    if is_varierr:
+        return entropy_varierr(s)
     return scipy.stats.entropy(as_np(s).T)
 
 
+def entropy_varierr(s: pd.Series) -> list[dict]:
+    ents_df = pd.DataFrame(list(s))
+    by_cat = {col: entropy(ents_df[col]) for col in ents_df.columns}
+    rows = []
+    for ent_ent, ent_neu, ent_con in zip(
+        by_cat["entailment"], by_cat["neutral"], by_cat["contradiction"]
+    ):
+        row = {"entailment": ent_ent, "neutral": ent_neu, "contradiction": ent_con}
+        rows.append(row)
+    return rows
+
+
 def plot_horizontal_lines(
-    g, data: pd.DataFrame, label: str, color: str, data_col: str, **keywords
+    g,
+    data: pd.DataFrame,
+    label: str,
+    color: str,
+    data_col: str,
+    pos: Literal["left", "right"] = "left",
+    **keywords,
 ):
     if len(data) > 20:
         logger.warning("len(data)=%d. Sure you passed the right data?", len(data))
@@ -502,20 +526,35 @@ def plot_horizontal_lines(
             continue
         y_val = matches[data_col].values[0]
         ax.axhline(y_val, color=color, linestyle="--")
-        add_label_above_hline(label, color, ax, y_val)
+        add_label_above_hline(label, color, ax, y_val, pos=pos)
 
 
-def add_label_above_hline(label: str, color: str, ax: plt.Axes, y_val: float):
+def add_label_above_hline(
+    label: str,
+    color: str,
+    ax: plt.Axes,
+    y_val: float,
+    pos: Literal["left", "right"] = "left",
+):
     """By Cursor"""
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+
+    if pos == "left":
+        x_pos = xlim[0] + (xlim[1] - xlim[0]) * 0.02  # 2% from left edge
+        horizontalalignment = "left"
+    else:  # pos == "right"
+        x_pos = xlim[1] - (xlim[1] - xlim[0]) * 0.02  # 2% from right edge
+        horizontalalignment = "right"
+
     ax.text(
-        ax.get_xlim()[0]
-        + (ax.get_xlim()[1] - ax.get_xlim()[0]) * 0.02,  # 2% from left edge
-        y_val + (ax.get_ylim()[1] - ax.get_ylim()[0]) * 0.01,  # 1% above the line
+        x_pos,
+        y_val + (ylim[1] - ylim[0]) * 0.01,  # 1% above the line
         label,
         fontsize=8,
         color=color,
         verticalalignment="bottom",
-        horizontalalignment="left",
+        horizontalalignment=horizontalalignment,
     )
 
 
@@ -1392,11 +1431,13 @@ def list_preds() -> pd.DataFrame:
         "Qwen/Qwen3-32B",
     ]
     datasets: list[Dataset] = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
-    splits: list[Split] = ["train"]
+    splits: list[Split] = ["train", "test_clear"]
     templates = ["31"]
-    combinations = product(datasets, splits, models, templates)
+    run_names = ["allex_10loops", "allex_20loops"]
+    combinations = product(splits, datasets, models, templates, run_names)
     df = pd.DataFrame(
-        combinations, columns=["dataset", "split", "model_id", "template_id"]
+        combinations,
+        columns=["split", "dataset", "model_id", "template_id", "run_name"],
     )
     df["preds_file"] = df.apply(
         lambda row: preds_file(
@@ -1404,7 +1445,7 @@ def list_preds() -> pd.DataFrame:
             split=row["split"],
             template=row["template_id"],
             model_id=row["model_id"],
-            run_name="allex_10loops",
+            run_name=row["run_name"],
         ),
         axis=1,
     )
