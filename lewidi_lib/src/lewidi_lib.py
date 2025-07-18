@@ -488,22 +488,22 @@ class BasicSchema(RootModel):
 
 def entropy(s: pd.Series) -> np.ndarray:
     """Input is series of numpy arrays"""
-    is_varierr = isinstance(s.iloc[0], dict)
-    if is_varierr:
+    if is_varierr_series(s):
         return entropy_varierr(s)
     return scipy.stats.entropy(as_np(s).T)
 
 
+def is_varierr_series(s: pd.Series | list) -> bool:
+    if isinstance(s, pd.Series):
+        return isinstance(s.values[0], dict)
+    return isinstance(s[0], dict)
+
+
 def entropy_varierr(s: pd.Series) -> list[dict]:
-    ents_df = pd.DataFrame(list(s))
-    by_cat = {col: entropy(ents_df[col]) for col in ents_df.columns}
-    rows = []
-    for ent_ent, ent_neu, ent_con in zip(
-        by_cat["entailment"], by_cat["neutral"], by_cat["contradiction"]
-    ):
-        row = {"entailment": ent_ent, "neutral": ent_neu, "contradiction": ent_con}
-        rows.append(row)
-    return rows
+    df = pd.DataFrame(list(s))
+    ents_df = df.apply(entropy)
+    ent = ents_df.mean(axis=1)  # average over all categories
+    return ent.values  # .values because the new index does not match the input
 
 
 def plot_horizontal_lines(
@@ -619,8 +619,14 @@ def max_entropy(dataset: Dataset) -> float:
     return scipy.stats.entropy(np.ones(n) / n)
 
 
-def uniform_baseline_pred(dataset: Dataset) -> np.ndarray:
-    assert dataset != "VariErrNLI"
+def uniform_baseline_pred(dataset: Dataset) -> np.ndarray | dict:
+    if dataset == "VariErrNLI":
+        binary_unif = np.ones(2) / 2
+        return {
+            "entailment": binary_unif,
+            "neutral": binary_unif,
+            "contradiction": binary_unif,
+        }
     n = n_classes(dataset)
     return np.ones(n) / n
 
@@ -632,7 +638,7 @@ def compute_baseline_entropy(datasets: list[Dataset]) -> pd.DataFrame:
 
 def compute_target_entropy(ddf: pd.DataFrame) -> pd.DataFrame:
     return ddf.groupby(["dataset", "n_classes"], as_index=False).agg(
-        entropy=("target", lambda series: entropy(series).mean())
+        entropy=("target", lambda series: _mean(entropy(series)))
     )
 
 
@@ -645,19 +651,31 @@ def compute_unif_baseline_perf_metrics(ddf: pd.DataFrame):
 
 
 def compute_unif_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
-    bdf = assign_col_n_classes(ddf)
-    bdf = bdf.assign(pred=lambda row: row["n_classes"].apply(baseline_pred))
+    bdf = ddf.merge(uniform_pred_df(), on="dataset", how="left")
     bdf = assign_cols_perf_metrics_softlabel(bdf)
     return bdf
+
+
+def uniform_pred_df() -> pd.DataFrame:
+    datasets = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
+    preds = [uniform_baseline_pred(d) for d in datasets]
+    return pd.DataFrame({"dataset": datasets, "pred": preds})
 
 
 def agg_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
     cols = ["model_id", "dataset", "split", "template_id", "template_alias"]
     gby_cols = [c for c in cols if c in rdf.columns]
     agg_df = rdf.groupby(gby_cols, as_index=False, observed=True).agg(
-        ws_loss=("ws_loss", "mean"), pred_entropy=("pred_entropy", "mean")
+        ws_loss=("ws_loss", _mean), pred_entropy=("pred_entropy", _mean)
     )
     return agg_df
+
+
+def _mean(xs: pd.Series) -> np.ndarray:
+    if not is_varierr_series(xs):
+        return xs.mean()
+    df = pd.DataFrame(list(xs))
+    return df.mean().mean()  # average over all categories
 
 
 def process_rdf_and_add_perf_metrics(
@@ -698,6 +716,11 @@ def compute_average_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
 
 
 def smoothen(preds: pd.Series) -> pd.Series:
+    if is_varierr_series(preds):
+        df = pd.DataFrame(list(preds))
+        df2 = pd.DataFrame({col: smoothen(df[col]) for col in df.columns})
+        return df2.to_dict(orient="records")
+
     original = np.array(preds.tolist())
     _, n_classes = original.shape
     uniform = np.ones(n_classes) / n_classes
@@ -1070,10 +1093,18 @@ def bootstrap_avg(xs: Iterable[float]) -> BootstrapResult:
 def compute_majority_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
     majority_baseline = (
         ddf.groupby("dataset", as_index=False)["target"]
-        .agg(lambda tgts: as_np(tgts).mean(axis=0))
+        .agg(_maj_baseline)
         .rename(columns={"target": "pred"})
     )
     return assign_cols_perf_metrics_softlabel(ddf.merge(majority_baseline))
+
+
+def _maj_baseline(tgts: pd.Series) -> np.ndarray:
+    is_varierrnli = isinstance(tgts[0], dict)
+    if not is_varierrnli:
+        return as_np(tgts).mean(axis=0)
+    df = pd.DataFrame(list(tgts))
+    return {col: _maj_baseline(df[col]) for col in df.columns}
 
 
 def assert_correct_model_is_running(server: VLLMServer, model_id: str):
