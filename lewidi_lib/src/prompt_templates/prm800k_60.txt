@@ -12,6 +12,8 @@ Solve the problem below. Format your response into logical steps, and format eac
     'final_response': '<response>'
 }}
 
+It should be possible to directly evaluate the 'final_response' using sympy, so avoid any unnecessary text there.
+
 [Problem]
 
 {text}

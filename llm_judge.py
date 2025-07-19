@@ -18,7 +18,7 @@ from lewidi_lib import (
 )
 
 from llmlib.base_llm import LlmReq, Message
-from prompt_templates.template import Template
+from prompt_templates.template import CannotMakePromptError, Template
 
 from lewidi_lib import keep_only_missing_examples
 
@@ -98,7 +98,16 @@ for _, row in rdf.iterrows():
         fewshot_msgs.append(Message.from_prompt(prompt))
         fewshot_msgs.append(Message(role="assistant", msg=fs_row["response_judge"]))
 
-    prompt = template.make_prompt(row)
+    try:
+        prompt = template.make_prompt(row)
+    except CannotMakePromptError:
+        logger.error(
+            "Cannot make prompt for dataset_idx=%d, run_idx=%d. Skipping...",
+            row["dataset_idx"],
+            row["run_idx"],
+        )
+        continue
+
     convo = [*fewshot_msgs, Message.from_prompt(prompt)]
     row_metadata = {
         "dataset_idx": row["dataset_idx"],

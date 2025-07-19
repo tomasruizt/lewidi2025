@@ -285,7 +285,7 @@ def process_rdf(
     rdf = rdf.assign(gen_kwargs=rdf["gen_kwargs"].replace(gen_kwargs_mapping))
 
     rdf = rdf.assign(success=rdf["success"].astype(bool).fillna(1.0))
-    rdf = drop_failed_rows(rdf)
+    rdf = discard_failed_rows(rdf)
 
     model_size_col = rdf["model_id"].map(model_size_mapping)
     rdf = rdf.assign(
@@ -293,7 +293,7 @@ def process_rdf(
         template_id=as_categorical(rdf["template_id"].astype(int)),
     )
 
-    rdf = drop_na_response_rows(rdf)
+    rdf = discard_na_response_rows(rdf)
     rdf = rdf.assign(response=rdf["response"].str.strip())
 
     is_empty_str = len(rdf.query("response == ''"))
@@ -332,17 +332,17 @@ def discard_invalid_preds(rdf: pd.DataFrame) -> pd.DataFrame:
     return rdf.query("is_valid_pred")
 
 
-def drop_na_response_rows(rdf: pd.DataFrame, col: str = "response") -> pd.DataFrame:
+def discard_na_response_rows(rdf: pd.DataFrame, col: str = "response") -> pd.DataFrame:
     are_na = len(rdf.query(f"{col}.isna()"))
     if are_na > 0:
         logger.info("Dropping %d rows with col '%s' NA", are_na, col)
     return rdf.query(f"~{col}.isna()")
 
 
-def drop_failed_rows(rdf: pd.DataFrame) -> pd.DataFrame:
-    failed = rdf.query("not success")
-    logger.info("Dropping %d rows with success=False", len(failed))
-    return rdf.query("success")
+def discard_failed_rows(rdf: pd.DataFrame, col: str = "success") -> pd.DataFrame:
+    failed = rdf.query(f"~{col}")
+    logger.info("Dropping %d rows with %s=False", len(failed), col)
+    return rdf.query(col)
 
 
 def assign_col_response_parsed(rdf: pd.DataFrame) -> pd.DataFrame:
@@ -1020,7 +1020,7 @@ def process_ratings(
         extract_rating, cat_mapping=cat_mapping
     )
     ratings = ratings.assign(step_ratings=step_ratings_col)
-    ratings = drop_na_response_rows(ratings, col="step_ratings")
+    ratings = discard_na_response_rows(ratings, col="step_ratings")
 
     ratings = ratings.assign(score=ratings["step_ratings"].apply(operation))
     if drop_na_score:
@@ -1436,7 +1436,12 @@ def compute_maj_vote_baseline(joint_df: pd.DataFrame) -> pd.DataFrame:
 
 
 def preds_file(
-    dataset: Dataset, split: Split, template: str, model_id: str, run_name: str
+    dataset: Dataset,
+    split: Split,
+    template: str,
+    model_id: str,
+    run_name: str,
+    format: str = "parquet",
 ) -> Path:
     return (
         Path(os.environ["DSS_HOME"])
@@ -1450,7 +1455,7 @@ def preds_file(
         / split
         / run_name
         / "preds"
-        / "responses.parquet"
+        / f"responses.{format}"
     )
 
 

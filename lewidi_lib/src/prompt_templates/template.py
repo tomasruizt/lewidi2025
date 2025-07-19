@@ -104,12 +104,25 @@ class JudgeCoTStepsInResponseTemplate(Template):
 
     def make_prompt(self, data: Mapping) -> str:
         llm_problem = self.pred_template.make_prompt(data)
-        steps = json_repair.loads(data["response"])["steps"]
+        steps = extract_steps(data)
         steps = [{"idx": i, "step": s} for i, s in enumerate(steps)]
         prompt = self.judge_template.format(
             PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
         )
         return prompt
+
+
+def extract_steps(data: Mapping) -> list[str]:
+    if "response" not in data or data["response"] is None or data["response"] == "":
+        raise CannotMakePromptError()
+    response = json_repair.loads(data["response"])
+    if "steps" not in response:
+        raise CannotMakePromptError()
+    return response["steps"]
+
+
+class CannotMakePromptError(Exception):
+    pass
 
 
 @dataclass

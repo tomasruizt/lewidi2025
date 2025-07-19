@@ -28,10 +28,10 @@ inference:
 		--gen_kwargs set2 \
 		--datasets prm800k \
 		--splits train \
-		--template_ids 31 \
+		--template_ids 60 \
 		--remote_call_concurrency 10 \
-		--n_examples 3 \
-		--n_loops 2 \
+		--n_examples 50 \
+		--n_loops 3 \
 		--data_rank 0 \
 		--data_world_size 1 \
 		--n_fewshot_examples 0 \
@@ -41,11 +41,12 @@ inference:
 		--vllm.enforce_eager=True \
 		--max_tokens 15000 \
 		--only_run_missing_examples=True \
-		--include_prompt_in_output=True
+		--include_prompt_in_output=True \
+		--tgt_file prm800k-poc/preds/responses.jsonl
 
 judge:
 	python llm_judge.py \
-		--n_dataset_examples 100 \
+		--n_dataset_examples 30 \
 		--n_samples_per_example 10 \
 		--judge_model_id Qwen/Qwen3-4B \
 		--judge_gen_kwargs_str set2 \
@@ -57,15 +58,15 @@ judge:
 		--pred_gen_kwargs_str set2 \
 		--pred_dataset prm800k \
 		--pred_split train \
-		--pred_template_id 31 \
+		--pred_template_id 60 \
 		--remote_call_concurrency 10 \
 		--vllm.port 8000 \
 		--vllm.start_server False \
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
 		--include_prompt_in_metadata True \
-		--preds_dir poc-prm800k \
-		--tgt_file poc-prm800k/judge/responses.jsonl \
+		--preds_dir prm800k-poc/preds \
+		--tgt_file prm800k-poc/judge/responses.jsonl \
 		--batch_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/judge/gemini-2.5-flash/t2/500ex-10loops/lewidi-judge-run4 \
 		--data_rank 0 \
 		--data_world_size 1 \
