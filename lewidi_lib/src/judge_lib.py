@@ -21,6 +21,7 @@ from prompt_templates.template import (
     JudgeCoTStepsInResponseTemplate,
     JudgeOutcomeTemplate,
     JudgeRankingTemplate,
+    JudgeVerifySolutionTemplate,
     ReformatTemplate,
     Template,
     make_pred_template,
@@ -85,6 +86,8 @@ def make_template(
         return ReformatTemplate(pred_template=pred_template)
     elif judge_template_id == 50:
         return JudgeRankingTemplate(pred_template=pred_template)
+    elif judge_template_id == 60:
+        return JudgeVerifySolutionTemplate()
     else:
         raise ValueError(f"Unknown judge template: {judge_template_id}")
 

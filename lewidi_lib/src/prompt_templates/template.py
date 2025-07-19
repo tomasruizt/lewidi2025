@@ -104,7 +104,7 @@ class JudgeCoTStepsInResponseTemplate(Template):
 
     def make_prompt(self, data: Mapping) -> str:
         llm_problem = self.pred_template.make_prompt(data)
-        steps = extract_steps(data)
+        steps = extract_key(data, key="steps")
         steps = [{"idx": i, "step": s} for i, s in enumerate(steps)]
         prompt = self.judge_template.format(
             PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
@@ -112,17 +112,34 @@ class JudgeCoTStepsInResponseTemplate(Template):
         return prompt
 
 
-def extract_steps(data: Mapping) -> list[str]:
+def extract_key(data: Mapping, key: str) -> list[str]:
     if "response" not in data or data["response"] is None or data["response"] == "":
         raise CannotMakePromptError()
     response = json_repair.loads(data["response"])
-    if "steps" not in response:
+    if key not in response:
         raise CannotMakePromptError()
-    return response["steps"]
+    return response[key]
 
 
 class CannotMakePromptError(Exception):
     pass
+
+
+@dataclass
+class JudgeVerifySolutionTemplate(Template):
+    judge_template_file = "judge_verify_solution.txt"
+
+    def __post_init__(self):
+        self.judge_template = load_template_file(
+            templates_root / self.judge_template_file
+        )
+
+    def make_prompt(self, data: Mapping) -> str:
+        solution = extract_key(data, key="final_response")
+        return self.judge_template.format(
+            reference_solution=data["target"],
+            solution=solution,
+        )
 
 
 @dataclass

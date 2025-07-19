@@ -514,7 +514,8 @@ def plot_horizontal_lines(
     label: str,
     color: str,
     data_col: str,
-    pos: Literal["left", "right"] = "left",
+    hpos: Literal["left", "right"] = "left",
+    vpos: Literal["top", "bottom"] = "bottom",
     **keywords,
 ):
     if len(data) > 20:
@@ -528,7 +529,7 @@ def plot_horizontal_lines(
             continue
         y_val = matches[data_col].values[0]
         ax.axhline(y_val, color=color, linestyle="--")
-        add_label_above_hline(label, color, ax, y_val, pos=pos)
+        add_label_above_hline(label, color, ax, y_val, hpos=hpos, vpos=vpos)
 
 
 def add_label_above_hline(
@@ -536,26 +537,33 @@ def add_label_above_hline(
     color: str,
     ax: plt.Axes,
     y_val: float,
-    pos: Literal["left", "right"] = "left",
+    hpos: Literal["left", "right"] = "left",
+    vpos: Literal["top", "bottom"] = "bottom",
 ):
     """By Cursor"""
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
 
-    if pos == "left":
+    if hpos == "left":
         x_pos = xlim[0] + (xlim[1] - xlim[0]) * 0.02  # 2% from left edge
         horizontalalignment = "left"
     else:  # pos == "right"
         x_pos = xlim[1] - (xlim[1] - xlim[0]) * 0.02  # 2% from right edge
         horizontalalignment = "right"
 
+    # Calculate y position based on vpos
+    if vpos == "bottom":
+        y_pos = y_val + (ylim[1] - ylim[0]) * 0.01  # 1% above the line
+    else:  # vpos == "top"
+        y_pos = y_val - (ylim[1] - ylim[0]) * 0.01  # 1% below the line
+
     ax.text(
         x_pos,
-        y_val + (ylim[1] - ylim[0]) * 0.01,  # 1% above the line
+        y_pos,
         label,
-        fontsize=8,
+        fontsize=12,
         color=color,
-        verticalalignment="bottom",
+        verticalalignment=vpos,
         horizontalalignment=horizontalalignment,
     )
 

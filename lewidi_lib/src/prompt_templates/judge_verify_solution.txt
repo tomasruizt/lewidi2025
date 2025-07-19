@@ -1,0 +1,10 @@
+Compare the following solution to the reference, and return 1 if the solution is correct, 0 otherwise.
+Don't return any other text.
+
+[Reference Solution]
+
+{reference_solution}
+
+[Solution]
+
+{solution}
