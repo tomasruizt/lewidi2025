@@ -1,3 +1,17 @@
-Solve the problem below
+[Instructions]
+
+Solve the problem below. Format your response into logical steps, and format each step in JSON format like this:
+
+{{
+    'steps': [
+        '<text of step 1>',
+        '<text of step 2>',
+        ...,
+        '<text of step n>'
+    ],
+    'final_response': '<response>'
+}}
+
+[Problem]
 
 {text}

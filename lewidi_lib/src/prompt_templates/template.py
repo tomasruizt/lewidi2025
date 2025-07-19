@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import json
 from pathlib import Path
 from typing import Iterable, Mapping
+import json_repair
 import nltk
 
 from lewidi_lib import Dataset
@@ -85,6 +86,26 @@ class JudgeCoTParagraphsTemplate(Template):
             for i, s in enumerate(data["reasoning"].split("\n\n"))
             if s.strip()
         ]
+        prompt = self.judge_template.format(
+            PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
+        )
+        return prompt
+
+
+@dataclass
+class JudgeCoTStepsInResponseTemplate(Template):
+    pred_template: PredTemplate
+    judge_template_file = JudgeCoTParagraphsTemplate.judge_template_file
+
+    def __post_init__(self):
+        self.judge_template = load_template_file(
+            templates_root / self.judge_template_file
+        )
+
+    def make_prompt(self, data: Mapping) -> str:
+        llm_problem = self.pred_template.make_prompt(data)
+        steps = json_repair.loads(data["response"])["steps"]
+        steps = [{"idx": i, "step": s} for i, s in enumerate(steps)]
         prompt = self.judge_template.format(
             PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
         )

@@ -578,12 +578,14 @@ def load_preds(parquets_dir: str = "parquets") -> pd.DataFrame:
     return rdf
 
 
-def join_dataset(rdf: pd.DataFrame, task: Task = "soft-label") -> pd.DataFrame:
+def join_dataset(
+    rdf: pd.DataFrame, task: Task = "soft-label", parse_tgt: bool = True
+) -> pd.DataFrame:
     ds = rdf[["dataset", "split"]].drop_duplicates()
     assert len(ds) != 0, len(ds)
     datasets = []
     for dataset, split in ds.itertuples(index=False):
-        df = load_dataset(dataset, split, task=task)
+        df = load_dataset(dataset, split, task=task, parse_tgt=parse_tgt)
         datasets.append(df)
     ddf = pd.concat(datasets)
     joint = join_dataset_and_preds(ddf, rdf)
@@ -591,11 +593,9 @@ def join_dataset(rdf: pd.DataFrame, task: Task = "soft-label") -> pd.DataFrame:
 
 
 def join_dataset_and_preds(ddf: pd.DataFrame, rdf: pd.DataFrame) -> pd.DataFrame:
-    joint_df = pd.merge(
-        ddf,
-        rdf,
-        on=["dataset", "n_classes", "split", "dataset_idx"],
-    )
+    on_cols = ["dataset", "n_classes", "split", "dataset_idx"]
+    on_cols = [c for c in on_cols if c in ddf.columns and c in rdf.columns]
+    joint_df = pd.merge(ddf, rdf, on=on_cols)
     return joint_df
 
 

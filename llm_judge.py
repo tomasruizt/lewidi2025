@@ -49,10 +49,11 @@ rdf_query = {
     "split": args.pred_split,
 }
 query = make_query_from_dict(rdf_query, rdf.columns)
-rdf = rdf.query(query).pipe(assign_col_n_classes)
+rdf = rdf.query(query)
+# rdf = assign_col_n_classes(rdf) # commented out for prm800k. Maybe not needed anymore
 logger.info("Keeping %d examples for judge after applying query: %s", len(rdf), query)
 
-rdf = join_dataset(rdf)
+rdf = join_dataset(rdf, parse_tgt=False)
 
 if args.collect_all_solutions_per_example:
     rdf = collect_all_solutions_per_example(rdf)
@@ -73,7 +74,9 @@ if args.only_run_missing_examples:
         raise NotImplementedError("Join previous solution not compatible")
     rdf = keep_only_missing_examples(rdf, args.tgt_file, keep_spec={"success": True})
 
-gen_kwargs: dict = make_gen_kwargs_from_str(args.judge_gen_kwargs_str, max_tokens=15000)
+gen_kwargs: dict = make_gen_kwargs_from_str(
+    args.judge_gen_kwargs_str, max_tokens=args.judge_max_output_tokens
+)
 template: Template = make_template(
     args.judge_template_id, args.pred_dataset, args.pred_template_id
 )

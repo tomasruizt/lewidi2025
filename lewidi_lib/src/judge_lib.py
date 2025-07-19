@@ -18,6 +18,7 @@ import pandas as pd
 from prompt_templates.template import (
     JudgeCoTParagraphsTemplate,
     JudgeCoTSentencesTemplate,
+    JudgeCoTStepsInResponseTemplate,
     JudgeOutcomeTemplate,
     JudgeRankingTemplate,
     ReformatTemplate,
@@ -39,6 +40,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     judge_model_id: str = "Qwen/Qwen3-4B"
     judge_gen_kwargs_str: str = "set2"
     judge_template_id: int = 2
+    judge_max_output_tokens: int = 15000
     collect_all_solutions_per_example: bool = False
     use_random_stable_subset: bool = False
 
@@ -48,6 +50,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     pred_split: str = "train"
     pred_template_id: int = 31
     preds_dir: str = "/mnt/disk16tb/globus_shared/from-lrz-ai-systems"
+    pred_response_contains_steps: bool = False
 
     tgt_file: str = "./judge-responses.jsonl"
     few_shots_solutions_file: str | None = None
@@ -74,6 +77,8 @@ def make_template(
         return JudgeCoTSentencesTemplate(pred_template=pred_template)
     elif judge_template_id == 22:
         return JudgeCoTParagraphsTemplate(pred_template=pred_template)
+    elif judge_template_id == 23:
+        return JudgeCoTStepsInResponseTemplate(pred_template=pred_template)
     elif judge_template_id == 3:
         return JudgeOutcomeTemplate(pred_template=pred_template)
     elif judge_template_id == 10:
