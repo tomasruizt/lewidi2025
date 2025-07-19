@@ -28,7 +28,7 @@ import scipy
 
 logger = logging.getLogger(__name__)
 
-Dataset = Literal["CSC", "MP", "Paraphrase", "VariErrNLI"]
+Dataset = Literal["CSC", "MP", "Paraphrase", "VariErrNLI", "prm800k"]
 
 Split = Literal["train", "dev", "test_clear"]
 
@@ -80,6 +80,10 @@ def load_dataset(
             raise ValueError(f"Invalid task: {task}")
 
     df["dataset"] = dataset
+    df["split"] = split
+    if dataset == "prm800k":
+        return df
+
     df = assign_col_n_classes(df)
 
     metadata_file = assert_path_exists(root / f"{dataset}_annotators_meta.json")
@@ -88,8 +92,6 @@ def load_dataset(
 
     col_rename = {"number of annotations": "n_annotations"}
     df = df.rename(columns=col_rename)
-
-    df["split"] = split
     cols = [
         "dataset",
         "soft_label",

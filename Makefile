@@ -13,12 +13,12 @@ vllm-qwen3-thinking:
 		--task generate \
 		--disable-log-requests \
 		--max-model-len 20000 \
-		--gpu-memory-utilization 0.8 \
+		--gpu-memory-utilization 0.75 \
 		--enable-chunked-prefill \
 		--disable-uvicorn-access-log \
 		--host 127.0.0.1 \
 		--enforce-eager \
-		--max-num-seqs 1000 \
+		--max-num-seqs 10 \
 		--port 8000
 
 
@@ -26,8 +26,8 @@ inference:
 	python inference.py \
 		--model_id Qwen/Qwen3-4B \
 		--gen_kwargs set2 \
-		--datasets Paraphrase \
-		--splits test_clear \
+		--datasets prm800k \
+		--splits train \
 		--template_ids 31 \
 		--remote_call_concurrency 10 \
 		--n_examples 3 \
@@ -39,7 +39,7 @@ inference:
 		--vllm.enable_reasoning=True \
 		--vllm.port=8000 \
 		--vllm.enforce_eager=True \
-		--max_tokens 10000 \
+		--max_tokens 15000 \
 		--only_run_missing_examples=True \
 		--include_prompt_in_output=True
 
