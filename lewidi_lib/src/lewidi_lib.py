@@ -1481,7 +1481,7 @@ def list_preds() -> pd.DataFrame:
     ]
     datasets: list[Dataset] = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
     splits: list[Split] = ["train", "test_clear"]
-    templates = ["31"]
+    templates = ["3", "31", "32"]
     run_names = ["allex_10loops", "allex_20loops"]
     combinations = product(splits, datasets, models, templates, run_names)
     df = pd.DataFrame(
