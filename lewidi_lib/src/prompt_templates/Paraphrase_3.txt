@@ -1,0 +1,5 @@
+# Task
+Below is a pair of questions where human annotators rated how strongly the questions are paraphrases of one another on a Likert scale score from -5 to 5. Please guess the distribution of ratings and output it in JSON format like this: {{ "-5": p0, "-4": p1, "-3": p2, "-2": p3, "-1": p4, "0": p5, "1": p6, "2": p7, "3": p8, "4": p9, "5": p10 }}, where p0 to p10 are probabilities. The sum of probabilities must equal 1.0.
+
+# Pair of Questions
+{text}
