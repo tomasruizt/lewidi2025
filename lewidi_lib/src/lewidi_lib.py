@@ -1,6 +1,6 @@
 from collections import Counter, defaultdict
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import datetime
 from functools import lru_cache
 from itertools import product
@@ -1080,7 +1080,7 @@ def get_stable_random_subset(xs: np.ndarray, n: int) -> np.ndarray:
     return subset
 
 
-@dataclass
+@dataclass(frozen=True)
 class BootstrapResult:
     low: float
     mean: float
@@ -1090,6 +1090,9 @@ class BootstrapResult:
 
     def __repr__(self):
         return f"NumSamples: {self.n_samples}, Mean: {self.mean:.3f}, {self.confidence_level * 100:.0f}% CI: {self.low:.3f} - {self.high:.3f}"
+
+    def to_dict(self) -> dict:
+        return asdict(self)
 
 
 def bootstrap_avg(xs: Iterable[float]) -> BootstrapResult:

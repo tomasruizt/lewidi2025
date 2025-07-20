@@ -1,0 +1,4 @@
+low,mean,high,confidence_level,n_samples,name
+1.005,1.018,1.031,0.95,9998,Simple
+0.966,1.006,1.049,0.95,1000,BoN
+0.883,0.916,0.952,0.95,1000,Averaging
