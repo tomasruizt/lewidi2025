@@ -52,7 +52,7 @@ def load_prm800k_phase2_dataset(split: Split) -> pd.DataFrame:
 
 def load_raw_prm800k_phase2_dataset(split):
     file = prm800k_file(split)
-    assert file.exists()
+    assert file.exists(), file.absolute()
     prm800k_df = pd.read_json(file, lines=True)
     prm800k_df["dataset_idx"] = range(len(prm800k_df))
     return prm800k_df
