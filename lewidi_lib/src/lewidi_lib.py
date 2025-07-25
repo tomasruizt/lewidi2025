@@ -1133,10 +1133,15 @@ def assert_correct_model_is_running(server: VLLMServer, model_id: str):
         )
 
 
-def assing_col_score_from_json(ratings: pd.DataFrame) -> pd.DataFrame:
+def assing_col_score_from_json(
+    ratings: pd.DataFrame, operation: Literal["mean", "prod"] = np.mean
+) -> pd.DataFrame:
     ratings["response_parsed"] = ratings["response"].apply(json_repair.loads)
     ratings = process_ratings(
-        ratings, cat_mapping=mapping(ok=0, bad=0), drop_na_score=True
+        ratings,
+        cat_mapping=mapping(ok=0, bad=0),
+        drop_na_score=True,
+        operation=operation,
     )
     return ratings
 
