@@ -46,11 +46,12 @@ DATASETS = [
     DatasetCase("VariErrNLI", slurm_array_size=1),
     DatasetCase("Paraphrase", slurm_array_size=1),
     DatasetCase("MP", slurm_array_size=4),
+    DatasetCase("prm800k", slurm_array_size=1),
 ]
 
 gen_kwargs = "set2"
 split = "train"
-template_id = 31
+TEMPLATE_IDS = [3, 31, 32, 60]
 BASE_PORT = 9000
 
 tgt_dir = Path("slurm_scripts")
@@ -60,8 +61,8 @@ os.makedirs(tgt_dir, exist_ok=True)
 for file in tgt_dir.glob("*.sbatch"):
     file.unlink()
 
-combinations = product(CASES, DATASETS)
-for i, (case, dataset) in enumerate(combinations):
+combinations = product(CASES, DATASETS, TEMPLATE_IDS)
+for i, (case, dataset, template_id) in enumerate(combinations):
     # Base port for this combination - each array task will add its task ID to this
     port = BASE_PORT + (i * 100)  # Give enough space between job ports
     jobname = f"{dataset.name}_{split}_{case.model.replace('/', '_')}_t{template_id}"
