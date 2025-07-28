@@ -144,6 +144,7 @@ class JudgeVerifySolutionTemplate(Template):
     def make_prompt(self, data: Mapping) -> str:
         solution = extract_key(data, key="final_response")
         return self.judge_template.format(
+            problem=data["text"],
             reference_solution=data["target"],
             solution=solution,
         )
