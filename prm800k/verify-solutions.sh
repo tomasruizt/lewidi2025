@@ -1,0 +1,24 @@
+python llm_judge.py \
+    --n_dataset_examples 1000 \
+    --n_samples_per_example 10 \
+    --use_random_stable_subset True \
+    --judge_model_id Qwen/Qwen3-14B \
+    --judge_gen_kwargs_str set2 \
+    --judge_template_id 60 \
+    --collect_all_solutions_per_example False \
+    --pred_model_id Qwen/Qwen3-32B \
+    --pred_gen_kwargs_str set2 \
+    --pred_dataset prm800k \
+    --pred_split train \
+    --pred_template_id 60 \
+    --remote_call_concurrency 50 \
+    --vllm.port 8000 \
+    --vllm.start_server True \
+    --vllm.enforce_eager False \
+    --vllm.tensor_parallel_size 1 \
+    --vllm.enable_expert_parallel False \
+    --vllm.enable_reasoning False \
+    --only_run_missing_examples False \
+    --include_prompt_in_metadata True \
+    --preds_dir /workspace/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops/preds \
+    --tgt_file /workspace/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops/judge/Qwen/Qwen3-14B/set2/t60/1000ex_10loops/responses.jsonl
