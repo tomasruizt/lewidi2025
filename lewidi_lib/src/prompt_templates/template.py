@@ -120,9 +120,9 @@ def extract_key(data: Mapping, key: str) -> list[str]:
         raise CannotMakePromptError()
     try:
         response = json_repair.loads(data["response"])
-    except TypeError:
+    except TypeError as e:
         logger.error(f"Error parsing response: {data['response']}")
-        raise
+        raise CannotMakePromptError() from e
     if key not in response:
         raise CannotMakePromptError()
     return response[key]
