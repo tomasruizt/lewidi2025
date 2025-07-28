@@ -7,7 +7,13 @@ requires-python = ">=3.10"
 dependencies = [
     "pandas",
     "matplotlib",
-    "pydantic-settings"
+    "pydantic-settings",
+    "scipy",
+    "duckdb",
+    "json_repair",
+    "aiohttp",
+    "vllm",
+    "pyarrow",
 ]
 
 [project.scripts]
