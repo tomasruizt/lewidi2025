@@ -4,11 +4,11 @@
 #SBATCH --array=0
 #SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops/judge/Qwen/Qwen3-14B/set2/t60/1000ex_10loops/logs/%a_out.logs
 #SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops/judge/Qwen/Qwen3-14B/set2/t60/1000ex_10loops/logs/%a_err.logs
-#SBATCH --job-name t60_Qwen3-14B_judging_Qwen3-32B_1000ex_10loops
+#SBATCH --job-name t60_Qwen3-14B_verifying_Qwen3-32B_1000ex_10loops
 #SBATCH --time 3:00:00
 
 # Set container name based on job name and array task ID to avoid conflicts
-CONTAINER_NAME="t60_Qwen3-14B_judging_Qwen3-32B_1000ex_10loops_${SLURM_ARRAY_TASK_ID}"
+CONTAINER_NAME="t60_Qwen3-14B_verifying_Qwen3-32B_1000ex_10loops_${SLURM_ARRAY_TASK_ID}"
 
 # Calculate port based on base port and array task ID to avoid conflicts
 VLLM_PORT=$((9000 + $SLURM_ARRAY_TASK_ID))
@@ -48,6 +48,7 @@ enroot start --rw --root \
     --vllm.enforce_eager False \
     --vllm.tensor_parallel_size 1 \
     --vllm.enable_expert_parallel False \
+    --vllm.enable_reasoning False \
     --only_run_missing_examples False \
     --include_prompt_in_metadata True \
     --data_rank $SLURM_ARRAY_TASK_ID \
