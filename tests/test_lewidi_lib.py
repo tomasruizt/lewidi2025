@@ -1,4 +1,5 @@
 from pathlib import Path
+import json_repair
 from lewidi_lib import (
     extract_json_substring_from_response,
     keep_only_data_parallel_assigned,
@@ -9,9 +10,12 @@ from lewidi_lib import (
     make_query_from_dict,
     soft_label_to_nparray,
     tgt_has_holes,
+    ws_loss,
 )
+from lewidi_org import average_WS
 import numpy as np
 import pandas as pd
+import pytest
 from sbatch_lib import sketch_sbatch_progress
 
 
@@ -123,3 +127,26 @@ def test_list_preds():
         "exists",
     }
     assert expected_cols.issubset(df.columns)
+
+
+@pytest.mark.skip(reason="The expected score differs from my own")
+def test_loss_metric_equal():
+    ddf = load_dataset(dataset="Paraphrase", split="dev")
+    # ddf["target"] = ddf["soft_label"].apply(lambda d: list(d.values()))
+    rdf = load_most_freq_baseline("par_dev_soft.tsv")
+    joint = pd.merge(ddf, rdf, on="dataset_idx")
+    expected_score = 3.2312
+    losses = []
+    for tgt, pred in zip(joint["target"], joint["pred"]):
+        losses.append(ws_loss(tgt=tgt, pred=pred, dataset="Paraphrase"))
+    my_ws_loss = np.mean(losses)
+    org_ws_loss = average_WS(targets=joint["target"], predictions=joint["pred"])
+    assert np.allclose(my_ws_loss, org_ws_loss)
+    assert np.allclose(my_ws_loss, expected_score)
+
+
+def load_most_freq_baseline(filename: str) -> pd.DataFrame:
+    file = Path(__file__).parent / "testfiles" / "most_freq_baseline" / filename
+    rdf = pd.read_csv(file, sep="\t", header=None, names=["dataset_idx", "pred"])
+    rdf["pred"] = rdf["pred"].apply(json_repair.loads)
+    return rdf
