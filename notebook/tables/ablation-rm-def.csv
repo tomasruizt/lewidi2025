@@ -1,0 +1,5 @@
+dataset,template_id,ws_loss,low,mean,high,confidence_level,n_samples
+CSC,31,"NumSamples: 55857, Mean: 1.008, 95% CI: 1.002 - 1.013",1.002,1.008,1.013,0.95,55857
+CSC,32,"NumSamples: 36509, Mean: 1.064, 95% CI: 1.057 - 1.071",1.057,1.064,1.071,0.95,36509
+MP,31,"NumSamples: 120136, Mean: 0.257, 95% CI: 0.256 - 0.258",0.256,0.257,0.258,0.95,120136
+MP,32,"NumSamples: 120119, Mean: 0.247, 95% CI: 0.246 - 0.248",0.246,0.247,0.248,0.95,120119

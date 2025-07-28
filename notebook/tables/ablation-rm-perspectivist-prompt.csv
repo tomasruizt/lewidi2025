@@ -1,0 +1,9 @@
+dataset,template_id,ws_loss,low,mean,high,confidence_level,n_samples
+CSC,3,"NumSamples: 55873, Mean: 1.034, 95% CI: 1.027 - 1.040",1.027,1.034,1.04,0.95,55873
+CSC,31,"NumSamples: 55857, Mean: 1.008, 95% CI: 1.002 - 1.013",1.002,1.008,1.013,0.95,55857
+MP,3,"NumSamples: 120165, Mean: 0.264, 95% CI: 0.263 - 0.265",0.263,0.264,0.265,0.95,120165
+MP,31,"NumSamples: 120136, Mean: 0.257, 95% CI: 0.256 - 0.258",0.256,0.257,0.258,0.95,120136
+Paraphrase,3,"NumSamples: 3583, Mean: 1.883, 95% CI: 1.840 - 1.924",1.84,1.883,1.924,0.95,3583
+Paraphrase,31,"NumSamples: 3538, Mean: 1.879, 95% CI: 1.838 - 1.920",1.838,1.879,1.92,0.95,3538
+VariErrNLI,3,"NumSamples: 3878, Mean: 0.242, 95% CI: 0.236 - 0.247",0.236,0.242,0.247,0.95,3878
+VariErrNLI,31,"NumSamples: 3877, Mean: 0.222, 95% CI: 0.217 - 0.227",0.217,0.222,0.227,0.95,3877

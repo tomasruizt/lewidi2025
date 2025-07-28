@@ -1095,9 +1095,9 @@ class BootstrapResult:
         return asdict(self)
 
 
-def bootstrap_avg(xs: Iterable[float]) -> BootstrapResult:
+def bootstrap_avg(xs: Iterable[float], **kwargs) -> BootstrapResult:
     ci = 0.95
-    res = bootstrap([xs], np.mean, confidence_level=ci)
+    res = bootstrap([xs], np.mean, confidence_level=ci, **kwargs)
     mean = np.mean(xs)
     low, high = res.confidence_interval
     return BootstrapResult(low, mean, high, ci, len(xs))
