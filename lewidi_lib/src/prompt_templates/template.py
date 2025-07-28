@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import json
+from logging import getLogger
 from pathlib import Path
 from typing import Iterable, Mapping
 import json_repair
@@ -9,6 +10,8 @@ import nltk
 from lewidi_lib import Dataset
 
 from . import templates_root
+
+logger = getLogger(__name__)
 
 
 class Template(ABC):
@@ -115,7 +118,11 @@ class JudgeCoTStepsInResponseTemplate(Template):
 def extract_key(data: Mapping, key: str) -> list[str]:
     if "response" not in data or data["response"] is None or data["response"] == "":
         raise CannotMakePromptError()
-    response = json_repair.loads(data["response"])
+    try:
+        response = json_repair.loads(data["response"])
+    except TypeError:
+        logger.error(f"Error parsing response: {data['response']}")
+        raise
     if key not in response:
         raise CannotMakePromptError()
     return response[key]
