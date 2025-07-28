@@ -1189,10 +1189,18 @@ def load_preds_for_submission(
     )
     rdf = pd.read_parquet(file)
     rdf = process_rdf(rdf, discard_invalid_pred=True, task=task)
-    logger.info("Before dropping submission duplicates: %d", len(rdf))
-    rdf = rdf.drop_duplicates(subset=["dataset_idx", "run_idx"])
-    logger.info("After dropping submission duplicates: %d", len(rdf))
+    rdf = drop_duplicates_in_ds_idx_run_idx(rdf)
     return rdf
+
+
+def drop_duplicates_in_ds_idx_run_idx(df: pd.DataFrame) -> pd.DataFrame:
+    n_before = len(df)
+    df = df.drop_duplicates(subset=["dataset_idx", "run_idx"])
+    n_after = len(df)
+    dropped = n_after - n_before
+    if dropped > 0:
+        logger.info("Dropped %d duplicates in ds_idx, run_idx", dropped)
+    return df
 
 
 def warnif_submission_nrows_not_as_expected(
@@ -1505,3 +1513,27 @@ def list_preds() -> pd.DataFrame:
     )
     df["exists"] = df["preds_file"].apply(Path.exists)
     return df
+
+
+def compute_is_correct_crosstab(
+    joint_df: pd.DataFrame, long: bool = False
+) -> pd.DataFrame:
+    con = duckdb.connect()
+    crosstab = con.sql("PIVOT joint_df ON is_correct GROUP BY dataset_idx").df()
+    crosstab = crosstab.rename(columns={"0": "incorrect", "1": "correct"})
+    crosstab["all_incorrect"] = (crosstab["incorrect"] > 0) & (crosstab["correct"] == 0)
+    crosstab["all_correct"] = (crosstab["incorrect"] == 0) & (crosstab["correct"] > 0)
+    crosstab["mixed"] = (crosstab["incorrect"] > 0) & (crosstab["correct"] > 0)
+    assert crosstab[["all_incorrect", "all_correct", "mixed"]].sum().sum() == len(
+        crosstab
+    )
+    if not long:
+        return crosstab
+
+    long = crosstab.melt(
+        "dataset_idx",
+        value_vars=["all_incorrect", "all_correct", "mixed"],
+        var_name="correct_level",
+    )
+    long = long.query("value").drop(columns=["value"])
+    return long
