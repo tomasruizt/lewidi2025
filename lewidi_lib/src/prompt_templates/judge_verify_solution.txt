@@ -1,6 +1,6 @@
 Compare the following solution to the reference, and return 1 if the solution is correct, 0 otherwise.
-A solution is correct when its expression is equal to the reference solution.
 Don't return any other text.
+The solution strings could differ, but they should mean the same thing.
 
 [Reference Solution]
 

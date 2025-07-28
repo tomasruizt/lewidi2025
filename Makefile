@@ -29,8 +29,8 @@ inference:
 		--datasets prm800k \
 		--splits train \
 		--template_ids 60 \
-		--remote_call_concurrency 10 \
-		--n_examples 50 \
+		--remote_call_concurrency 5 \
+		--n_examples 100 \
 		--n_loops 5 \
 		--data_rank 0 \
 		--data_world_size 1 \
@@ -48,10 +48,10 @@ judge:
 	python llm_judge.py \
 		--n_dataset_examples 50 \
 		--n_samples_per_example 10 \
-		--judge_model_id Qwen/Qwen3-4B \
-		--judge_gen_kwargs_str set2 \
-		--judge_template_id 60 \
-		--judge_max_output_tokens 5000 \
+		--judge_model_id gemini-2.5-flash \
+		--judge_gen_kwargs_str gemini-defaults \
+		--judge_template_id 23 \
+		--judge_max_output_tokens 20000 \
 		--use_random_stable_subset True \
 		--use_async_batch_mode False \
 		--pred_model_id Qwen/Qwen3-4B \
@@ -66,7 +66,7 @@ judge:
 		--only_run_missing_examples True \
 		--include_prompt_in_metadata True \
 		--preds_dir prm800k-poc/preds \
-		--tgt_file prm800k-poc/judge/verify-solution/responses.jsonl \
+		--tgt_file prm800k-poc/judge/gemini-2.5-flash/responses.jsonl \
 		--batch_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/judge/gemini-2.5-flash/t2/500ex-10loops/lewidi-judge-run4 \
 		--data_rank 0 \
 		--data_world_size 1 \
