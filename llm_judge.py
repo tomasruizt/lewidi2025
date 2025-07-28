@@ -42,6 +42,7 @@ rdf = load_preds_for_judge(
 )
 
 rdf_query = {
+    "success": True,
     "template_id": args.pred_template_id,
     "gen_kwargs": args.pred_gen_kwargs_str,
     "model_id": args.pred_model_id,

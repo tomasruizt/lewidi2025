@@ -1,6 +1,6 @@
 You are presented a problem statement and solution by an LLM.
 Please compare the solution to the reference solution, and return 1 if the solution is correct, 0 otherwise.
-Don't return any other text.
+Don't return any other text, and don't solve the problem by yourself.
 The solution strings could differ, but they should mean the same thing.
 
 [Problem]

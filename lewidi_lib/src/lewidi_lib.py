@@ -582,9 +582,16 @@ def load_preds(parquets_dir: str = "parquets") -> pd.DataFrame:
     rdf = con.sql(
         f"SELECT * FROM read_parquet('{parquets_dir}/*.parquet', union_by_name=True)"
     ).df()
+    rdf = recompute_success(rdf)
     logger.info("Loaded %d rows from %s", len(rdf), parquets_dir)
     return rdf
 
+def recompute_success(rdf: pd.DataFrame) -> pd.DataFrame:
+    if "max_tokens" in rdf.columns:
+        within_limit = rdf["max_tokens"] > rdf["n_output_tokens"]
+        success = within_limit & rdf["success"]
+        rdf = rdf.assign(success=success)
+    return rdf
 
 def join_dataset(
     rdf: pd.DataFrame, task: Task = "soft-label", parse_tgt: bool = True
