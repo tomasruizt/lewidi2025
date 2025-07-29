@@ -49,7 +49,7 @@ enroot start --rw --root \
     --vllm.tensor_parallel_size 1 \
     --vllm.enable_expert_parallel False \
     --vllm.enable_reasoning False \
-    --only_run_missing_examples False \
+    --only_run_missing_examples True \
     --include_prompt_in_metadata True \
     --data_rank $SLURM_ARRAY_TASK_ID \
     --data_world_size $SLURM_ARRAY_TASK_COUNT \
