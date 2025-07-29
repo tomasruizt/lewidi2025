@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition lrz-hgx-h100-94x4
+#SBATCH --partition lrz-hgx-h100-94x4,lrz-dgx-a100-80x8,lrz-hgx-a100-80x4
 #SBATCH --gres=gpu:1
 #SBATCH --array=0
 #SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops/judge/Qwen/Qwen3-14B/set2/t60/1000ex_10loops/logs/%a_out.logs
