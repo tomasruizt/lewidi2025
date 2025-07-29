@@ -1,17 +1,19 @@
-python inference.py \
-    --model_id Qwen/Qwen3-14B-FP8 \
+python ../inference.py \
+    --model_id Qwen/Qwen3-32B \
     --gen_kwargs set2 \
     --datasets prm800k \
     --template_ids 60 \
     --splits train \
     --n_examples 1000 \
-    --n_loops 1 \
+    --n_loops 10 \
     --n_fewshot_examples 0 \
-    --remote_call_concurrency 32 \
+    --max_tokens 15000 \
+    --remote_call_concurrency 10 \
+    --timeout_secs 600 \
     --vllm.port 8000 \
     --vllm.start_server True \
     --vllm.tensor_parallel_size 1 \
     --vllm.enable_expert_parallel False \
     --vllm.enable_reasoning True \
     --only_run_missing_examples True \
-    --tgt_file /workspace/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-14B-FP8/set2/t60/prm800k/train/1000ex_10loops/preds/responses.jsonl
+    --tgt_file /workspace/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops/preds/responses.jsonl

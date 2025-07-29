@@ -37,7 +37,8 @@ enroot start --rw --root \
     --splits train \
     --n_examples 1000 \
     --n_loops 10 \
-    --max_tokens 20000 \
+    --max_tokens 15000 \
+    --timeout_secs 600 \
     --n_fewshot_examples 0 \
     --remote_call_concurrency 32 \
     --data_rank $SLURM_ARRAY_TASK_ID \
