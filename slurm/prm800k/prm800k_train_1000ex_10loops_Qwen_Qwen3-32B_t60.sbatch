@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition lrz-hgx-h100-94x4
 #SBATCH --gres=gpu:2
-#SBATCH --array=0
+#SBATCH --array=0-1
 #SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops/preds/logs/%a_out.logs
 #SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops/preds/logs/%a_err.logs
 #SBATCH --job-name prm800k_train_1000ex_10loops_Qwen_Qwen3-32B_t60
