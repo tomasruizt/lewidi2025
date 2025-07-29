@@ -14,8 +14,9 @@ def create_sbatch_file(
     vllm_starting_port: int = 9000,
 ) -> None:
     dataset = "CSC"
+    split = "train"
     root = Path(
-        f"/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{model_id.replace('/', '_')}/set2/t31/{dataset}/allex_20loops"
+        f"/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{model_id.replace('/', '_')}/set2/t31/{dataset}/{split}/allex_20loops"
     )
     judge_gen_kwargs_str = "set2"
     n_dataset_examples = 1000
