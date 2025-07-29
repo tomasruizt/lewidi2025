@@ -53,6 +53,8 @@ gen_kwargs = "set2"
 split = "train"
 TEMPLATE_IDS = [3, 31, 32, 60]
 BASE_PORT = 9000
+N_EXAMPLES = 15000
+RUN_NAME = "allex_10loops"
 
 tgt_dir = Path("slurm_scripts")
 os.makedirs(tgt_dir, exist_ok=True)
@@ -65,10 +67,10 @@ combinations = product(CASES, DATASETS, TEMPLATE_IDS)
 for i, (case, dataset, template_id) in enumerate(combinations):
     # Base port for this combination - each array task will add its task ID to this
     port = BASE_PORT + (i * 100)  # Give enough space between job ports
-    jobname = f"{dataset.name}_{split}_{case.model.replace('/', '_')}_t{template_id}"
+    jobname = f"{dataset.name}_{split}_{RUN_NAME}_{case.model.replace('/', '_')}_t{template_id}"
     template: str = Path("template.sbatch").read_text()
     tgt_dir = Path(
-        f"/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{case.model.replace('/', '_')}/{gen_kwargs}/t{template_id}/{dataset.name}/{split}/allex_10loops/preds"
+        f"/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{case.model.replace('/', '_')}/{gen_kwargs}/t{template_id}/{dataset.name}/{split}/{RUN_NAME}/preds"
     )
 
     filled = template.format(
@@ -78,6 +80,7 @@ for i, (case, dataset, template_id) in enumerate(combinations):
         MODEL_ID=case.model,
         GEN_KWARGS=gen_kwargs,
         DATASETS=dataset.name,
+        N_EXAMPLES=N_EXAMPLES,
         SPLITS=split,
         TEMPLATE_IDS=template_id,
         VLLM_PORT=port,

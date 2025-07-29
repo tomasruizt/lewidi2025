@@ -35,7 +35,7 @@ enroot start --rw --root \
     --datasets {DATASETS} \
     --template_ids {TEMPLATE_IDS} \
     --splits {SPLITS} \
-    --n_examples 15000 \
+    --n_examples {N_EXAMPLES} \
     --n_loops 10 \
     --n_fewshot_examples 0 \
     --remote_call_concurrency {REMOTE_CALL_CONCURRENCY} \
