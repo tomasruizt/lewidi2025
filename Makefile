@@ -54,7 +54,7 @@ judge:
 		--judge_max_output_tokens 20000 \
 		--use_random_stable_subset True \
 		--use_async_batch_mode False \
-		--pred_model_id Qwen/Qwen3-4B \
+		--pred_model_id Qwen/Qwen3-32B \
 		--pred_gen_kwargs_str set2 \
 		--pred_dataset prm800k \
 		--pred_split train \
@@ -65,8 +65,8 @@ judge:
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
 		--include_prompt_in_metadata True \
-		--preds_dir prm800k-poc/preds \
-		--tgt_file prm800k-poc/judge/gemini-2.5-flash/responses.jsonl \
+		--preds_dir /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10_loops_preliminary_mixed_perf_subset/preds \
+		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10_loops_preliminary_mixed_perf_subset/judge/gemini-2.5-flash/responses.jsonl \
 		--batch_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/judge/gemini-2.5-flash/t2/500ex-10loops/lewidi-judge-run4 \
 		--data_rank 0 \
 		--data_world_size 1 \
