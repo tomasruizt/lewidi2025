@@ -1052,9 +1052,9 @@ def drop_na_score_rows(df: pd.DataFrame) -> pd.DataFrame:
 
 def create_rating_matrix(ratings: pd.DataFrame) -> pd.DataFrame:
     cat_mappings = [
-        ("centered", mapping(ok=0, bad=-1)),
-        ("neutral=negative", mapping(ok=0, bad=0)),
-        ("neutral=positive", mapping(ok=1, bad=0)),
+        ("ok=0,bad=-1", mapping(ok=0, bad=-1)),
+        ("ok=0,bad=0", mapping(ok=0, bad=0)),
+        ("ok=1,bad=0", mapping(ok=1, bad=0)),
     ]
     operations = [("mean", np.mean), ("product", np.prod), ("min", np.min)]
 
