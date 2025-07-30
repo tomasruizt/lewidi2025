@@ -196,3 +196,8 @@ def test_group_pred():
     weights2 = np.array([1.0, 0.0])
     assert np.allclose(group_pred(preds, weights1), [0.3, 0.7])
     assert np.allclose(group_pred(preds, weights2), [0.1, 0.9])
+
+
+def test_load_dataset():
+    ddf = load_dataset(dataset="aime", split="train", parse_tgt=False)
+    assert len(ddf) > 100

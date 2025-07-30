@@ -28,7 +28,7 @@ import scipy
 
 logger = logging.getLogger(__name__)
 
-Dataset = Literal["CSC", "MP", "Paraphrase", "VariErrNLI", "prm800k"]
+Dataset = Literal["CSC", "MP", "Paraphrase", "VariErrNLI", "prm800k", "aime"]
 
 Split = Literal["train", "dev", "test_clear"]
 
@@ -81,7 +81,7 @@ def load_dataset(
 
     df["dataset"] = dataset
     df["split"] = split
-    if dataset == "prm800k":
+    if dataset == "prm800k" or dataset == "aime":
         return df
 
     df = assign_col_n_classes(df)
