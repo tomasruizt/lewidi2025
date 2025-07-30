@@ -1,0 +1,27 @@
+[Instructions]
+
+Solve the task below. Format your response into logical steps that can be verified by a third-party, and format each step in JSON format like this:
+
+{{
+    'steps': [
+        '<text of step 1>',
+        '<text of step 2>',
+        ...,
+        '<text of step n>'
+    ],
+    'final_response': '<response>'
+}}
+
+Please simplify your final response as much as possible, and avoid any unnecessary text there.
+
+[Task]
+
+Below is a post-reply pair where human annotators rated the irony of the 'reply' as either 0.0 (not ironic) or 1 (ironic). Please guess the distribution of ratings and output it in the final_response field in JSON format like this: {{'0': p0, '1': p1}}, where p0 and p1 are probabilities. The sum of probabilities must equal 1.0.
+
+Use this definition for irony: "a situation in which something which was intended to have a particular result has the opposite or a very different result"
+
+Think about the perspectives that different annotators might have and how they could potentially interpret the post-reply pair.
+
+[Post-Reply Pair]
+
+{text}

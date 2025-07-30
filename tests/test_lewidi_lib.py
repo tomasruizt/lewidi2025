@@ -164,7 +164,7 @@ class TestArgs(Args):
 
 def test_create_all_batches():
     args = TestArgs(
-        datasets=["CSC"],
+        datasets=["CSC", "MP"],
         splits=["train"],
         template_ids=[60],
     )
