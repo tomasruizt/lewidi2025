@@ -7,42 +7,44 @@ def shortform(model_id: str) -> str:
 
 
 def create_sbatch_file(
-    model_id: str,
+    pred_model_id: str,
     judge_model_id: str,
     tgt_dir: Path,
     judge_template_id: int = 2,
     vllm_starting_port: int = 9000,
+    dataset: str = "CSC",
 ) -> None:
-    dataset = "CSC"
     split = "train"
-    root = Path(
-        f"/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{model_id.replace('/', '_')}/set2/t31/{dataset}/{split}/allex_20loops"
-    )
+    pred_template_id = 60
     judge_gen_kwargs_str = "set2"
     n_dataset_examples = 1000
     n_samples_per_example = 10
+    run_name = f"{n_dataset_examples}ex_{n_samples_per_example}loops"
+    root = Path(
+        f"/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{pred_model_id.replace('/', '_')}/set2/t{pred_template_id}/{dataset}/{split}/{run_name}"
+    )
     if "32" in judge_model_id:
         n_gpus = 2
     else:
         n_gpus = 1
-    slurm_array_size = 4
+    slurm_array_size = 2
     enable_expert_parallel = False
     remote_call_concurrency = 20
-
-    subset_str = f"{n_dataset_examples}exs_{n_samples_per_example}loops"
-    jobname = f"t{judge_template_id}_{shortform(judge_model_id)}_judging_{shortform(model_id)}_{subset_str}"
+    jobname = f"{dataset}_{shortform(judge_model_id)}_t{judge_template_id}_judging_{shortform(pred_model_id)}_{run_name}"
     judge_tgt_dir = (
         root
         / "judge"
         / judge_model_id
         / judge_gen_kwargs_str
         / f"t{judge_template_id}"
-        / subset_str
+        / run_name
     )
 
     template_vars = {
+        "DATASET": dataset,
         "PREDS_DIR": str(root / "preds"),
-        "PRED_MODEL_ID": model_id,
+        "PRED_MODEL_ID": pred_model_id,
+        "PRED_TEMPLATE_ID": pred_template_id,
         "LOGS_DIR": str(judge_tgt_dir / "logs"),
         "JUDGE_MODEL_ID": judge_model_id,
         "JUDGE_TGT_FILE": str(judge_tgt_dir / "responses.jsonl"),
@@ -70,21 +72,26 @@ def create_sbatch_file(
 
 cases = [
     # (pred_model, judge_model)
-    ("Qwen/Qwen3-8B", "Qwen/Qwen3-8B"),
-    ("Qwen/Qwen3-8B", "Qwen/Qwen3-32B"),
+    # ("Qwen/Qwen3-8B", "Qwen/Qwen3-8B"),
+    # ("Qwen/Qwen3-8B", "Qwen/Qwen3-32B"),
     ("Qwen/Qwen3-32B", "Qwen/Qwen3-32B"),
 ]
-template_ids = [22]
-
+judge_template_id = [60]
+datasets = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
 
 tgt_dir = Path("slurm_scripts")
 # Clear any existing .sbatch files
 for file in tgt_dir.glob("*.sbatch"):
     file.unlink()
 
-combs = product(template_ids, cases)
-for i, (judge_template_id, (model_id, judge_model_id)) in enumerate(combs):
+combs = product(judge_template_id, cases, datasets)
+for i, (judge_template_id, (model_id, judge_model_id), dataset) in enumerate(combs):
     vllm_starting_port = 9000 + i * 100
     create_sbatch_file(
-        model_id, judge_model_id, tgt_dir, judge_template_id, vllm_starting_port
+        model_id,
+        judge_model_id,
+        tgt_dir,
+        judge_template_id,
+        vllm_starting_port,
+        dataset,
     )

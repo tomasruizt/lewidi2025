@@ -38,9 +38,9 @@ enroot start --rw --root \
     --judge_template_id {JUDGE_TEMPLATE_ID} \
     --pred_model_id {PRED_MODEL_ID} \
     --pred_gen_kwargs_str set2 \
-    --pred_dataset CSC \
+    --pred_dataset {DATASET} \
     --pred_split train \
-    --pred_template_id 31 \
+    --pred_template_id {PRED_TEMPLATE_ID} \
     --remote_call_concurrency {REMOTE_CALL_CONCURRENCY} \
     --vllm.port $VLLM_PORT \
     --vllm.start_server True \
@@ -48,7 +48,7 @@ enroot start --rw --root \
     --vllm.tensor_parallel_size {N_GPUS} \
     --vllm.enable_expert_parallel {ENABLE_EXPERT_PARALLEL} \
     --only_run_missing_examples True \
-    --include_prompt_in_metadata False \
+    --include_prompt_in_metadata True \
     --data_rank $SLURM_ARRAY_TASK_ID \
     --data_world_size $SLURM_ARRAY_TASK_COUNT \
     --preds_dir {PREDS_DIR} \
