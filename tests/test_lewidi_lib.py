@@ -1,4 +1,5 @@
 from pathlib import Path
+from inference_lib import Args, create_all_batches
 import json_repair
 from lewidi_lib import (
     extract_json_substring_from_response,
@@ -150,3 +151,19 @@ def load_most_freq_baseline(filename: str) -> pd.DataFrame:
     rdf = pd.read_csv(file, sep="\t", header=None, names=["dataset_idx", "pred"])
     rdf["pred"] = rdf["pred"].apply(json_repair.loads)
     return rdf
+
+
+class TestArgs(Args):
+    """subclass that disables CLI argument parsing for testing"""
+
+    model_config = {"cli_parse_args": False}
+
+
+def test_create_all_batches():
+    args = TestArgs(
+        datasets=["CSC"],
+        splits=["train"],
+        template_ids=[60],
+    )
+    batches = create_all_batches(args)
+    assert len(batches) > 0
