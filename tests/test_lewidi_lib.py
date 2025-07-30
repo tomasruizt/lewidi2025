@@ -175,6 +175,8 @@ def test_create_all_batches():
 def test_run_inference():
     args = TestArgs(
         model_id="test",
+        datasets=["aime"],
+        template_ids=["60"],
         n_examples=3,
         n_loops=2,
         tgt_file=str(test_files_folder / "test_run_inference_responses.jsonl"),

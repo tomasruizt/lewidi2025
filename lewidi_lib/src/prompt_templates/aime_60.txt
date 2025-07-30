@@ -1,0 +1,19 @@
+[Instructions]
+
+Solve the problem below. Format your response into logical steps that can be verified by a third-party, and format each step in JSON format like this:
+
+{{
+    'steps': [
+        '<text of step 1>',
+        '<text of step 2>',
+        ...,
+        '<text of step n>'
+    ],
+    'final_response': '<response>'
+}}
+
+Please simplify your final response as much as possible, and avoid any unnecessary text there.
+
+[Problem]
+
+{text}
