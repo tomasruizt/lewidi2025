@@ -1,9 +1,12 @@
 from itertools import product
 from pathlib import Path
 from typing import Iterable, Mapping
+from logging import getLogger
 from lewidi_lib import (
     BasicSchema,
     VLLMArgs,
+    convert_output_to_parquet,
+    dump_response,
     keep_only_data_parallel_assigned,
     keep_only_missing_examples,
     load_dataset,
@@ -11,14 +14,22 @@ from lewidi_lib import (
     GenKwargs,
     Split,
     Dataset,
+    postprocess_response,
+    using_vllm_server,
 )
 from llmlib.base_llm import Conversation, LlmReq, Message
+from llmlib.gemini.gemini_code import GeminiAPI
+from llmlib.mock_model import MockModel
+from llmlib.vllm_model import ModelvLLM
 import pandas as pd
 from prompt_templates.template import make_pred_template
 from pydantic import Field
 from pydantic_settings import BaseSettings
 import json
 import datetime
+from tqdm import tqdm
+
+logger = getLogger(__name__)
 
 
 class Args(BaseSettings, cli_parse_args=True):
@@ -147,3 +158,42 @@ def create_all_batches(args: Args) -> list[LlmReq]:
         batch = create_batch_for_model(args, dataset, split, template_id, run_idx)
         batches.extend(batch)
     return batches
+
+
+def process_batch(model: ModelvLLM, batches: list[LlmReq], tgt_file: str) -> None:
+    logger.info("Total num of examples: %d", len(batches))
+    responses = model.complete_batchof_reqs(batch=batches)
+    for response in tqdm(responses, total=len(batches)):
+        response = postprocess_response(response)
+        dump_response(tgt_file=tgt_file, response=response)
+
+
+def make_model(args: Args) -> ModelvLLM:
+    if args.model_id == "test":
+        return MockModel()
+
+    if args.model_id.startswith("gemini"):
+        model = GeminiAPI(
+            model_id=args.model_id,
+            max_n_batching_threads=args.remote_call_concurrency,
+            include_thoughts=True,
+            location="global",
+        )
+        return model
+
+    model = ModelvLLM(
+        remote_call_concurrency=args.remote_call_concurrency,
+        model_id=args.model_id,
+        port=args.vllm.port,
+        timeout_secs=args.timeout_secs,
+    )
+    return model
+
+
+def run_inference(args: Args) -> None:
+    logger.info("Args: %s", args.model_dump_json())
+    batches: list[LlmReq] = create_all_batches(args)
+    model = make_model(args)
+    with using_vllm_server(args.model_id, args.vllm):
+        process_batch(model, batches, args.tgt_file)
+    convert_output_to_parquet(args.tgt_file)

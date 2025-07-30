@@ -1,7 +1,8 @@
 from pathlib import Path
-from inference_lib import Args, create_all_batches
+from inference_lib import Args, create_all_batches, run_inference
 import json_repair
 from lewidi_lib import (
+    VLLMArgs,
     extract_json_substring_from_response,
     keep_only_data_parallel_assigned,
     keep_only_missing_examples,
@@ -18,6 +19,9 @@ import numpy as np
 import pandas as pd
 import pytest
 from sbatch_lib import sketch_sbatch_progress
+
+
+test_files_folder = Path(__file__).parent / "testfiles"
 
 
 def test_sketch_sbatch_progress():
@@ -67,9 +71,7 @@ def test_extract_json_substring_from_response():
 
 
 def test_keep_only_missing_examples():
-    tgt_file = (
-        Path(__file__).parent / "testfiles" / "judge-responses_with_timeouts.jsonl"
-    )
+    tgt_file = test_files_folder / "judge-responses_with_timeouts.jsonl"
     desired = load_preds_for_judge(
         preds_dir="/mnt/disk16tb/globus_shared/from-lrz-ai-systems",
         n_dataset_examples=100,
@@ -167,3 +169,14 @@ def test_create_all_batches():
     )
     batches = create_all_batches(args)
     assert len(batches) > 0
+
+
+def test_run_inference():
+    args = TestArgs(
+        model_id="test",
+        n_examples=3,
+        n_loops=2,
+        tgt_file=str(test_files_folder / "test_run_inference_responses.jsonl"),
+        vllm=VLLMArgs(start_server=False),
+    )
+    run_inference(args)
