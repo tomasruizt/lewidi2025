@@ -4,6 +4,7 @@ import json_repair
 from lewidi_lib import (
     VLLMArgs,
     extract_json_substring_from_response,
+    group_pred,
     keep_only_data_parallel_assigned,
     keep_only_missing_examples,
     list_preds,
@@ -180,3 +181,18 @@ def test_run_inference():
         vllm=VLLMArgs(start_server=False),
     )
     run_inference(args)
+
+
+def test_group_pred():
+    preds = pd.Series([[0.1, 0.9], [0.3, 0.7]])
+    expected = np.array([0.2, 0.8])
+    actual = group_pred(preds)
+    assert np.allclose(actual, expected)
+
+    actual2 = group_pred(preds, weights=np.ones(2))
+    assert np.allclose(actual2, expected)
+
+    weights1 = np.array([0.0, 1.0])
+    weights2 = np.array([1.0, 0.0])
+    assert np.allclose(group_pred(preds, weights1), [0.3, 0.7])
+    assert np.allclose(group_pred(preds, weights2), [0.1, 0.9])

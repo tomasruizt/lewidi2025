@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from dataclasses import asdict, dataclass
 import datetime
 from functools import lru_cache
-from itertools import product
+from itertools import combinations, product
 import json
 from multiprocessing import Pool
 import random
@@ -275,7 +275,10 @@ Task = Literal["soft-label", "perspectivist"]
 
 
 def process_rdf(
-    rdf: pd.DataFrame, discard_invalid_pred: bool = False, task: Task = "soft-label"
+    rdf: pd.DataFrame,
+    discard_invalid_pred: bool = False,
+    task: Task = "soft-label",
+    response_contains_steps: bool = False,
 ) -> pd.DataFrame:
     """Process model results dataframe"""
     logger.info("Starting processing with %d rows", len(rdf))
@@ -304,6 +307,10 @@ def process_rdf(
 
     rdf = extract_json_substring_from_response(rdf)
     rdf = assign_col_response_parsed(rdf)
+
+    if response_contains_steps:
+        col = rdf["response_parsed"].apply(lambda d: d["final_response"])
+        rdf = rdf.assign(response_parsed=col)
 
     if task == "soft-label":
         rdf = assign_col_pred_softlabel(rdf)
@@ -586,12 +593,14 @@ def load_preds(parquets_dir: str = "parquets") -> pd.DataFrame:
     logger.info("Loaded %d rows from %s", len(rdf), parquets_dir)
     return rdf
 
+
 def recompute_success(rdf: pd.DataFrame) -> pd.DataFrame:
     if "max_tokens" in rdf.columns:
         within_limit = rdf["max_tokens"] > rdf["n_output_tokens"]
         success = within_limit & rdf["success"]
         rdf = rdf.assign(success=success)
     return rdf
+
 
 def join_dataset(
     rdf: pd.DataFrame, task: Task = "soft-label", parse_tgt: bool = True
@@ -706,13 +715,18 @@ def process_rdf_and_add_perf_metrics(
     return rdf
 
 
-def group_pred(preds: pd.Series) -> np.ndarray:
+def group_pred(preds: pd.Series, weights: np.ndarray | None = None) -> np.ndarray:
+    """Weights are between 0 and 1 and DON'T have to sum to 1.0"""
+    if weights is None:
+        weights = np.ones(len(preds))
+
     if isinstance(preds.iloc[0], dict):
         data = pd.DataFrame(preds.tolist()).apply(group_pred).to_dict()
         return {k: np.array(list(v.values())) for k, v in data.items()}
 
-    means = np.mean(preds.tolist(), axis=0)
-    return means / means.sum()
+    means = weights @ np.array(preds.tolist()) / weights.sum()
+    res = means / means.sum()  # normalize to 1.0 exactly
+    return res
 
 
 def compute_average_baseline_and_assing_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
@@ -779,13 +793,14 @@ def assign_col_template_alias(df: pd.DataFrame) -> pd.DataFrame:
     assert "template_id" in df.columns
     alias_df = pd.DataFrame(
         {
-            "template_id": as_categorical(pd.Series([2, 3, 32, 31, 33])),
+            "template_id": as_categorical(pd.Series([2, 3, 32, 31, 33, 60])),
             "template_alias": [
                 "0 simple",
                 "1 +def",
                 "2 +pers",
                 "3 +def+pers",
                 "perspectivist",
+                "incl. steps",
             ],
         }
     )
@@ -1501,8 +1516,8 @@ def list_preds() -> pd.DataFrame:
     ]
     datasets: list[Dataset] = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
     splits: list[Split] = ["train", "test_clear"]
-    templates = ["3", "31", "32"]
-    run_names = ["allex_10loops", "allex_20loops"]
+    templates = ["3", "31", "32", "60"]
+    run_names = ["allex_10loops", "allex_20loops", "1000ex_10loops"]
     combinations = product(splits, datasets, models, templates, run_names)
     df = pd.DataFrame(
         combinations,
@@ -1544,3 +1559,21 @@ def compute_is_correct_crosstab(
     )
     long = long.query("value").drop(columns=["value"])
     return long
+
+
+def avg_pairwise_ws_loss(preds: pd.Series) -> float:
+    np_preds = as_np(preds)
+    n, dim = np_preds.shape
+    assert n > 1, "Need at least 2 predictions to compute pairwise ws loss"
+    space = np.arange(dim)
+    dists = []
+    for p1, p2 in combinations(np_preds, r=2):
+        d = scipy.stats.wasserstein_distance(space, space, p1, p2)
+        dists.append(d)
+    avg = np.mean(dists)
+    return avg
+
+
+def assign_col_diversity(df: pd.DataFrame) -> pd.DataFrame:
+    col = pd.qcut(df["avg_pairwise_ws_loss"], 5, labels=["Q1", "Q2", "Q3", "Q4", "Q5"])
+    return df.assign(diversity=col)
