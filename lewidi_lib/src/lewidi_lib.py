@@ -1562,6 +1562,11 @@ def compute_is_correct_crosstab(
 
 
 def avg_pairwise_ws_loss(preds: pd.Series) -> float:
+    if is_varierr_series(preds):
+        df = pd.DataFrame(list(preds))
+        by_cat = df.apply(avg_pairwise_ws_loss)
+        return by_cat.mean()
+
     np_preds = as_np(preds)
     n, dim = np_preds.shape
     assert n > 1, "Need at least 2 predictions to compute pairwise ws loss"
@@ -1575,5 +1580,9 @@ def avg_pairwise_ws_loss(preds: pd.Series) -> float:
 
 
 def assign_col_diversity(df: pd.DataFrame) -> pd.DataFrame:
-    col = pd.qcut(df["avg_pairwise_ws_loss"], 5, labels=["Q1", "Q2", "Q3", "Q4", "Q5"])
+    col = diversity(df["avg_pairwise_ws_loss"])
     return df.assign(diversity=col)
+
+
+def diversity(avg_pairwise_ws_loss: pd.Series) -> pd.Series:
+    return pd.qcut(avg_pairwise_ws_loss, 5, labels=["Q1", "Q2", "Q3", "Q4", "Q5"])
