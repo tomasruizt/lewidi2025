@@ -46,7 +46,7 @@ inference:
 
 judge:
 	python llm_judge.py \
-		--n_dataset_examples 50 \
+		--n_dataset_examples 1000 \
 		--n_samples_per_example 10 \
 		--judge_model_id gemini-2.5-flash \
 		--judge_gen_kwargs_str gemini-defaults \
@@ -65,8 +65,8 @@ judge:
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
 		--include_prompt_in_metadata True \
-		--preds_dir /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10_loops_preliminary_mixed_perf_subset/preds \
-		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10_loops_preliminary_mixed_perf_subset/judge/gemini-2.5-flash/responses.jsonl \
+		--preds_dir /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops_mixed_perf_subset/preds \
+		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops_mixed_perf_subset/judge/gemini-2.5-flash/responses.jsonl \
 		--batch_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/judge/gemini-2.5-flash/t2/500ex-10loops/lewidi-judge-run4 \
 		--data_rank 0 \
 		--data_world_size 1 \
