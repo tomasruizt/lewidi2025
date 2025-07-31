@@ -16,6 +16,7 @@ from lewidi_lib import (
     ws_loss,
 )
 from lewidi_org import average_WS
+from judge_lib import JudgeArgs, create_judge_batch
 import numpy as np
 import pandas as pd
 import pytest
@@ -162,6 +163,12 @@ class TestArgs(Args):
     model_config = {"cli_parse_args": False}
 
 
+class TestJudgeArgs(JudgeArgs):
+    """subclass that disables CLI argument parsing for testing"""
+
+    model_config = {"cli_parse_args": False}
+
+
 def test_create_all_batches():
     args = TestArgs(
         datasets=["CSC", "MP"],
@@ -172,6 +179,17 @@ def test_create_all_batches():
     assert len(batches) > 0
 
 
+def test_create_judge_batch():
+    args = TestJudgeArgs(
+        preds_dir=test_files_folder / "test-preds",
+        pred_dataset="aime",
+        pred_model_id="test",
+        pred_template_id=60,
+    )
+    batches = create_judge_batch(args)
+    assert len(batches) > 0
+
+
 def test_run_inference():
     args = TestArgs(
         model_id="test",
@@ -179,7 +197,7 @@ def test_run_inference():
         template_ids=["60"],
         n_examples=3,
         n_loops=2,
-        tgt_file=str(test_files_folder / "test_run_inference_responses.jsonl"),
+        tgt_file=str(test_files_folder / "test-preds" / "responses.jsonl"),
         vllm=VLLMArgs(start_server=False),
     )
     run_inference(args)

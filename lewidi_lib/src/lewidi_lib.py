@@ -595,7 +595,7 @@ def load_preds(parquets_dir: str = "parquets") -> pd.DataFrame:
 
 
 def recompute_success(rdf: pd.DataFrame) -> pd.DataFrame:
-    if "max_tokens" in rdf.columns:
+    if "max_tokens" in rdf.columns and "n_output_tokens" in rdf.columns:
         within_limit = rdf["max_tokens"] > rdf["n_output_tokens"]
         success = within_limit & rdf["success"]
         rdf = rdf.assign(success=success)
