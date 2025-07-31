@@ -2,13 +2,13 @@
 #SBATCH --partition lrz-hgx-h100-94x4,lrz-dgx-a100-80x8,lrz-hgx-a100-80x4
 #SBATCH --gres=gpu:1
 #SBATCH --array=0
-#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/aime/train/1000ex_10loops/judge/Qwen/Qwen3-14B/set2/t60/1000ex_10loops/logs/%a_out.logs
-#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/aime/train/1000ex_10loops/judge/Qwen/Qwen3-14B/set2/t60/1000ex_10loops/logs/%a_err.logs
-#SBATCH --job-name t60_Qwen3-14B_verifying_Qwen3-32B_1000ex_10loops
+#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/allex_10loops/judge/Qwen/Qwen3-14B/set2/t60/allex_10loops/logs/%a_out.logs
+#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/allex_10loops/judge/Qwen/Qwen3-14B/set2/t60/allex_10loops/logs/%a_err.logs
+#SBATCH --job-name t60_Qwen3-14B_verifying_Qwen3-32B_allex_10loops
 #SBATCH --time 3:00:00
 
 # Set container name based on job name and array task ID to avoid conflicts
-CONTAINER_NAME="t60_Qwen3-14B_verifying_Qwen3-32B_1000ex_10loops_${SLURM_ARRAY_TASK_ID}"
+CONTAINER_NAME="t60_Qwen3-14B_verifying_Qwen3-32B_allex_10loops_${SLURM_ARRAY_TASK_ID}"
 
 # Calculate port based on base port and array task ID to avoid conflicts
 VLLM_PORT=$((9000 + $SLURM_ARRAY_TASK_ID))
@@ -39,7 +39,7 @@ enroot start --rw --root \
     --collect_all_solutions_per_example False \
     --pred_model_id Qwen/Qwen3-32B \
     --pred_gen_kwargs_str set2 \
-    --pred_dataset aime \
+    --pred_dataset prm800k \
     --pred_split train \
     --pred_template_id 60 \
     --remote_call_concurrency 50 \
@@ -53,8 +53,8 @@ enroot start --rw --root \
     --include_prompt_in_metadata True \
     --data_rank $SLURM_ARRAY_TASK_ID \
     --data_world_size $SLURM_ARRAY_TASK_COUNT \
-    --preds_dir /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/aime/train/1000ex_10loops/preds \
-    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/aime/train/1000ex_10loops/judge/Qwen/Qwen3-14B/set2/t60/1000ex_10loops/responses.jsonl"
+    --preds_dir /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/allex_10loops/preds \
+    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/allex_10loops/judge/Qwen/Qwen3-14B/set2/t60/allex_10loops/responses.jsonl"
 
 # Clean up: remove the container after job completion
 echo "Cleaning up: removing container $CONTAINER_NAME..."
