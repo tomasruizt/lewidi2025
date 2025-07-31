@@ -27,7 +27,7 @@ def create_sbatch_file(
     judge_gen_kwargs_str = "set2"
     n_dataset_examples = 1000
     n_samples_per_example = 10
-    run_name = f"{n_dataset_examples}ex_{n_samples_per_example}loops_q5div"
+    run_name = f"{n_dataset_examples}ex_{n_samples_per_example}loops"
     root = Path(
         f"/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{pred_model_id.replace('/', '_')}/set2/t{pred_template_id}/{dataset}/{split}/{run_name}"
     )
@@ -45,7 +45,7 @@ def create_sbatch_file(
         / judge_model_id
         / judge_gen_kwargs_str
         / f"t{judge_template_id}"
-        / run_name
+        / f"{run_name}_q5div"
     )
 
     template_vars = {
