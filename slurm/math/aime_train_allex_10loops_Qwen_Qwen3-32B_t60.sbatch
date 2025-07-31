@@ -37,7 +37,7 @@ enroot start --rw --root \
     --splits train \
     --n_examples 10000 \
     --n_loops 10 \
-    --max_tokens 15000 \
+    --max_tokens 25000 \
     --timeout_secs 600 \
     --n_fewshot_examples 0 \
     --remote_call_concurrency 16 \
