@@ -46,28 +46,30 @@ inference:
 
 judge:
 	python llm_judge.py \
-		--n_dataset_examples 1000 \
+		--n_dataset_examples 100 \
 		--n_samples_per_example 10 \
 		--judge_model_id gemini-2.5-flash \
 		--judge_gen_kwargs_str gemini-defaults \
-		--judge_template_id 23 \
+		--judge_template_id 24 \
 		--judge_max_output_tokens 20000 \
 		--use_random_stable_subset True \
+		--keep_only_highest_diversity_preds True \
+		--pred_response_contains_steps True \
 		--use_async_batch_mode False \
 		--pred_model_id Qwen/Qwen3-32B \
 		--pred_gen_kwargs_str set2 \
-		--pred_dataset prm800k \
+		--pred_dataset CSC \
 		--pred_split train \
 		--pred_template_id 60 \
-		--remote_call_concurrency 10 \
+		--remote_call_concurrency 50 \
 		--vllm.port 8000 \
 		--vllm.start_server False \
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
 		--include_prompt_in_metadata True \
-		--preds_dir /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops_mixed_perf_subset/preds \
-		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops_mixed_perf_subset/judge/gemini-2.5-flash/responses.jsonl \
-		--batch_dir /home/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t31/CSC/allexs_20loops/judge/gemini-2.5-flash/t2/500ex-10loops/lewidi-judge-run4 \
+		--preds_dir /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/CSC/train/1000ex_10loops/preds \
+		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/CSC/train/1000ex_10loops/judge/gemini-2.5-flash/t24/responses.jsonl \
+		--batch_dir "" \
 		--data_rank 0 \
 		--data_world_size 1 \
 		--n_fewshot_examples 0 \
