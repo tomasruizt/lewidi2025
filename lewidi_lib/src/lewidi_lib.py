@@ -1569,7 +1569,9 @@ def avg_pairwise_ws_loss(preds: pd.Series) -> float:
 
     np_preds = as_np(preds)
     n, dim = np_preds.shape
-    assert n > 1, "Need at least 2 predictions to compute pairwise ws loss"
+    if n < 2:
+        return np.nan
+
     space = np.arange(dim)
     dists = []
     for p1, p2 in combinations(np_preds, r=2):
@@ -1586,3 +1588,18 @@ def assign_col_diversity(df: pd.DataFrame) -> pd.DataFrame:
 
 def diversity(avg_pairwise_ws_loss: pd.Series) -> pd.Series:
     return pd.qcut(avg_pairwise_ws_loss, 5, labels=["Q1", "Q2", "Q3", "Q4", "Q5"])
+
+
+def compute_diversity_by_problem(rdf: pd.DataFrame) -> pd.DataFrame:
+    res_df = rdf.groupby("dataset_idx", as_index=False).agg(
+        avg_pairwise_ws_loss=("pred", avg_pairwise_ws_loss),
+    )
+    res_df = assign_col_diversity(res_df)
+    return res_df
+
+
+def keep_only_highest_diversity_problems(df: pd.DataFrame) -> pd.DataFrame:
+    # keep only problems with highest diversity
+    q5_diversity_ids = df.query("diversity == 'Q5'")["dataset_idx"].unique()
+    subset = df.query("dataset_idx in @q5_diversity_ids")
+    return subset
