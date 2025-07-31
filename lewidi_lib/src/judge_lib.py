@@ -13,7 +13,8 @@ from lewidi_lib import (
     keep_only_data_parallel_assigned,
     keep_only_highest_diversity_problems,
     keep_only_missing_examples,
-    load_preds_for_judge,
+    load_preds,
+    filter_preds_for_judge,
     make_gen_kwargs_from_str,
     make_query_from_dict,
     postprocess_response,
@@ -156,12 +157,8 @@ def collect_all_solutions_per_example(rdf: pd.DataFrame) -> pd.DataFrame:
 
 
 def create_judge_batch(args: JudgeArgs) -> list[LlmReq]:
-    rdf = load_preds_for_judge(
-        preds_dir=args.preds_dir,
-        n_dataset_examples=args.n_dataset_examples,
-        n_samples_per_example=args.n_samples_per_example,
-        random_stable_subset=args.use_random_stable_subset,
-    )
+    rdf = load_preds(parquets_dir=args.preds_dir)
+    rdf = rdf.drop_duplicates()
 
     rdf_query = {
         "success": True,
@@ -173,7 +170,6 @@ def create_judge_batch(args: JudgeArgs) -> list[LlmReq]:
     }
     query = make_query_from_dict(rdf_query, rdf.columns)
     rdf = rdf.query(query)
-    # rdf = assign_col_n_classes(rdf) # commented out for prm800k. Maybe not needed anymore
     logger.info(
         "Keeping %d examples for judge after applying query: %s", len(rdf), query
     )
@@ -187,6 +183,13 @@ def create_judge_batch(args: JudgeArgs) -> list[LlmReq]:
         diversity_by_problem = compute_diversity_by_problem(rdf)
         rdf = rdf.merge(diversity_by_problem, on="dataset_idx")
         rdf = keep_only_highest_diversity_problems(rdf)
+
+    rdf = filter_preds_for_judge(
+        rdf,
+        n_dataset_examples=args.n_dataset_examples,
+        n_samples_per_example=args.n_samples_per_example,
+        random_stable_subset=args.use_random_stable_subset,
+    )
 
     rdf = join_dataset(rdf, parse_tgt=False)
 

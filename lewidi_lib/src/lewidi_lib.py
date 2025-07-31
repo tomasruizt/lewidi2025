@@ -281,7 +281,7 @@ def process_rdf(
     response_contains_steps: bool = False,
 ) -> pd.DataFrame:
     """Process model results dataframe"""
-    logger.info("Starting processing with %d rows", len(rdf))
+    logger.info("Starting processing rdf with %d rows", len(rdf))
 
     # Replace suggestive names with less suggestive ones
     gen_kwargs_mapping = {"thinking": "set1", "nonthinking": "set2"}
@@ -976,15 +976,12 @@ def pd_read_json_cached(file: str | Path) -> pd.DataFrame:
     return pd.read_json(file, lines=True, dtype={"error": "string"})
 
 
-def load_preds_for_judge(
-    preds_dir: str,
+def filter_preds_for_judge(
+    rdf: pd.DataFrame,
     n_dataset_examples: int,
     n_samples_per_example: int,
     random_stable_subset: bool = False,
 ):
-    rdf = load_preds(parquets_dir=preds_dir)
-    rdf = rdf.drop_duplicates()
-    # filter down
     if random_stable_subset:
         desired_dataset_idx = get_stable_random_subset(
             rdf["dataset_idx"], n=n_dataset_examples
