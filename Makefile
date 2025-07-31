@@ -58,7 +58,7 @@ judge:
 		--use_async_batch_mode False \
 		--pred_model_id Qwen/Qwen3-32B \
 		--pred_gen_kwargs_str set2 \
-		--pred_dataset CSC \
+		--pred_dataset MP \
 		--pred_split train \
 		--pred_template_id 60 \
 		--remote_call_concurrency 50 \
@@ -67,8 +67,8 @@ judge:
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
 		--include_prompt_in_metadata True \
-		--preds_dir /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/CSC/train/1000ex_10loops/preds \
-		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/CSC/train/1000ex_10loops/judge/gemini-2.5-flash/t24/responses.jsonl \
+		--preds_dir /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/MP/train/1000ex_10loops/preds \
+		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/MP/train/1000ex_10loops/judge/gemini-2.5-flash/t24/responses.jsonl \
 		--batch_dir "" \
 		--data_rank 0 \
 		--data_world_size 1 \
