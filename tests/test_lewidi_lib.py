@@ -181,13 +181,19 @@ def test_create_all_batches():
 
 def test_create_judge_batch():
     args = TestJudgeArgs(
-        preds_dir=test_files_folder / "test-preds",
-        pred_dataset="aime",
-        pred_model_id="test",
+        preds_dir=test_files_folder / "diversity-filtering" / "preds",
+        pred_dataset="MP",
+        pred_model_id="mock",
         pred_template_id=60,
+        keep_only_highest_diversity_preds=False,
+        pred_response_contains_steps=False,
     )
-    batches = create_judge_batch(args)
-    assert len(batches) > 0
+    all_batches = create_judge_batch(args)
+    assert len(all_batches) == 10
+
+    args.keep_only_highest_diversity_preds = True
+    most_diverse_batches = create_judge_batch(args)
+    assert len(most_diverse_batches) == 2
 
 
 def test_run_inference():

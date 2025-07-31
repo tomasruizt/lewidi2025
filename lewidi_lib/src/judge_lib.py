@@ -5,16 +5,19 @@ from lewidi_lib import (
     Dataset,
     VLLMArgs,
     assert_correct_model_is_running,
+    compute_diversity_by_problem,
     convert_output_to_parquet,
     dump_response,
     join_dataset,
     join_fewshot_solutions,
     keep_only_data_parallel_assigned,
+    keep_only_highest_diversity_problems,
     keep_only_missing_examples,
     load_preds_for_judge,
     make_gen_kwargs_from_str,
     make_query_from_dict,
     postprocess_response,
+    process_rdf,
     using_vllm_server,
 )
 from llmlib.base_llm import LLM, LlmReq, Message
@@ -52,6 +55,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     judge_max_output_tokens: int = 15000
     collect_all_solutions_per_example: bool = False
     use_random_stable_subset: bool = False
+    keep_only_highest_diversity_preds: bool = False
 
     pred_model_id: str = "Qwen/Qwen3-4B"
     pred_gen_kwargs_str: str = "set2"
@@ -173,6 +177,16 @@ def create_judge_batch(args: JudgeArgs) -> list[LlmReq]:
     logger.info(
         "Keeping %d examples for judge after applying query: %s", len(rdf), query
     )
+
+    if args.keep_only_highest_diversity_preds:
+        rdf = process_rdf(
+            rdf,
+            discard_invalid_pred=True,
+            response_contains_steps=args.pred_response_contains_steps,
+        )
+        diversity_by_problem = compute_diversity_by_problem(rdf)
+        rdf = rdf.merge(diversity_by_problem, on="dataset_idx")
+        rdf = keep_only_highest_diversity_problems(rdf)
 
     rdf = join_dataset(rdf, parse_tgt=False)
 

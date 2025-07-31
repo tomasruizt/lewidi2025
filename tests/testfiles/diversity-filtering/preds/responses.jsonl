@@ -1,0 +1,14 @@
+{"dataset_idx": 1, "run_idx": 0, "model_id": "mock", "template_id": 60, "gen_kwargs": "set2", "dataset": "MP", "split": "train", "response": "{'0': 0, '1': 1}", "reasoning": "", "success": true}
+{"dataset_idx": 1, "run_idx": 1, "model_id": "mock", "template_id": 60, "gen_kwargs": "set2", "dataset": "MP", "split": "train", "response": "{'0': 1, '1': 0}", "reasoning": "", "success": true}
+
+{"dataset_idx": 4, "run_idx": 0, "model_id": "mock", "template_id": 60, "gen_kwargs": "set2", "dataset": "MP", "split": "train", "response": "{'0': 0.5, '1': 0.5}", "reasoning": "", "success": true}
+{"dataset_idx": 4, "run_idx": 1, "model_id": "mock", "template_id": 60, "gen_kwargs": "set2", "dataset": "MP", "split": "train", "response": "{'0': 0.49, '1': 0.51}", "reasoning": "", "success": true}
+
+{"dataset_idx": 8, "run_idx": 0, "model_id": "mock", "template_id": 60, "gen_kwargs": "set2", "dataset": "MP", "split": "train", "response": "{'0': 0.5, '1': 0.5}", "reasoning": "", "success": true}
+{"dataset_idx": 8, "run_idx": 1, "model_id": "mock", "template_id": 60, "gen_kwargs": "set2", "dataset": "MP", "split": "train", "response": "{'0': 0.48, '1': 0.52}", "reasoning": "", "success": true}
+
+{"dataset_idx": 10, "run_idx": 0, "model_id": "mock", "template_id": 60, "gen_kwargs": "set2", "dataset": "MP", "split": "train", "response": "{'0': 0.5, '1': 0.5}", "reasoning": "", "success": true}
+{"dataset_idx": 10, "run_idx": 1, "model_id": "mock", "template_id": 60, "gen_kwargs": "set2", "dataset": "MP", "split": "train", "response": "{'0': 0.47, '1': 0.53}", "reasoning": "", "success": true}
+
+{"dataset_idx": 11, "run_idx": 0, "model_id": "mock", "template_id": 60, "gen_kwargs": "set2", "dataset": "MP", "split": "train", "response": "{'0': 0.5, '1': 0.5}", "reasoning": "", "success": true}
+{"dataset_idx": 11, "run_idx": 1, "model_id": "mock", "template_id": 60, "gen_kwargs": "set2", "dataset": "MP", "split": "train", "response": "{'0': 0.46, '1': 0.54}", "reasoning": "", "success": true}

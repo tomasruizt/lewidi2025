@@ -1570,7 +1570,7 @@ def avg_pairwise_ws_loss(preds: pd.Series) -> float:
     np_preds = as_np(preds)
     n, dim = np_preds.shape
     if n < 2:
-        return np.nan
+        return 0.0
 
     space = np.arange(dim)
     dists = []
@@ -1602,4 +1602,9 @@ def keep_only_highest_diversity_problems(df: pd.DataFrame) -> pd.DataFrame:
     # keep only problems with highest diversity
     q5_diversity_ids = df.query("diversity == 'Q5'")["dataset_idx"].unique()
     subset = df.query("dataset_idx in @q5_diversity_ids")
+    logger.info(
+        "Keeping %d examples out of %d after applying diversity filtering",
+        len(subset),
+        len(df),
+    )
     return subset

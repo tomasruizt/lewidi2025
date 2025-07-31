@@ -1,0 +1,1 @@
+duckdb -c "copy (select * from 'responses.jsonl') to 'responses.parquet';"
