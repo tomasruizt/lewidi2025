@@ -92,6 +92,8 @@ def make_template(
     elif judge_template_id == 22:
         return JudgeCoTParagraphsTemplate(pred_template=pred_template)
     elif judge_template_id == 23:
+        raise NotImplementedError("Template 23 is deprecated! Use 24")
+    elif judge_template_id == 24:
         return JudgeCoTStepsInResponseTemplate(pred_template=pred_template)
     elif judge_template_id == 3:
         return JudgeOutcomeTemplate(pred_template=pred_template)

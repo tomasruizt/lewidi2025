@@ -86,8 +86,8 @@ cases = [
     ("Qwen/Qwen3-32B", "Qwen/Qwen3-32B"),
     ("Qwen/Qwen3-32B", "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B"),
 ]
-judge_template_id = [23]
-# 23 is used when 'steps' are in the response
+judge_template_id = [24]
+# 24 is used when 'steps' are in the response
 # 60 is used to verify 'final_response' against a 'target'
 
 datasets = ["CSC", "MP", "Paraphrase", "VariErrNLI"]

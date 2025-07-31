@@ -90,7 +90,9 @@ class JudgeCoTParagraphsTemplate(Template):
             if s.strip()
         ]
         prompt = self.judge_template.format(
-            PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
+            PROBLEM=llm_problem,
+            STEPS=json.dumps(steps, indent=2),
+            FINAL_RESPONSE=data["response"],
         )
         return prompt
 
@@ -109,8 +111,11 @@ class JudgeCoTStepsInResponseTemplate(Template):
         llm_problem = self.pred_template.make_prompt(data)
         steps = extract_key(data, key="steps")
         steps = [{"idx": i, "step": s} for i, s in enumerate(steps)]
+        final_response = extract_key(data, key="final_response")
         prompt = self.judge_template.format(
-            PROBLEM=llm_problem, STEPS=json.dumps(steps, indent=2)
+            PROBLEM=llm_problem,
+            STEPS=json.dumps(steps, indent=2),
+            FINAL_RESPONSE=final_response,
         )
         return prompt
 

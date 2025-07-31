@@ -36,3 +36,7 @@ Please verify that the number of steps is the same as in the input.
 <steps>
 {STEPS}
 </steps>
+
+<final_response>
+{FINAL_RESPONSE}
+</final_response>
