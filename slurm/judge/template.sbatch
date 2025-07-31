@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition lrz-hgx-h100-94x4
+#SBATCH --partition {PARTITION}
 #SBATCH --gres=gpu:{N_GPUS}
 #SBATCH --array=0-{SLURM_ARRAY_SIZE}
 #SBATCH -o {LOGS_DIR}/%a_out.logs

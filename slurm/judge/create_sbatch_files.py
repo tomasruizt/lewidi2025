@@ -6,6 +6,14 @@ def shortform(model_id: str) -> str:
     return model_id.split("/")[-1]
 
 
+def partition(n_gpus: int) -> str:
+    partitions = ["lrz-hgx-h100-94x4"]
+    if n_gpus == 1:
+        partitions.extend(["lrz-dgx-a100-80x8", "lrz-hgx-a100-80x4"])
+    string = ",".join(partitions)
+    return string
+
+
 def create_sbatch_file(
     pred_model_id: str,
     judge_model_id: str,
@@ -23,7 +31,7 @@ def create_sbatch_file(
     root = Path(
         f"/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/{pred_model_id.replace('/', '_')}/set2/t{pred_template_id}/{dataset}/{split}/{run_name}"
     )
-    if "32" in judge_model_id:
+    if "32B" in judge_model_id:
         n_gpus = 2
     else:
         n_gpus = 1
@@ -41,6 +49,7 @@ def create_sbatch_file(
     )
 
     template_vars = {
+        "PARTITION": partition(n_gpus),
         "DATASET": dataset,
         "PREDS_DIR": str(root / "preds"),
         "PRED_MODEL_ID": pred_model_id,
@@ -75,6 +84,7 @@ cases = [
     # ("Qwen/Qwen3-8B", "Qwen/Qwen3-8B"),
     # ("Qwen/Qwen3-8B", "Qwen/Qwen3-32B"),
     ("Qwen/Qwen3-32B", "Qwen/Qwen3-32B"),
+    ("Qwen/Qwen3-32B", "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B"),
 ]
 judge_template_id = [23]
 # 23 is used when 'steps' are in the response
