@@ -44,6 +44,7 @@ enroot start --rw --root \
     --pred_split train \
     --pred_template_id {PRED_TEMPLATE_ID} \
     --remote_call_concurrency {REMOTE_CALL_CONCURRENCY} \
+    --timeout_secs 600 \
     --vllm.port $VLLM_PORT \
     --vllm.start_server True \
     --vllm.enforce_eager False \

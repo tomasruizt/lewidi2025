@@ -37,7 +37,7 @@ def create_sbatch_file(
         n_gpus = 1
     slurm_array_size = 2
     enable_expert_parallel = False
-    remote_call_concurrency = 20
+    remote_call_concurrency = 10
     jobname = f"{dataset}_{shortform(judge_model_id)}_t{judge_template_id}_judging_{shortform(pred_model_id)}_{run_name}"
     judge_tgt_dir = (
         root
