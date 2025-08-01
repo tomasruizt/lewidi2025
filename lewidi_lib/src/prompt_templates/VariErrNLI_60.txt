@@ -1,0 +1,25 @@
+[Instructions]
+
+Solve the task below. Format your response into logical steps that can be verified by a third-party, and format each step in JSON format like this:
+
+{{
+    'steps': [
+        '<text of step 1>',
+        '<text of step 2>',
+        ...,
+        '<text of step n>'
+    ],
+    'final_response': '<response>'
+}}
+
+Please simplify your final response as much as possible, and avoid any unnecessary text there.
+
+[Task]
+
+Below is a natural language inference (NLI) task where human annotators labeled if the "statement" followed from the "context". They labeled each category (entailment, neutral, contradiction) separately as either 0 (absent) or 1 (present). Please guess the distribution of labels for each category and output it in the final_response field in JSON format like this: {{ "entailment": {{ "0": p0, "1": p1 }}, "neutral": {{ "0": p0, "1": p1 }}, "contradiction": {{ "0": p0, "1": p1 }} }}, where p0 and p1 are each probabilities. The sum of probabilities must equal 1.0 for each category.
+
+Think about the perspectives that different annotators might have and how they could potentially interpret the NLI task.
+
+[NLI Task]
+
+{text}
