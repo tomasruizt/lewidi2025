@@ -2,8 +2,8 @@
 #SBATCH --partition lrz-hgx-h100-94x4
 #SBATCH --gres=gpu:2
 #SBATCH --array=0
-#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops_mixed_perf_subset/judge/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B/set2/t24/1000ex_10loops/logs/%a_out.logs
-#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops_mixed_perf_subset/judge/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B/set2/t24/1000ex_10loops/logs/%a_err.logs
+#SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/allex_10loops_mixed_perf_subset/judge/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B/set2/t24/1000ex_10loops/logs/%a_out.logs
+#SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/allex_10loops_mixed_perf_subset/judge/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B/set2/t24/1000ex_10loops/logs/%a_err.logs
 #SBATCH --job-name t24_DeepSeek-R1-0528-Qwen3-8B_judging_Qwen3-32B_1000ex_10loops_mixed_perf
 #SBATCH --time 3:00:00
 
@@ -53,8 +53,8 @@ enroot start --rw --root \
     --include_prompt_in_metadata True \
     --data_rank $SLURM_ARRAY_TASK_ID \
     --data_world_size $SLURM_ARRAY_TASK_COUNT \
-    --preds_dir /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops_mixed_perf_subset/preds \
-    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/1000ex_10loops_mixed_perf_subset/judge/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B/set2/t24/1000ex_10loops/responses.jsonl"
+    --preds_dir /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/allex_10loops_mixed_perf_subset/preds \
+    --tgt_file /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/allex_10loops_mixed_perf_subset/judge/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B/set2/t24/1000ex_10loops/responses.jsonl"
 
 # Clean up: remove the container after job completion
 echo "Cleaning up: removing container $CONTAINER_NAME..."
