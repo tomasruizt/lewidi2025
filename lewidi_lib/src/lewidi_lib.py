@@ -1510,6 +1510,7 @@ def list_preds() -> pd.DataFrame:
         "Qwen/Qwen3-8B",
         "Qwen/Qwen3-14B",
         "Qwen/Qwen3-32B",
+        # "qwen/qwen3-235b-a22b-2507",
     ]
     datasets: list[Dataset] = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
     splits: list[Split] = ["train", "test_clear"]

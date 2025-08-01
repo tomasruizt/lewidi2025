@@ -4,6 +4,7 @@
 .PHONY: gemini-inference
 .PHONY: stapp
 .PHONY: rateapp
+.PHONY: openrouter-inference
 
 vllm-qwen3-thinking:
 	vllm serve Qwen/Qwen3-4B \
@@ -90,6 +91,22 @@ gemini-inference:
 		--only_run_missing_examples True \
 		--max_tokens 15000 \
 		--tgt_file parquets/baseline/gemini-2.5-flash-csc-train-template31.jsonl
+
+openrouter-inference:
+	python inference.py \
+		--model_id qwen/qwen3-235b-a22b-2507 \
+		--gen_kwargs set2 \
+		--datasets CSC \
+		--template_ids 60 \
+		--splits train \
+		--n_examples 1000 \
+		--n_loops 1 \
+		--n_fewshot_examples 0 \
+		--remote_call_concurrency 1 \
+		--use_openrouter True \
+		--vllm.start_server False \
+		--only_run_missing_examples True \
+		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/qwen_qwen3-235b-a22b-2507/set2/t60/CSC/train/allex_10loops/preds/responses.jsonl
 
 stapp:
 	python -m streamlit run st_app/app.py
