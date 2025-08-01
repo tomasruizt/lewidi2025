@@ -21,6 +21,7 @@ from llmlib.base_llm import Conversation, LlmReq, Message
 from llmlib.gemini.gemini_code import GeminiAPI
 from llmlib.mock_model import MockModel
 from llmlib.vllm_model import ModelvLLM
+from llmlib.openai.openai_completion import OpenAIModel, config_for_openrouter
 import pandas as pd
 from prompt_templates.template import make_pred_template
 from pydantic import Field
@@ -51,6 +52,7 @@ class Args(BaseSettings, cli_parse_args=True):
     enforce_json: bool = False
     include_prompt_in_output: bool = False
     vllm: VLLMArgs = Field(default_factory=VLLMArgs)
+    use_openrouter: bool = False
 
     def dict_for_dump(self):
         exclude = [
@@ -180,6 +182,14 @@ def make_model(args: Args) -> ModelvLLM:
             location="global",
         )
         return model
+
+    if args.use_openrouter:
+        return OpenAIModel(
+            model_id=args.model_id,
+            remote_call_concurrency=args.remote_call_concurrency,
+            timeout_secs=args.timeout_secs,
+            **config_for_openrouter(),
+        )
 
     model = ModelvLLM(
         remote_call_concurrency=args.remote_call_concurrency,

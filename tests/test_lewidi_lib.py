@@ -209,6 +209,20 @@ def test_run_inference():
     run_inference(args)
 
 
+def test_run_inference_openrouter():
+    args = TestArgs(
+        model_id="Qwen/Qwen3-32B",
+        datasets=["MP"],
+        template_ids=["60"],
+        n_examples=1,
+        n_loops=1,
+        tgt_file=str(test_files_folder / "openrouter-preds" / "responses.jsonl"),
+        vllm=VLLMArgs(start_server=False),
+        use_openrouter=True,
+    )
+    run_inference(args)
+
+
 def test_group_pred():
     preds = pd.Series([[0.1, 0.9], [0.3, 0.7]])
     expected = np.array([0.2, 0.8])
