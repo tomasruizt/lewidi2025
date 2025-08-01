@@ -30,7 +30,7 @@ enroot start --rw --root \
     --env HF_TOKEN=$HF_TOKEN \
     --env HF_HOME=$HF_HOME \
     $CONTAINER_NAME bash -c "source /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/llm_judge.py \
-    --n_dataset_examples 1000 \
+    --n_dataset_examples 100000 \
     --n_samples_per_example 10 \
     --use_random_stable_subset True \
     --judge_model_id Qwen/Qwen3-14B \
