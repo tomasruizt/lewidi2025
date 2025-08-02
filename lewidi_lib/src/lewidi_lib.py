@@ -172,6 +172,9 @@ def assign_col_n_classes(df: pd.DataFrame) -> pd.DataFrame:
 def soft_label_to_nparray(
     d: dict | Any, dataset: Dataset, do_recurse: bool = True
 ) -> np.ndarray | dict:
+    if isinstance(d, str) and d != "":
+        d = json_repair.loads(d)
+
     if not isinstance(d, dict):
         return _non_dict_case(d)
 
@@ -309,7 +312,7 @@ def process_rdf(
     rdf = assign_col_response_parsed(rdf)
 
     if response_contains_steps:
-        col = rdf["response_parsed"].apply(lambda d: d["final_response"])
+        col = rdf["response_parsed"].apply(get_key_otherwise_none, key="final_response")
         rdf = rdf.assign(response_parsed=col)
 
     if task == "soft-label":
@@ -329,6 +332,12 @@ def process_rdf(
     rdf = assign_col_template_alias(rdf)
     rdf = discard_unnecessary_cols(rdf)
     return rdf
+
+
+def get_key_otherwise_none(maybe_dict: Any, key: str) -> str | None:
+    if not isinstance(maybe_dict, dict):
+        return None
+    return maybe_dict.get(key)
 
 
 def discard_invalid_preds(rdf: pd.DataFrame) -> pd.DataFrame:

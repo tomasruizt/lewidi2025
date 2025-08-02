@@ -1,5 +1,5 @@
 Baseline,CSC,MP,Paraphrase,VariErrNLI
-Simple,1.007,0.262,1.879,0.222
-Smoothing,1.101,0.711,2.166,0.255
-Averaging,0.907,0.242,1.721,0.201
-BoN Oracle,0.528,0.108,1.194,0.107
+Simple,1.004,0.261,1.892,0.224
+Smoothing,1.116,0.717,2.198,0.257
+Averaging,0.906,0.243,1.781,0.204
+BoN Oracle,0.507,0.111,1.294,0.112
