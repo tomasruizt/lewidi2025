@@ -1071,7 +1071,9 @@ def drop_na_score_rows(df: pd.DataFrame) -> pd.DataFrame:
     return df.dropna(subset=["score"])
 
 
-def create_rating_matrix(ratings: pd.DataFrame) -> pd.DataFrame:
+def create_rating_matrix(
+    ratings: pd.DataFrame, performance_col="is_correct"
+) -> pd.DataFrame:
     cat_mappings = [
         ("ok=0,bad=-1", mapping(ok=0, bad=-1)),
         ("ok=0,bad=0", mapping(ok=0, bad=0)),
@@ -1079,15 +1081,28 @@ def create_rating_matrix(ratings: pd.DataFrame) -> pd.DataFrame:
     ]
     operations = [("mean", np.mean), ("product", np.prod), ("min", np.min)]
 
-    all_best_rows = []
+    n_draws = 50  # how often to draw BoN per rating config
+    results: list[dict] = []
     for (mapname, cat_mapping), (opname, operation) in product(
         cat_mappings, operations
     ):
         ratings = process_ratings(ratings, cat_mapping=cat_mapping, operation=operation)
-        best_rows = ratings.loc[ratings.groupby("dataset_idx")["score"].idxmax()]
-        all_best_rows.append(best_rows.assign(rating_type=mapname, reduction=opname))
-    all_best_rows = pd.concat(all_best_rows)
-    return all_best_rows
+        perf_means = [
+            select_max_score_df(ratings.sample(frac=1.0))[performance_col].mean()
+            for _ in range(n_draws)
+        ]
+        row = {
+            "mapping": mapname,
+            "opertaion": opname,
+            "perf_bootstrap": bootstrap_avg(perf_means),
+        }
+        results.append(row)
+    return pd.DataFrame(results)
+
+
+def select_max_score_df(df):
+    logger.debug("avg preds by problem: %.2f", df.groupby("dataset_idx").size().mean())
+    return df.loc[df.groupby("dataset_idx")["score"].idxmax()]
 
 
 def convert_output_to_parquet(tgt_file: str) -> None:
@@ -1188,13 +1203,30 @@ def parse_float(s: str) -> float | None:
         return None
 
 
-def compute_n_steps_equality(joint: pd.DataFrame, step_split_type="sent") -> float:
-    n_steps = joint["reasoning"].apply(step_split, step_split_type=step_split_type)
+def compute_n_steps_equality(
+    joint: pd.DataFrame,
+    step_source: Literal["reasoning", "response_parsed"] = "reasoning",
+    step_split_type="sent",
+) -> float:
+    if step_source == "reasoning":
+        n_steps = joint["reasoning"].apply(step_split, step_split_type=step_split_type)
+    elif step_source == "response_parsed":
+        n_steps = (
+            joint["response_parsed"]
+            .apply(get_key_otherwise_none, key="steps")
+            .apply(lambda x: len(x) if x is not None else None)
+        )
+    else:
+        raise ValueError(f"Invalid step_source: {step_source}")
     logger.info("avg n_steps: %.1f", n_steps.mean())
     n_steps_according_to_judge = joint["step_ratings"].apply(len)
     logger.info("avg n_steps (judge): %.1f", n_steps_according_to_judge.mean())
-    n_steps_equal = (n_steps_according_to_judge == n_steps).mean()
-    return n_steps_equal
+    fraction_n_steps_equal = (n_steps_according_to_judge == n_steps).mean()
+    logger.info(
+        "pct of rows with equal num of steps in rdf and ratings: %.2f",
+        100 * fraction_n_steps_equal,
+    )
+    return fraction_n_steps_equal
 
 
 def step_split(string: str, step_split_type: str) -> int:
