@@ -5,13 +5,13 @@
 #SBATCH -o /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/allex_10loops_mixed_perf_subset/judge/Qwen/Qwen3-32B/set2/t24/allex_10loops_mp/logs/%a_out.logs
 #SBATCH -e /dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/prm800k/train/allex_10loops_mixed_perf_subset/judge/Qwen/Qwen3-32B/set2/t24/allex_10loops_mp/logs/%a_err.logs
 #SBATCH --job-name prm800k-t24_Qwen3-32B_judging_Qwen3-32B_allex_10loops_mp
-#SBATCH --time 3:00:00
+#SBATCH --time 4:00:00
 
 # Set container name based on job name and array task ID to avoid conflicts
 CONTAINER_NAME="prm800k-t24_Qwen3-32B_judging_Qwen3-32B_allex_10loops_mp_${SLURM_ARRAY_TASK_ID}"
 
 # Calculate port based on base port and array task ID to avoid conflicts
-VLLM_PORT=$((9000 + $SLURM_ARRAY_TASK_ID))
+VLLM_PORT=$((9200 + $SLURM_ARRAY_TASK_ID))
 
 # Delete any existing container with this name
 echo "Removing any existing container named $CONTAINER_NAME..."
