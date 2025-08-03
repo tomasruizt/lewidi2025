@@ -130,6 +130,8 @@ def extract_key(data: Mapping, key: str) -> list[str]:
         raise CannotMakePromptError() from e
     if key not in response:
         raise CannotMakePromptError()
+    if not isinstance(response, dict):
+        raise CannotMakePromptError()
     return response[key]
 
 

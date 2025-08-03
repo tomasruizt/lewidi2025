@@ -1072,12 +1072,11 @@ def drop_na_score_rows(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def create_rating_matrix(
-    ratings: pd.DataFrame, performance_col="is_correct"
+    ratings: pd.DataFrame, performance_col: str = "is_correct"
 ) -> pd.DataFrame:
     cat_mappings = [
-        ("ok=0,bad=-1", mapping(ok=0, bad=-1)),
-        ("ok=0,bad=0", mapping(ok=0, bad=0)),
-        ("ok=1,bad=0", mapping(ok=1, bad=0)),
+        ("ok=0", mapping(ok=0, bad=0)),
+        ("ok=1", mapping(ok=1, bad=0)),
     ]
     operations = [("mean", np.mean), ("product", np.prod), ("min", np.min)]
 
@@ -1094,7 +1093,7 @@ def create_rating_matrix(
         row = {
             "mapping": mapname,
             "opertaion": opname,
-            "perf_bootstrap": bootstrap_avg(perf_means),
+            performance_col: bootstrap_avg(perf_means),
         }
         results.append(row)
     return pd.DataFrame(results)
@@ -1647,3 +1646,15 @@ def keep_only_highest_diversity_problems(df: pd.DataFrame) -> pd.DataFrame:
         len(df),
     )
     return subset
+
+
+def draw_bon_k_times(
+    n_samples: int, k: int, joint_df: pd.DataFrame, performance_col: str = "is_correct"
+):
+    means = []
+    for _ in range(k):
+        all_samples = joint_df.groupby("dataset_idx").sample(n=n_samples, replace=True)
+        if n_samples > 1:
+            all_samples = select_max_score_df(all_samples)
+        means.append(all_samples[performance_col].mean())
+    return means
