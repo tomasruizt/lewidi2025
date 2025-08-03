@@ -36,6 +36,7 @@ enroot start --rw --root \
     --judge_model_id deepseek-ai/DeepSeek-R1-0528-Qwen3-8B \
     --judge_gen_kwargs_str set2 \
     --judge_template_id 24 \
+    --judge_max_output_tokens 25000 \
     --collect_all_solutions_per_example False \
     --pred_model_id Qwen/Qwen3-32B \
     --pred_gen_kwargs_str set2 \
