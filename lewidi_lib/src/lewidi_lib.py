@@ -161,7 +161,12 @@ def assign_col_target_entropy(df: pd.DataFrame, dataset: Dataset) -> pd.DataFram
 
 
 def n_classes(dataset: Dataset) -> int:
-    return len(soft_label_mapping[dataset])
+    return {
+        "CSC": 7,  # even though 0 is not a valid class
+        "MP": 2,
+        "Paraphrase": 11,
+        "VariErrNLI": 2,
+    }[dataset]
 
 
 def assign_col_n_classes(df: pd.DataFrame) -> pd.DataFrame:
@@ -216,7 +221,7 @@ def parse_soft_label(d: dict, dataset: Dataset, do_recurse: bool = True) -> np.n
     if dataset == "VariErrNLI" and do_recurse:
         return {k: parse_soft_label(v, dataset, do_recurse=False) for k, v in d.items()}
     mapping = soft_label_mapping[dataset]
-    array = np.zeros(len(mapping))
+    array = np.zeros(n_classes(dataset))
     for k, v in d.items():
         array[mapping[k]] = v
     return array
@@ -444,7 +449,7 @@ def as_categorical(ss: pd.Series) -> pd.Categorical:
 
 
 def assign_col_pred_entropy(df: pd.DataFrame) -> pd.DataFrame:
-    col = df.groupby("n_classes")["pred"].transform(entropy)
+    col = df.groupby("dataset")["pred"].transform(entropy)
     return df.assign(pred_entropy=col)
 
 
@@ -636,7 +641,6 @@ def join_dataset_and_preds(ddf: pd.DataFrame, rdf: pd.DataFrame) -> pd.DataFrame
 
 
 def assign_cols_perf_metrics_softlabel(joint_df: pd.DataFrame) -> pd.DataFrame:
-    joint_df = assign_col_l0_loss(joint_df)
     joint_df = assign_col_ws_loss(joint_df)
     joint_df = assign_col_pred_entropy(joint_df)
     return joint_df
@@ -683,7 +687,7 @@ def compute_target_entropy(ddf: pd.DataFrame) -> pd.DataFrame:
 def compute_unif_baseline_perf_metrics(ddf: pd.DataFrame):
     bdf = compute_unif_baseline(ddf)
     baseline_losses = bdf.groupby(["dataset", "split"], as_index=False).agg(
-        {"ws_loss": "mean", "l0_loss": "mean"}
+        {"ws_loss": "mean"}
     )
     return baseline_losses
 
@@ -773,7 +777,7 @@ def smoothen(preds: pd.Series) -> pd.Series:
 
 
 def compute_smoothed_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
-    smoothed = rdf.assign(pred=rdf.groupby("n_classes")["pred"].transform(smoothen))
+    smoothed = rdf.assign(pred=rdf.groupby("dataset")["pred"].transform(smoothen))
     smoothed = assign_col_is_valid_pred(smoothed, task="soft-label")
     assert smoothed["is_valid_pred"].all()
     smoothed = join_dataset(smoothed)
