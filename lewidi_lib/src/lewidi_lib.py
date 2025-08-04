@@ -345,6 +345,9 @@ def discard_invalid_preds(rdf: pd.DataFrame) -> pd.DataFrame:
     logger.info(
         "Dropping %d invalid predictions out of %d", len(invalid_preds), len(rdf)
     )
+    fraction_of_invalid = len(invalid_preds) / len(rdf)
+    if fraction_of_invalid > 0.05:
+        logger.warning("%.2f%% of predictions are invalid", fraction_of_invalid * 100)
     return rdf.query("is_valid_pred")
 
 
@@ -1653,7 +1656,7 @@ def draw_bon_k_times(
 ):
     means = []
     for _ in range(k):
-        all_samples = joint_df.groupby("dataset_idx").sample(n=n_samples, replace=True)
+        all_samples = joint_df.sample(frac=1.0).groupby("dataset_idx").head(n_samples)
         if n_samples > 1:
             all_samples = select_max_score_df(all_samples)
         means.append(all_samples[performance_col].mean())
