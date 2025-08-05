@@ -935,7 +935,7 @@ def vllm_command(model_id: str, vllm_args: VLLMArgs) -> list[str]:
     if vllm_args.enable_expert_parallel:
         cmd.extend(["--enable-expert-parallel"])
 
-    if vllm_args.enable_reasoning:
+    if vllm_args.enable_reasoning and uses_reasoning_parser(model_id):
         cmd.extend(["--reasoning-parser=deepseek_r1"])
     else:
         cmd.extend(["--chat-template=" + str(nonthinking_chat_template.absolute())])
@@ -943,6 +943,11 @@ def vllm_command(model_id: str, vllm_args: VLLMArgs) -> list[str]:
     if vllm_args.enforce_eager:
         cmd.extend(["--enforce-eager"])
     return cmd
+
+
+def uses_reasoning_parser(model_id: str) -> bool:
+    name = model_id.lower()
+    return "deepseek" in name or "qwen3" in name
 
 
 @contextmanager
