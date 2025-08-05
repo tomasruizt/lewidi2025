@@ -34,6 +34,7 @@ CASES = [
     Case("Qwen/Qwen3-8B", n_gpus=1, remote_call_concurrency=128),
     Case("Qwen/Qwen3-14B", n_gpus=1, remote_call_concurrency=64),
     Case("Qwen/Qwen3-32B", n_gpus=2, remote_call_concurrency=32),
+    Case("openai/gpt-oss-120b", n_gpus=2, remote_call_concurrency=16),
     # Case(
     #     "Qwen/Qwen3-235B-A22B",
     #     n_gpus=8,
