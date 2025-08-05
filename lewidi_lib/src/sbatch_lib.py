@@ -17,7 +17,7 @@ class Args(BaseSettings, cli_parse_args=True):
 
 def sketch_sbatch_progress(dir: str | Path) -> dict[str, Any]:
     rdf = load_preds_jsonl(dir)
-    rdf = process_rdf(rdf)
+    rdf = process_rdf(rdf, response_contains_steps=True)
     validity_df = compute_validity_df(rdf)
     rdf = rdf.query("is_valid_pred == 1")
     rdf = join_dataset(rdf)
@@ -37,7 +37,6 @@ def compute_validity_df(rdf: pd.DataFrame) -> pd.DataFrame:
 def compute_perf_metrics(rdf: pd.DataFrame, gby_cols: list[str]) -> pd.DataFrame:
     df = rdf.groupby(gby_cols, as_index=False, observed=True).agg(
         avg_ws_loss=("ws_loss", "mean"),
-        avg_l0_loss=("l0_loss", "mean"),
         loss_count=("ws_loss", "count"),
     )
     return df
@@ -63,6 +62,9 @@ def load_preds_jsonl(dir: str | Path) -> pd.DataFrame:
 
 
 def main():
+    pd.set_option("display.max_colwidth", 30)
+    pd.set_option("display.max_columns", 10)
+    pd.set_option("display.width", 1000)
     enable_logging()
     args = Args()
     progress = sketch_sbatch_progress(args.dir)
