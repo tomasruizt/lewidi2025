@@ -45,7 +45,7 @@ DATASETS = [
     DatasetCase("CSC", slurm_array_size=2),
     DatasetCase("VariErrNLI", slurm_array_size=1),
     DatasetCase("Paraphrase", slurm_array_size=1),
-    DatasetCase("MP", slurm_array_size=4),
+    DatasetCase("MP", slurm_array_size=2),
     DatasetCase("prm800k", slurm_array_size=1),
 ]
 
@@ -53,8 +53,8 @@ gen_kwargs = "set2"
 split = "train"
 TEMPLATE_IDS = [3, 31, 32, 60]
 BASE_PORT = 9000
-N_EXAMPLES = 15000
-RUN_NAME = "allex_10loops"
+N_EXAMPLES = 1000
+RUN_NAME = "1000ex_10loops"
 
 tgt_dir = Path("slurm_scripts")
 os.makedirs(tgt_dir, exist_ok=True)
@@ -87,7 +87,7 @@ for i, (case, dataset, template_id) in enumerate(combinations):
         N_GPUS=case.n_gpus,
         REMOTE_CALL_CONCURRENCY=case.remote_call_concurrency,
         ENABLE_EXPERT_PARALLEL=case.enable_expert_parallel,
-        SLURM_ARRAY_SIZE=dataset.slurm_array_size,
+        SLURM_ARRAY_SIZE=dataset.slurm_array_size - 1,
     )
     script_path = Path(f"slurm_scripts/{jobname}.sbatch")
     script_path.write_text(filled)
