@@ -936,7 +936,7 @@ def vllm_command(model_id: str, vllm_args: VLLMArgs) -> list[str]:
         cmd.extend(["--enable-expert-parallel"])
 
     if vllm_args.enable_reasoning:
-        cmd.extend(["--enable-reasoning", "--reasoning-parser=deepseek_r1"])
+        cmd.extend(["--reasoning-parser=deepseek_r1"])
     else:
         cmd.extend(["--chat-template=" + str(nonthinking_chat_template.absolute())])
 

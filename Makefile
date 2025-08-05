@@ -9,7 +9,6 @@
 vllm-qwen3-thinking:
 	vllm serve Qwen/Qwen3-4B \
 		--dtype auto \
-		--enable-reasoning \
 		--reasoning-parser deepseek_r1 \
 		--task generate \
 		--disable-log-requests \

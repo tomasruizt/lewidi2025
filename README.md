@@ -7,7 +7,6 @@ In thinking mode:
 ```shell
 vllm serve Qwen/Qwen3-32B \
     --dtype auto \
-    --enable-reasoning \
     --reasoning-parser deepseek_r1 \
     --task generate \
     --disable-log-requests \
