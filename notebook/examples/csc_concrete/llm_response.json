@@ -1,0 +1,17 @@
+{
+    "steps": [
+        "Analyze the context and response to determine if sarcasm is present. The response directly criticizes Steve's decision without evident irony or mock praise.",
+        "Consider that the response uses rhetorical questions and direct statements to express disapproval, which aligns more with blunt criticism than sarcasm.",
+        "Assess potential annotator perspectives: most may view the response as non-sarcastic (rating 1), while others might detect mild sarcasm in the tone (ratings 2-3).",
+        "Distribute probabilities accordingly, allocating higher weights to lower sarcasm ratings and minimal probabilities to higher ones."
+    ],
+    "final_response": {
+        "0": 0,
+        "1": 0.7,
+        "2": 0.2,
+        "3": 0.05,
+        "4": 0.03,
+        "5": 0.01,
+        "6": 0.01
+    }
+}

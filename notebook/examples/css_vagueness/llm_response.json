@@ -1,0 +1,17 @@
+{
+    "steps": [
+        "Analyze the context and response to identify elements of sarcasm based on the given definition.",
+        "Determine if the response uses remarks that mean the opposite of what they say to criticize or hurt someone humorously.",
+        "Assess the likelihood of different annotator interpretations, considering variations in perception of sarcasm.",
+        "Assign probabilities to each rating (1-6) based on the analysis, ensuring the sum equals 1.0."
+    ],
+    "final_response": {
+        "0": 0,
+        "1": 0.6,
+        "2": 0.25,
+        "3": 0.1,
+        "4": 0.03,
+        "5": 0.01,
+        "6": 0.01
+    }
+}

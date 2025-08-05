@@ -1,3 +1,5 @@
+from pathlib import Path
+import duckdb
 import json_repair
 import numpy as np
 import pandas as pd
@@ -6,7 +8,6 @@ import streamlit as st
 from lewidi_lib import (
     l0_loss,
     load_dataset,
-    load_preds,
     n_classes,
     parse_soft_label,
     process_rdf,
@@ -17,24 +18,18 @@ from lewidi_lib import (
 
 @st.cache_data(show_spinner="Loading dataset...")
 def load_dataset_cached(dataset: str, split: str) -> pd.DataFrame:
-    return load_dataset(dataset=dataset, split=split, parse_tgt=False)
+    return load_dataset(dataset=dataset, split=split, parse_tgt=True)
 
 
 @st.cache_data(show_spinner="Loading predictions...")
-def load_preds_cached() -> pd.DataFrame:
-    rdf = load_preds()
-    rdf = rdf.query("~template_id.isin([0, 1, 4])")
+def load_preds_cached(file: Path) -> pd.DataFrame:
+    con = duckdb.connect()
+    rdf = con.sql(f"SELECT * FROM '{str(file)}'").df()
+    rdf = rdf.query("success")
+    rdf = process_rdf(rdf, discard_invalid_pred=True, response_contains_steps=True)
     return rdf
 
 
-@st.cache_data(show_spinner="Loading predictions...")
-def load_preds_cached_subset(dataset: str, split: str, model: str) -> pd.DataFrame:
-    rdf = load_preds_cached()
-    rdf = rdf.query("dataset == @dataset and split == @split and model_id == @model")
-    return rdf
-
-
-@st.cache_data(show_spinner="Processing predictions...")
 def process_rdf_cached(rdf: pd.DataFrame) -> pd.DataFrame:
     return process_rdf(rdf)
 
