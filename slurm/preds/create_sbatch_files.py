@@ -27,8 +27,9 @@ def parse_args():
 
 def partition(n_gpus: int) -> str:
     partitions = ["lrz-hgx-h100-94x4"]
-    if n_gpus == 1:
-        partitions.extend(["lrz-dgx-a100-80x8", "lrz-hgx-a100-80x4"])
+    # if n_gpus == 1:
+    #     partitions.extend(["lrz-dgx-a100-80x8", "lrz-hgx-a100-80x4"])
+    # A100 are failing because the enroot image was built in H100 (I think)
     string = ",".join(partitions)
     return string
 
