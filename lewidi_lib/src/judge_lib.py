@@ -21,6 +21,7 @@ from lewidi_lib import (
     process_rdf,
     using_vllm_server,
 )
+from llmlib.openai.openai_completion import OpenAIModel, config_for_openrouter
 from llmlib.base_llm import LLM, LlmReq, Message
 from llmlib.gemini.gemini_code import GeminiAPI
 from llmlib.mock_model import MockModel
@@ -69,6 +70,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     tgt_file: str = "./judge-responses.jsonl"
     few_shots_solutions_file: str | None = None
     remote_call_concurrency: int = 8
+    use_openrouter: bool = False
     vllm: VLLMArgs = Field(default_factory=VLLMArgs)
     data_rank: int = 0
     data_world_size: int = 1
@@ -117,6 +119,13 @@ def make_judge_model(args: JudgeArgs) -> LLM:
             include_thoughts=True,
             # location="global", # global does not work for batch jobs
         )
+    elif args.use_openrouter:
+        model = OpenAIModel(
+            model_id=args.judge_model_id,
+            remote_call_concurrency=args.remote_call_concurrency,
+            timeout_secs=args.timeout_secs,
+            **config_for_openrouter(),
+        )
     else:
         model = ModelvLLM(
             model_id=args.judge_model_id,
@@ -130,7 +139,8 @@ def make_judge_model(args: JudgeArgs) -> LLM:
 
 def _process_batch(model: LLM, args: JudgeArgs, batch: list[LlmReq]) -> None:
     with using_vllm_server(args.judge_model_id, args.vllm) as server:
-        assert_correct_model_is_running(server, args.judge_model_id)
+        if not args.use_openrouter:
+            assert_correct_model_is_running(server, args.judge_model_id)
         gen = model.complete_batchof_reqs(batch=batch)
         for response in tqdm(gen, total=len(batch)):
             response = postprocess_response(response)
