@@ -1,0 +1,29 @@
+[Instructions]
+
+Solve the task below. Format your response into logical steps that can be verified by a third-party, and format each step in JSON format like this:
+
+{{
+    'steps': [
+        '<text of step 1>',
+        '<text of step 2>',
+        ...,
+        '<text of step n>'
+    ],
+    'final_response': '<response>'
+}}
+
+Please simplify your final response as much as possible, and avoid any unnecessary text there.
+
+[Task]
+
+Below is a pair of questions where human annotators rated how strongly the questions are paraphrases of one another on a Likert scale score from -5 to 5. Please guess the rating given by each annotator and output them all in a list in the final_response field, in the same order as the annotators.
+
+Think about the perspectives that different annotators might have and how they could potentially interpret the pair of questions.
+
+[Annotator Metadata]
+
+{annotator_metadata}
+
+[Pair of Questions]
+
+{text}
