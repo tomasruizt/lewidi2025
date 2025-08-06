@@ -277,6 +277,7 @@ model_size_mapping = {
     "Qwen/Qwen3-32B": 32.0,
     "Qwen/Qwen3-72B": 72.0,
     "Qwen/Qwen3-235B-A22B": 235.0,
+    "qwen/qwen3-235b-a22b-2507": 235.0,
 }
 
 Task = Literal["soft-label", "perspectivist"]
@@ -1577,7 +1578,7 @@ def list_preds() -> pd.DataFrame:
         "Qwen/Qwen3-8B",
         "Qwen/Qwen3-14B",
         "Qwen/Qwen3-32B",
-        # "qwen/qwen3-235b-a22b-2507",
+        "qwen/qwen3-235b-a22b-2507",
     ]
     datasets: list[Dataset] = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
     splits: list[Split] = ["train", "test_clear"]
