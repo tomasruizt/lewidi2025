@@ -662,22 +662,6 @@ def discard_rows_with_different_pred_and_tgt_lengths(
     return joint_df[~invalid]
 
 
-def assign_cols_perf_metrics_perspectivist(joint_df: pd.DataFrame) -> pd.DataFrame:
-    new_df = (
-        joint_df.assign(target_len=joint_df["target"].apply(len))
-        .groupby("target_len")[joint_df.columns]
-        .apply(avg_abs_dist)
-        .reset_index(drop=True)
-    )
-    return new_df
-
-
-def avg_abs_dist(df: pd.DataFrame) -> np.ndarray:
-    diff = as_np(df["target"]) - as_np(df["pred"])
-    dists = np.abs(diff).mean(axis=1)
-    return df.assign(avg_abs_dist=dists)
-
-
 def max_ws_loss(dataset: Dataset) -> float:
     assert dataset != "VariErrNLI"
     n = n_classes(dataset)
@@ -736,12 +720,13 @@ def uniform_pred_df() -> pd.DataFrame:
     return pd.DataFrame({"dataset": datasets, "pred": preds})
 
 
-def agg_perf_metrics(rdf: pd.DataFrame) -> pd.DataFrame:
-    cols = ["model_id", "dataset", "split", "template_id", "template_alias"]
-    gby_cols = [c for c in cols if c in rdf.columns]
-    agg_df = rdf.groupby(gby_cols, as_index=False, observed=True).agg(
-        ws_loss=("ws_loss", _mean), pred_entropy=("pred_entropy", _mean)
-    )
+def agg_perf_metrics(
+    rdf: pd.DataFrame, cols=["ws_loss", "pred_entropy"]
+) -> pd.DataFrame:
+    gby_cols = ["model_id", "dataset", "split", "template_id", "template_alias"]
+    gby_cols = [c for c in gby_cols if c in rdf.columns]
+    kwargs = {col: (col, _mean) for col in cols}
+    agg_df = rdf.groupby(gby_cols, as_index=False, observed=True).agg(**kwargs)
     return agg_df
 
 
@@ -1450,7 +1435,7 @@ def discard_rows_with_distinct_n_annotators(joint_df: pd.DataFrame) -> pd.DataFr
     return joint_df[equal_n_annotators]
 
 
-def assign_col_avg_abs_diff(joint_df: pd.DataFrame) -> pd.DataFrame:
+def assign_col_avg_abs_dist(joint_df: pd.DataFrame) -> pd.DataFrame:
     res = []
     for tgt, pred in zip(joint_df["target"], joint_df["pred"]):
         if isinstance(tgt, dict):
@@ -1465,7 +1450,7 @@ def assign_col_avg_abs_diff(joint_df: pd.DataFrame) -> pd.DataFrame:
             res.append(np.mean(by_cat))
         else:
             res.append(mean_abs_diff(tgt, pred))
-    return joint_df.assign(avg_abs_diff=res)
+    return joint_df.assign(avg_abs_dist=res)
 
 
 def mean_abs_diff(tgt: list[int], pred: list[int]) -> float:
@@ -1490,10 +1475,7 @@ def gen_random_perspespectivist_pred(row: Mapping) -> list | dict:
 
 def compute_pe_rand_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
     rand_baseline = ddf.assign(pred=ddf.apply(gen_random_perspespectivist_pred, axis=1))
-    rand_baseline = assign_col_avg_abs_diff(rand_baseline)
-    rand_baseline = rand_baseline.groupby("dataset", as_index=False)[
-        "avg_abs_diff"
-    ].mean()
+    rand_baseline = assign_col_avg_abs_dist(rand_baseline)
     return rand_baseline
 
 
@@ -1528,8 +1510,7 @@ def compute_most_frequent_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
     for dataset, group in ddf.groupby("dataset"):
         dfs.append(compute_most_frequent_baseline_by_dataset(dataset, group))
     baseline = pd.concat(dfs)
-    baseline = assign_col_avg_abs_diff(baseline)
-    baseline = baseline.groupby("dataset", as_index=False)["avg_abs_diff"].mean()
+    baseline = assign_col_avg_abs_dist(baseline)
     return baseline
 
 
@@ -1554,13 +1535,14 @@ def maj_vote_single_person(ratings: list):
 
 
 def compute_maj_vote_baseline(joint_df: pd.DataFrame) -> pd.DataFrame:
-    maj_vote_baseline = joint_df.groupby(
+    df = joint_df.groupby(
         ["dataset", "n_classes", "split", "model_id", "model_size", "dataset_idx"],
         observed=True,
     )[joint_df.columns].apply(
         lambda df: maj_vote_many_runs(df["dataset"].values[0], df["pred"])
     )
-    return maj_vote_baseline
+    df = df.reset_index().rename(columns={0: "pred"})
+    return df
 
 
 def preds_file(
