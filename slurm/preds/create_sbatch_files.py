@@ -52,7 +52,10 @@ DATASETS = [
 
 gen_kwargs = "set2"
 split = "train"
-TEMPLATE_IDS = [3, 31, 32, 60]
+TEMPLATE_IDS = [60, 63]  # 3, 31, 32, 33
+# template 31 was the previous default for soft-label task, 60 is the new default.
+# template 33 was the previous default for perspectivist tasks (incl. annotator metadata), 63 is the new default.
+# template 32 leaves out the dictionary definition, and 3 leaves out the section on "diverse persectives".
 BASE_PORT = 9000
 N_EXAMPLES = 1000
 RUN_NAME = "1000ex_10loops"

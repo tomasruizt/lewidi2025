@@ -235,7 +235,7 @@ class ReformatTemplate(Template):
 
 
 def make_pred_template(dataset: Dataset, template_id: int) -> PredTemplate:
-    if template_id == 33:
+    if template_id == 33 or template_id == 63:
         return PredTemplateWithAnnotatorMetadata(
             dataset=dataset, template_id=template_id
         )
