@@ -392,6 +392,8 @@ def assign_col_pred_perspectivist(rdf: pd.DataFrame) -> pd.DataFrame:
 
 
 def try_list_of_ints(pred: Any) -> Any:
+    if isinstance(pred, str):
+        pred = json_repair.loads(pred)
     try:
         return list(map(int, pred))
     except Exception:
@@ -431,8 +433,12 @@ def has_correct_shape(pred: Any, dataset: Dataset, recurse=True) -> bool:
         if not isinstance(pred, dict) or len(pred) != n_varierr_cats:
             return False
         return all(has_correct_shape(v, dataset, recurse=False) for v in pred.values())
-    valid = isinstance(pred, list) and all(isinstance(x, int) for x in pred)
+    valid = is_listof(pred, int)
     return valid
+
+
+def is_listof(xs: Any, type_: type) -> bool:
+    return isinstance(xs, list) and all(isinstance(x, type_) for x in xs)
 
 
 def sums_to_one(pred: np.ndarray | VariErrDict, atol: float = 0.01) -> bool:
@@ -646,6 +652,32 @@ def assign_cols_perf_metrics_softlabel(joint_df: pd.DataFrame) -> pd.DataFrame:
     return joint_df
 
 
+def discard_rows_with_different_pred_and_tgt_lengths(
+    joint_df: pd.DataFrame,
+) -> pd.DataFrame:
+    pred_len = joint_df["pred"].apply(len)
+    tgt_len = joint_df["target"].apply(len)
+    invalid = pred_len != tgt_len
+    logger.info("Dropping %d rows with different pred and tgt lengths", invalid.sum())
+    return joint_df[~invalid]
+
+
+def assign_cols_perf_metrics_perspectivist(joint_df: pd.DataFrame) -> pd.DataFrame:
+    new_df = (
+        joint_df.assign(target_len=joint_df["target"].apply(len))
+        .groupby("target_len")[joint_df.columns]
+        .apply(avg_abs_dist)
+        .reset_index(drop=True)
+    )
+    return new_df
+
+
+def avg_abs_dist(df: pd.DataFrame) -> np.ndarray:
+    diff = as_np(df["target"]) - as_np(df["pred"])
+    dists = np.abs(diff).mean(axis=1)
+    return df.assign(avg_abs_dist=dists)
+
+
 def max_ws_loss(dataset: Dataset) -> float:
     assert dataset != "VariErrNLI"
     n = n_classes(dataset)
@@ -809,14 +841,15 @@ def assign_col_template_alias(df: pd.DataFrame) -> pd.DataFrame:
     assert "template_id" in df.columns
     alias_df = pd.DataFrame(
         {
-            "template_id": as_categorical(pd.Series([2, 3, 32, 31, 33, 60])),
+            "template_id": as_categorical(pd.Series([2, 3, 32, 31, 33, 60, 63])),
             "template_alias": [
                 "0 simple",
                 "1 +def",
                 "2 +pers",
                 "3 +def+pers",
                 "perspectivist",
-                "incl. steps",
+                "incl. steps (soft-label)",
+                "incl. steps (perspectivist)",
             ],
         }
     )
@@ -1566,7 +1599,7 @@ def list_preds() -> pd.DataFrame:
     ]
     datasets: list[Dataset] = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
     splits: list[Split] = ["train", "test_clear"]
-    templates = ["3", "31", "32", "60"]
+    templates = ["3", "31", "32", "60", "63"]
     run_names = ["allex_10loops", "allex_20loops", "1000ex_10loops"]
     combinations = product(splits, datasets, models, templates, run_names)
     df = pd.DataFrame(
