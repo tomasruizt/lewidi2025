@@ -16,6 +16,7 @@ def partition(n_gpus: int) -> str:
 
 def create_sbatch_file(
     pred_model_id: str,
+    pred_template_id: int,
     judge_model_id: str,
     tgt_dir: Path,
     judge_template_id: int = 2,
@@ -23,7 +24,6 @@ def create_sbatch_file(
     dataset: str = "CSC",
 ) -> None:
     split = "train"
-    pred_template_id = 60
     judge_gen_kwargs_str = "set2"
     n_dataset_examples = 1000
     n_samples_per_example = 10
@@ -38,7 +38,7 @@ def create_sbatch_file(
     slurm_array_size = 2
     enable_expert_parallel = False
     remote_call_concurrency = 10
-    jobname = f"{dataset}_{shortform(judge_model_id)}_t{judge_template_id}_judging_{shortform(pred_model_id)}_{run_name}"
+    jobname = f"{dataset}_{shortform(judge_model_id)}_t{judge_template_id}_judging_{shortform(pred_model_id)}_t{pred_template_id}_{run_name}"
     judge_tgt_dir = (
         root
         / "judge"
@@ -90,6 +90,8 @@ judge_template_id = [24]
 # 24 is used when 'steps' are in the response
 # 60 is used to verify 'final_response' against a 'target'
 
+pred_template_ids = [60, 63]
+
 datasets = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
 
 tgt_dir = Path("slurm_scripts")
@@ -97,14 +99,20 @@ tgt_dir = Path("slurm_scripts")
 for file in tgt_dir.glob("*.sbatch"):
     file.unlink()
 
-combs = product(judge_template_id, cases, datasets)
-for i, (judge_template_id, (model_id, judge_model_id), dataset) in enumerate(combs):
+combs = product(judge_template_id, pred_template_ids, cases, datasets)
+for i, (
+    judge_template_id,
+    pred_template_id,
+    (model_id, judge_model_id),
+    dataset,
+) in enumerate(combs):
     vllm_starting_port = 9000 + i * 100
     create_sbatch_file(
-        model_id,
-        judge_model_id,
-        tgt_dir,
-        judge_template_id,
-        vllm_starting_port,
-        dataset,
+        pred_model_id=model_id,
+        pred_template_id=pred_template_id,
+        judge_model_id=judge_model_id,
+        tgt_dir=tgt_dir,
+        judge_template_id=judge_template_id,
+        vllm_starting_port=vllm_starting_port,
+        dataset=dataset,
     )
