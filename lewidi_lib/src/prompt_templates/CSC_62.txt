@@ -1,0 +1,25 @@
+[Instructions]
+
+Solve the task below. Format your response into logical steps that can be verified by a third-party, and format each step in JSON format like this:
+
+{{
+    'steps': [
+        '<text of step 1>',
+        '<text of step 2>',
+        ...,
+        '<text of step n>'
+    ],
+    'final_response': '<response>'
+}}
+
+Please simplify your final response as much as possible, and avoid any unnecessary text there.
+
+[Task]
+
+Below is a context+response pair where human annotators rated the sarcasm level of the 'response' ranging from 1 (not at all) to 6 (completely). Please guess the distribution of ratings and output it in the final_response field in JSON format like this: {{'0': p0, '1': p1, '2': p2, '3': p3, '4': p4, '5': p5, '6': p6}}, where each p0, ..., p6 is a probability. Note that p0 is always 0.0 because the rating 0 is not allowed. The sum of probabilities must equal 1.0.
+
+Think about the perspectives that different annotators might have and how they could potentially interpret the context+response pair.
+
+[Context+Response Pair]
+
+{text}
