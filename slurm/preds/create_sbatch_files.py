@@ -25,6 +25,14 @@ def parse_args():
     return parser.parse_args()
 
 
+def partition(n_gpus: int) -> str:
+    partitions = ["lrz-hgx-h100-94x4"]
+    if n_gpus == 1:
+        partitions.extend(["lrz-dgx-a100-80x8", "lrz-hgx-a100-80x4"])
+    string = ",".join(partitions)
+    return string
+
+
 args = parse_args()
 
 CASES = [
@@ -67,6 +75,7 @@ os.makedirs(tgt_dir, exist_ok=True)
 for file in tgt_dir.glob("*.sbatch"):
     file.unlink()
 
+
 combinations = product(CASES, DATASETS, TEMPLATE_IDS)
 for i, (case, dataset, template_id) in enumerate(combinations):
     # Base port for this combination - each array task will add its task ID to this
@@ -92,6 +101,7 @@ for i, (case, dataset, template_id) in enumerate(combinations):
         REMOTE_CALL_CONCURRENCY=case.remote_call_concurrency,
         ENABLE_EXPERT_PARALLEL=case.enable_expert_parallel,
         SLURM_ARRAY_SIZE=dataset.slurm_array_size - 1,
+        PARTITION=partition(case.n_gpus),
     )
     script_path = Path(f"slurm_scripts/{jobname}.sbatch")
     script_path.write_text(filled)
