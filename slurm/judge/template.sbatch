@@ -33,7 +33,7 @@ enroot start --rw --root \
     --n_dataset_examples {N_DATASET_EXAMPLES} \
     --n_samples_per_example {N_SAMPLES_PER_EXAMPLE} \
     --use_random_stable_subset True \
-    --keep_only_highest_diversity_preds True \
+    --keep_only_highest_diversity_preds False \
     --pred_response_contains_steps True \
     --judge_model_id {JUDGE_MODEL_ID} \
     --judge_gen_kwargs_str {JUDGE_GEN_KWARGS_STR} \
