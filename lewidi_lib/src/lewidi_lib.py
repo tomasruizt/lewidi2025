@@ -470,8 +470,9 @@ def l0_loss(
     if dataset == "VariErrNLI":
         diffs = pd.json_normalize(tgt) - pd.json_normalize(pred)
         absmean = diffs.apply(lambda s: np.abs(as_np(s)).mean(axis=1))
-        return absmean.to_dict(orient="records")
-    return np.abs(as_np(tgt) - as_np(pred)).mean(axis=1)
+        return absmean.mean(axis=1).values
+    l0 = np.abs(as_np(tgt) - as_np(pred)).mean(axis=1)
+    return l0
 
 
 def as_np(s: pd.Series | np.ndarray) -> np.ndarray:
@@ -496,10 +497,13 @@ def ws_loss(tgt: np.ndarray | dict, pred: np.ndarray | dict, dataset: Dataset) -
 
 
 def assign_col_l0_loss(df: pd.DataFrame) -> pd.DataFrame:
-    col = df.groupby("dataset").apply(
-        lambda df: l0_loss(df["target"], df["pred"], df["dataset"].iloc[0])
+    new_df = df.groupby("dataset").apply(
+        lambda df: df.assign(
+            l0_loss=l0_loss(df["target"], df["pred"], df["dataset"].iloc[0])
+        )
     )
-    return df.assign(l0_loss=col)
+    new_df = new_df.reset_index(drop=True)
+    return new_df
 
 
 def assign_col_ws_loss(df: pd.DataFrame) -> pd.DataFrame:
@@ -660,6 +664,7 @@ def join_dataset_and_preds(ddf: pd.DataFrame, rdf: pd.DataFrame) -> pd.DataFrame
 
 def assign_cols_perf_metrics_softlabel(joint_df: pd.DataFrame) -> pd.DataFrame:
     joint_df = assign_col_ws_loss(joint_df)
+    # joint_df = assign_col_l0_loss(joint_df)
     joint_df = assign_col_pred_entropy(joint_df)
     return joint_df
 
@@ -1465,6 +1470,10 @@ def discard_rows_with_distinct_n_annotators(joint_df: pd.DataFrame) -> pd.DataFr
 
 
 def assign_col_avg_abs_dist(joint_df: pd.DataFrame) -> pd.DataFrame:
+    return _assign_col_fn_rowwise(joint_df, mean_abs_diff)
+
+
+def _assign_col_fn_rowwise(joint_df: pd.DataFrame, fn: Callable) -> pd.DataFrame:
     res = []
     for tgt, pred in zip(joint_df["target"], joint_df["pred"]):
         if isinstance(tgt, dict):
@@ -1475,10 +1484,10 @@ def assign_col_avg_abs_dist(joint_df: pd.DataFrame) -> pd.DataFrame:
                 except Exception:
                     pass
 
-                by_cat.append(mean_abs_diff(tgt_anns, pred_anns))
+                by_cat.append(fn(tgt_anns, pred_anns))
             res.append(np.mean(by_cat))
         else:
-            res.append(mean_abs_diff(tgt, pred))
+            res.append(fn(tgt, pred))
     return joint_df.assign(avg_abs_dist=res)
 
 
