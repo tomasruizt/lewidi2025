@@ -656,11 +656,18 @@ def assign_cols_perf_metrics_softlabel(joint_df: pd.DataFrame) -> pd.DataFrame:
 def discard_rows_with_different_pred_and_tgt_lengths(
     joint_df: pd.DataFrame,
 ) -> pd.DataFrame:
-    pred_len = joint_df["pred"].apply(len)
-    tgt_len = joint_df["target"].apply(len)
+    pred_len = joint_df["pred"].apply(custom_len)
+    tgt_len = joint_df["target"].apply(custom_len)
     invalid = pred_len != tgt_len
     logger.info("Dropping %d rows with different pred and tgt lengths", invalid.sum())
     return joint_df[~invalid]
+
+
+def custom_len(target: Any) -> int:
+    is_varierrnli_tgt = isinstance(target, dict)
+    if is_varierrnli_tgt:
+        return np.mean([len(v) for v in target.values()])
+    return len(target)
 
 
 def max_ws_loss(dataset: Dataset) -> float:
