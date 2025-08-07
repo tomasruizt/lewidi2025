@@ -268,6 +268,10 @@ def enable_logging():
     logging.basicConfig(level=logging.INFO, format=fmt)
 
 
+def configure_pandas_display() -> None:
+    pd.set_option("display.max_colwidth", 1000)
+
+
 model_size_mapping = {
     "Qwen/Qwen3-0.6B": 0.6,
     "Qwen/Qwen3-1.7B": 1.7,
@@ -618,6 +622,13 @@ def load_preds(parquets_dir: str = "parquets") -> pd.DataFrame:
     return rdf
 
 
+def load_listof_parquets(files: list[str]) -> pd.DataFrame:
+    rdf = duckdb.sql(
+        f"SELECT * FROM read_parquet({[str(f) for f in files]}, union_by_name=True)"
+    ).df()
+    return rdf
+
+
 def recompute_success(rdf: pd.DataFrame) -> pd.DataFrame:
     if "max_tokens" in rdf.columns and "n_output_tokens" in rdf.columns:
         within_limit = rdf["max_tokens"] > rdf["n_output_tokens"]
@@ -650,6 +661,15 @@ def join_dataset_and_preds(ddf: pd.DataFrame, rdf: pd.DataFrame) -> pd.DataFrame
 def assign_cols_perf_metrics_softlabel(joint_df: pd.DataFrame) -> pd.DataFrame:
     joint_df = assign_col_ws_loss(joint_df)
     joint_df = assign_col_pred_entropy(joint_df)
+    return joint_df
+
+
+def assign_cols_perf_metrics(joint_df: pd.DataFrame, task: Task) -> pd.DataFrame:
+    if task == "soft-label":
+        joint_df = assign_cols_perf_metrics_softlabel(joint_df)
+    else:
+        joint_df = discard_rows_with_different_pred_and_tgt_lengths(joint_df)
+        joint_df = assign_col_avg_abs_dist(joint_df)
     return joint_df
 
 
@@ -810,8 +830,8 @@ def compute_smoothed_baseline(rdf: pd.DataFrame) -> pd.DataFrame:
     return smoothed
 
 
-def compute_best_wsloss_baseline(joint_df: pd.DataFrame) -> pd.DataFrame:
-    idx = joint_df.groupby(_gby_example_cols, observed=True)["ws_loss"].idxmin()
+def compute_oracle_baseline(joint_df: pd.DataFrame, perf_col: str) -> pd.DataFrame:
+    idx = joint_df.groupby(_gby_example_cols, observed=True)[perf_col].idxmin()
     return joint_df.loc[idx]
 
 
@@ -834,7 +854,7 @@ def assign_col_template_alias(df: pd.DataFrame) -> pd.DataFrame:
     assert "template_id" in df.columns
     alias_df = pd.DataFrame(
         {
-            "template_id": as_categorical(pd.Series([2, 3, 32, 31, 33, 60, 63])),
+            "template_id": as_categorical(pd.Series([2, 3, 32, 31, 33, 60, 63, 62])),
             "template_alias": [
                 "0 simple",
                 "1 +def",
@@ -843,6 +863,7 @@ def assign_col_template_alias(df: pd.DataFrame) -> pd.DataFrame:
                 "perspectivist",
                 "incl. steps (soft-label)",
                 "incl. steps (perspectivist)",
+                "incl. steps (soft-label) -def",
             ],
         }
     )
@@ -1543,14 +1564,16 @@ def maj_vote_single_person(ratings: list):
 
 
 def compute_maj_vote_baseline(joint_df: pd.DataFrame) -> pd.DataFrame:
-    df = joint_df.groupby(
-        ["dataset", "n_classes", "split", "model_id", "model_size", "dataset_idx"],
-        observed=True,
-    )[joint_df.columns].apply(
-        lambda df: maj_vote_many_runs(df["dataset"].values[0], df["pred"])
+    gby_cols = ["model_id", "dataset", "split", "dataset_idx"]
+    baseline = (
+        joint_df.groupby(gby_cols, observed=True)[joint_df.columns]
+        .apply(lambda df: maj_vote_many_runs(df["dataset"].values[0], df["pred"]))
+        .reset_index()
+        .rename(columns={0: "pred"})
     )
-    df = df.reset_index().rename(columns={0: "pred"})
-    return df
+    joint_df = join_dataset(baseline, task="perspectivist")
+    joint_df = assign_cols_perf_metrics(joint_df, task="perspectivist")
+    return joint_df
 
 
 def preds_file(
@@ -1589,7 +1612,7 @@ def list_preds() -> pd.DataFrame:
     ]
     datasets: list[Dataset] = ["CSC", "MP", "Paraphrase", "VariErrNLI"]
     splits: list[Split] = ["train", "test_clear"]
-    templates = ["3", "31", "32", "60", "63"]
+    templates = ["3", "31", "32", "60", "63", "62"]
     run_names = ["allex_10loops", "allex_20loops", "1000ex_10loops"]
     combinations = product(splits, datasets, models, templates, run_names)
     df = pd.DataFrame(
