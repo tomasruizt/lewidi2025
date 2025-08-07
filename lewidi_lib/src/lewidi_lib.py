@@ -664,6 +664,7 @@ def join_dataset_and_preds(ddf: pd.DataFrame, rdf: pd.DataFrame) -> pd.DataFrame
 
 def assign_cols_perf_metrics_softlabel(joint_df: pd.DataFrame) -> pd.DataFrame:
     joint_df = assign_col_ws_loss(joint_df)
+    joint_df["normed_ws_loss"] = joint_df["ws_loss"] / (joint_df["n_classes"] - 1)
     # joint_df = assign_col_l0_loss(joint_df)
     joint_df = assign_col_pred_entropy(joint_df)
     return joint_df

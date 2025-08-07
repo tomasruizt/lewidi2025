@@ -1,0 +1,5 @@
+dataset,is_valid_pred
+CSC,99.3
+MP,100.0
+Paraphrase,86.2
+VariErrNLI,93.9

@@ -1,0 +1,4 @@
+Baseline,pred_entropy,ws_loss
+Simple Sampling,95.7,73.7
+Model Averaging,106.2,69.6
+Smoothing,127.7,82.4
