@@ -1,0 +1,3 @@
+Baseline,CSC,MP,Paraphrase,VariErrNLI
+Simple Sampling,1.443,0.429,2.487,0.315
+Most Frequent,1.266,0.303,3.551,0.326
