@@ -49,14 +49,7 @@ NLICat = Literal["entailment", "neutral", "contradiction"]
 def load_dataset(
     dataset: Dataset, split: Split, parse_tgt: bool = True, task: "Task" = "soft-label"
 ) -> pd.DataFrame:
-    root = (
-        Path(os.environ["DSS_HOME"]) / "lewidi-data" / "data_evaluation_phase" / dataset
-    )
-    ds = root / f"{dataset}_{split}.json"
-    assert ds.exists(), ds.absolute()
-
-    df = pd.read_json(ds, orient="index")
-    df.reset_index(inplace=True, names="dataset_idx")
+    df = load_raw_dataset(dataset, split)
     if parse_tgt:
         if task == "soft-label":
             df["target"] = df["soft_label"].apply(parse_soft_label, dataset=dataset)
@@ -86,6 +79,7 @@ def load_dataset(
 
     df = assign_col_n_classes(df)
 
+    root = dataset_dir(dataset)
     metadata_file = assert_path_exists(root / f"{dataset}_annotators_meta.json")
     metadata = json_repair.loads(metadata_file.read_text())
     df = assign_col_annotator_metadata(df, metadata)
@@ -109,6 +103,23 @@ def load_dataset(
     ]
     cols = [c for c in cols if c in df.columns]
     return df[cols]
+
+
+def load_raw_dataset(dataset: Dataset, split: Split) -> tuple[Path, pd.DataFrame]:
+    root = dataset_dir(dataset)
+    ds = root / f"{dataset}_{split}.json"
+    assert ds.exists(), ds.absolute()
+
+    df = pd.read_json(ds, orient="index")
+    df.reset_index(inplace=True, names="dataset_idx")
+    return df
+
+
+def dataset_dir(dataset: Dataset) -> Path:
+    root = (
+        Path(os.environ["DSS_HOME"]) / "lewidi-data" / "data_evaluation_phase" / dataset
+    )
+    return root
 
 
 def collect_varierr_nli_target(annotations: list[NLICat]) -> VariErrDict:
