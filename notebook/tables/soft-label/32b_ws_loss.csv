@@ -1,5 +1,4 @@
 Baseline,CSC,MP,Paraphrase,VariErrNLI
-Simple Sampling,1.004,0.261,1.892,0.224
 Most Frequent,1.142,0.256,2.887,0.274
 Model Averaging,0.906,0.243,1.781,0.204
 BoN Oracle,0.507,0.111,1.294,0.112

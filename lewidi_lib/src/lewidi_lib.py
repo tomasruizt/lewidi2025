@@ -1221,6 +1221,15 @@ def bootstrap_avg(xs: Iterable[float], **kwargs) -> BootstrapResult:
     return BootstrapResult(low, mean, high, ci, len(xs))
 
 
+def bootstrap_simple_sampling(
+    joint_df: pd.DataFrame, perf_col: str, k=100
+) -> BootstrapResult:
+    np.random.seed(0)
+    return bootstrap_avg(
+        [joint_df.groupby("dataset_idx").sample(n=1)[perf_col].mean() for _ in range(k)]
+    )
+
+
 def compute_majority_baseline(ddf: pd.DataFrame) -> pd.DataFrame:
     majority_baseline = (
         ddf.groupby("dataset", as_index=False)["target"]

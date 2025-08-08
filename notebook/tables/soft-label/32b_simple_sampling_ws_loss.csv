@@ -1,0 +1,5 @@
+dataset,bootstrap_avg,ws_loss,Baseline
+CSC,"NumSamples: 20, Mean: 1.003, 95% CI: 0.999 - 1.008",1.003,Simple Sampling
+MP,"NumSamples: 20, Mean: 0.260, 95% CI: 0.258 - 0.261",0.26,Simple Sampling
+Paraphrase,"NumSamples: 20, Mean: 1.963, 95% CI: 1.948 - 1.977",1.963,Simple Sampling
+VariErrNLI,"NumSamples: 20, Mean: 0.223, 95% CI: 0.222 - 0.225",0.223,Simple Sampling
