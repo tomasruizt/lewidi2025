@@ -1,3 +1,5 @@
 Baseline,CSC,MP,Paraphrase,VariErrNLI
 Simple Sampling,1.443,0.429,2.487,0.315
 Most Frequent,1.266,0.303,3.551,0.326
+Majority Vote,1.388,0.4,2.461,0.297
+BoN Oracle,0.875,0.176,1.798,0.159
