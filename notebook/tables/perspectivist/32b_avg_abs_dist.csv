@@ -1,4 +1,4 @@
 Baseline,CSC,MP,Paraphrase,VariErrNLI
-Most Frequent,1.266,0.303,3.551,0.326
-Majority Vote,1.388,0.4,2.461,0.297
-BoN Oracle,0.875,0.176,1.798,0.159
+Most Frequent,0.211,0.303,0.355,0.326
+Majority Vote,0.231,0.4,0.246,0.297
+BoN Oracle,0.146,0.176,0.18,0.159

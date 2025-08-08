@@ -1491,10 +1491,6 @@ def discard_rows_with_distinct_n_annotators(joint_df: pd.DataFrame) -> pd.DataFr
 
 
 def assign_col_avg_abs_dist(joint_df: pd.DataFrame) -> pd.DataFrame:
-    return _assign_col_fn_rowwise(joint_df, mean_abs_diff)
-
-
-def _assign_col_fn_rowwise(joint_df: pd.DataFrame, fn: Callable) -> pd.DataFrame:
     res = []
     for tgt, pred in zip(joint_df["target"], joint_df["pred"]):
         if isinstance(tgt, dict):
@@ -1505,11 +1501,13 @@ def _assign_col_fn_rowwise(joint_df: pd.DataFrame, fn: Callable) -> pd.DataFrame
                 except Exception:
                     pass
 
-                by_cat.append(fn(tgt_anns, pred_anns))
+                by_cat.append(mean_abs_diff(tgt_anns, pred_anns))
             res.append(np.mean(by_cat))
         else:
-            res.append(fn(tgt, pred))
-    return joint_df.assign(avg_abs_dist=res)
+            res.append(mean_abs_diff(tgt, pred))
+    # normalize
+    normed = np.array(res) / (joint_df["n_classes"] - 1)
+    return joint_df.assign(avg_abs_dist=normed)
 
 
 def mean_abs_diff(tgt: list[int], pred: list[int]) -> float:
