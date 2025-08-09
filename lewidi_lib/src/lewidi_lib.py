@@ -566,6 +566,7 @@ def plot_horizontal_lines(
     data_col: str,
     hpos: Literal["left", "right"] = "left",
     vpos: Literal["top", "bottom"] = "bottom",
+    fontsize: int = 12,
     **keywords,
 ):
     if len(data) > 20:
@@ -579,7 +580,9 @@ def plot_horizontal_lines(
             continue
         y_val = matches[data_col].values[0]
         ax.axhline(y_val, color=color, linestyle="--")
-        add_label_above_hline(label, color, ax, y_val, hpos=hpos, vpos=vpos)
+        add_label_above_hline(
+            label, color, ax, y_val, hpos=hpos, vpos=vpos, fontsize=fontsize
+        )
 
 
 def add_label_above_hline(
@@ -589,6 +592,7 @@ def add_label_above_hline(
     y_val: float,
     hpos: Literal["left", "right"] = "left",
     vpos: Literal["top", "bottom"] = "bottom",
+    fontsize: int = 12,
 ):
     """By Cursor"""
     xlim = ax.get_xlim()
@@ -611,7 +615,7 @@ def add_label_above_hline(
         x_pos,
         y_pos,
         label,
-        fontsize=12,
+        fontsize=fontsize,
         color=color,
         verticalalignment=vpos,
         horizontalalignment=horizontalalignment,
