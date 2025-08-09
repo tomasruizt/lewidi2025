@@ -1744,3 +1744,13 @@ def draw_bon_k_times(
             all_samples = select_max_score_df(all_samples)
         means.append(all_samples[performance_col].mean())
     return means
+
+
+def compact_model_name(model_id: str) -> str:
+    return model_map.get(model_id, model_id)
+
+
+model_map = {
+    "Qwen/Qwen3-32B": "Qwen3-32B",
+    "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B": "DeepSeek-R1-8B",
+}
