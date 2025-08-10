@@ -60,7 +60,7 @@ DATASETS = [
 ]
 
 gen_kwargs = "set2"
-split = "train"
+split = "dev"
 TEMPLATE_IDS = [60, 63]  # 3, 31, 32, 33
 # template 31 was the previous default for soft-label task, 60 is the new default.
 # template 33 was the previous default for perspectivist tasks (incl. annotator metadata), 63 is the new default.

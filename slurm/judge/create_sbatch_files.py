@@ -24,7 +24,7 @@ def create_sbatch_file(
     vllm_starting_port: int = 9000,
     dataset: str = "CSC",
 ) -> None:
-    split = "train"
+    split = "dev"
     judge_gen_kwargs_str = "set2"
     n_dataset_examples = 1000
     n_samples_per_example = 10
@@ -39,7 +39,7 @@ def create_sbatch_file(
     slurm_array_size = 2
     enable_expert_parallel = False
     remote_call_concurrency = 10
-    jobname = f"{dataset}_{shortform(judge_model_id)}_t{judge_template_id}_judging_{shortform(pred_model_id)}_t{pred_template_id}_{run_name}"
+    jobname = f"{dataset}_{split}_{shortform(judge_model_id)}_t{judge_template_id}_judging_{shortform(pred_model_id)}_t{pred_template_id}_{run_name}"
     judge_tgt_dir = (
         root
         / "judge"
