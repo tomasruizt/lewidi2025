@@ -33,6 +33,7 @@ from prompt_templates.template import (
     JudgeCoTSentencesTemplate,
     JudgeCoTStepsInResponseTemplate,
     JudgeOutcomeTemplate,
+    JudgePerspecivistTemplate,
     JudgeRankingTemplate,
     JudgeVerifySolutionTemplate,
     ReformatTemplate,
@@ -83,7 +84,7 @@ class JudgeArgs(BaseSettings, cli_parse_args=True):
     dry_run: bool = False
 
 
-def make_template(
+def make_judge_template(
     judge_template_id: int, dataset: Dataset, pred_template_id: str
 ) -> Template:
     """Factory"""
@@ -105,6 +106,8 @@ def make_template(
         return JudgeRankingTemplate(pred_template=pred_template)
     elif judge_template_id == 60:
         return JudgeVerifySolutionTemplate()
+    elif judge_template_id == 100:
+        return JudgePerspecivistTemplate(pred_template=pred_template)
     else:
         raise ValueError(f"Unknown judge template: {judge_template_id}")
 
@@ -231,7 +234,7 @@ def create_judge_batch(args: JudgeArgs) -> list[LlmReq]:
     gen_kwargs: dict = make_gen_kwargs_from_str(
         args.judge_gen_kwargs_str, max_tokens=args.judge_max_output_tokens
     )
-    template: Template = make_template(
+    template: Template = make_judge_template(
         args.judge_template_id, args.pred_dataset, args.pred_template_id
     )
 

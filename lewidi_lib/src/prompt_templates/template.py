@@ -240,3 +240,23 @@ def make_pred_template(dataset: Dataset, template_id: int) -> PredTemplate:
             dataset=dataset, template_id=template_id
         )
     return PredTemplate(dataset=dataset, template_id=template_id)
+
+
+@dataclass
+class JudgePerspecivistTemplate(Template):
+    pred_template: PredTemplate
+    judge_template_file = "reasoning_trace_eval_100.txt"
+
+    def __post_init__(self):
+        self.judge_template = load_template_file(
+            templates_root / self.judge_template_file
+        )
+
+    def make_prompt(self, data: Mapping) -> str:
+        llm_problem = self.pred_template.make_prompt(data).strip()
+        final_response = extract_key(data, key="final_response")
+        return self.judge_template.format(
+            PROBLEM=llm_problem,
+            REASONING=data["reasoning"].strip(),
+            FINAL_RESPONSE=final_response,
+        )

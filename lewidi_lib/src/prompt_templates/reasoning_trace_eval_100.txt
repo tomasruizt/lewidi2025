@@ -1,0 +1,30 @@
+[LLM Evaluation]
+
+Your goal is to grade an LLM's solution to a problem. 
+You are given the problem presented to the LLM, its reasoning, and final response.
+Please summarize the 2-5 most important arguments made by the LLM in its reasoning, 
+and label each argument into on of these categories: (very plausible, plausible, implausible, vague, unrelated)
+Output all this in JSON format like this:
+
+[
+    {{'argument': '<argument 1>', 'label': '<label 1>'}},
+    {{'argument': '<argument 2>', 'label': '<label 2>'}},
+    {{'argument': '<argument 3>', 'label': '<label 3>'}},
+    ...
+]
+
+[LLM Problem]
+
+<problem>
+{PROBLEM}
+</problem>
+
+[LLM Reasoning]
+
+<reasoning>
+{REASONING}
+</reasoning>
+
+<final_response>
+{FINAL_RESPONSE}
+</final_response>
