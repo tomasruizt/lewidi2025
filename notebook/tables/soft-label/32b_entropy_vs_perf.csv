@@ -1,4 +1,13 @@
-Baseline,pred_entropy,ws_loss
-Simple Sampling,95.7,73.7
-Model Averaging,106.2,69.6
-Smoothing,127.7,82.4
+Baseline,dataset,pred_entropy,ws_loss
+Simple Sampling,VariErrNLI,37.5,22.4
+Model Averaging,VariErrNLI,44.2,20.4
+Simple Sampling,MP,58.6,26.1
+Model Averaging,MP,62.5,24.3
+Smoothing,VariErrNLI,62.7,25.8
+Smoothing,MP,66.8,26.5
+Simple Sampling,CSC,138.6,100.4
+Simple Sampling,Paraphrase,140.9,189.0
+Model Averaging,CSC,150.9,90.6
+Model Averaging,Paraphrase,164.0,178.1
+Smoothing,CSC,182.0,111.6
+Smoothing,Paraphrase,216.5,219.9
