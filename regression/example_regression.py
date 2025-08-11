@@ -1,13 +1,16 @@
-from regress_lm import core
-from regress_lm import rlm
-
-import numpy as np
+from regress_lm.models.pytorch import t5gemma_model
+from regress_lm.models.pytorch.model import PyTorchFineTuner
+from regress_lm import core, rlm
 
 device = "cuda:0"
 
 print("Starting model...")
-reg_lm = rlm.RegressLM.from_default(max_input_len=2048)
-reg_lm.model.to(device)
+t5 = t5gemma_model.T5GemmaModel(
+    "google/t5gemma-s-s-prefixlm",
+    model_kwargs={"attn_implementation": "eager"},
+)
+t5.to(device)
+reg_lm = rlm.RegressLM(t5, PyTorchFineTuner(t5))
 print("Done")
 
 examples = [
@@ -25,6 +28,6 @@ query1, query2 = core.ExampleInput(x="hi"), core.ExampleInput(x="bye")
 examples = reg_lm.model.convert_inputs([query1, query2])
 examples = {k: v.to(device) for k, v in examples.items()}
 
-_, output_floats = reg_lm.model.decode(examples, 128)
+_, output_floats = reg_lm.model.decode(examples, num_samples=10)
 print(output_floats)
 print("Done")
