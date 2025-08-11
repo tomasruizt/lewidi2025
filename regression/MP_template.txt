@@ -1,0 +1,13 @@
+Your persona:
+
+{persona}
+
+Instruction: You are provided in input (Input) a pair of sentences (Post, Reply) extracted from social media conversations. Your task is to determine if the Reply is ironic in the context of the Post. Please provide in output (Output) a single label "irony" (1) or "not irony" (0).
+
+Input:
+
+- Post: {post}
+- Reply: {reply}
+
+Label:
+
