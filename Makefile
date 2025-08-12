@@ -47,19 +47,19 @@ inference:
 
 judge:
 	python llm_judge.py \
-		--n_dataset_examples 100 \
+		--n_dataset_examples 500 \
 		--n_samples_per_example 10 \
 		--judge_model_id gemini-2.5-flash \
 		--judge_gen_kwargs_str gemini-defaults \
 		--judge_template_id 24 \
 		--judge_max_output_tokens 25000 \
 		--use_random_stable_subset True \
-		--keep_only_highest_diversity_preds True \
+		--keep_only_highest_diversity_preds False \
 		--pred_response_contains_steps True \
 		--use_async_batch_mode False \
 		--pred_model_id Qwen/Qwen3-32B \
 		--pred_gen_kwargs_str set2 \
-		--pred_dataset Paraphrase \
+		--pred_dataset MP \
 		--pred_split train \
 		--pred_template_id 60 \
 		--remote_call_concurrency 50 \
@@ -68,8 +68,8 @@ judge:
 		--vllm.enforce_eager True \
 		--only_run_missing_examples True \
 		--include_prompt_in_metadata True \
-		--preds_dir /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/Paraphrase/train/1000ex_10loops/preds \
-		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/Paraphrase/train/1000ex_10loops/judge/gemini-2.5-flash/t24/responses.jsonl \
+		--preds_dir /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/MP/train/1000ex_10loops/preds \
+		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-32B/set2/t60/MP/train/1000ex_10loops/judge/gemini-2.5-flash/t24/responses.jsonl \
 		--batch_dir "" \
 		--data_rank 0 \
 		--data_world_size 1 \
@@ -94,23 +94,23 @@ gemini-inference:
 
 openrouter-inference:
 	python inference.py \
-		--model_id qwen/qwen3-235b-a22b-2507 \
+		--model_id Qwen/Qwen3-14B \
 		--gen_kwargs set2 \
 		--datasets CSC \
-		--template_ids 60 \
+		--template_ids 62 \
 		--splits train \
 		--n_examples 1000 \
 		--n_loops 10 \
 		--n_fewshot_examples 0 \
-		--remote_call_concurrency 500 \
+		--remote_call_concurrency 100 \
 		--use_openrouter True \
 		--vllm.start_server False \
 		--only_run_missing_examples True \
-		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/qwen_qwen3-235b-a22b-2507/set2/t60/CSC/train/1000ex_10loops/preds/responses.jsonl
+		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-14B/set2/t62/CSC/train/1000ex_10loops/preds/responses.jsonl
 
 openrouter-judge:
 	python llm_judge.py \
-		--n_dataset_examples 200 \
+		--n_dataset_examples 500 \
 		--n_samples_per_example 10 \
 		--use_random_stable_subset True \
 		--keep_only_highest_diversity_preds False \
@@ -118,18 +118,18 @@ openrouter-judge:
 		--judge_model_id deepseek-ai/DeepSeek-R1-0528-Qwen3-8B \
 		--judge_gen_kwargs_str set2 \
 		--judge_template_id 24 \
-		--pred_model_id qwen/qwen3-235b-a22b-2507 \
+		--pred_model_id Qwen/Qwen3-14B \
 		--pred_gen_kwargs_str set2 \
 		--pred_dataset CSC \
 		--pred_split train \
-		--pred_template_id 60 \
+		--pred_template_id 62 \
 		--remote_call_concurrency 50 \
 		--vllm.start_server False \
 		--use_openrouter True \
 		--only_run_missing_examples True \
 		--include_prompt_in_metadata True \
-		--preds_dir /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/qwen_qwen3-235b-a22b-2507/set2/t60/CSC/train/1000ex_10loops/preds/ \
-		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/qwen_qwen3-235b-a22b-2507/set2/t60/CSC/train/1000ex_10loops/judge/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B/set2/t24/1000ex_10loops_q5div/responses.jsonl
+		--preds_dir /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-14B/set2/t62/CSC/train/1000ex_10loops/preds/ \
+		--tgt_file /Users/tomasruiz/datasets/dss_home/lewidi-data/sbatch/di38bec/Qwen_Qwen3-14B/set2/t62/CSC/train/1000ex_10loops/judge/deepseek-ai/DeepSeek-R1-0528-Qwen3-8B/set2/t24/1000ex_10loops_q5div/responses.jsonl
 
 
 stapp:
