@@ -15,7 +15,7 @@ import torch
 from datasets import Dataset
 from transformers import DataCollatorForSeq2Seq
 from tqdm import trange
-from sklearn.metrics import f1_score
+from sklearn.metrics import precision_recall_fscore_support
 
 logger = getLogger(__name__)
 
@@ -38,9 +38,9 @@ def explode_personas(ddf: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(examples, columns=["prompt", "target"])
 
 
-def create_model() -> rlm.RegressLM:
+def create_model(model_name: str = "google/t5gemma-s-s-prefixlm") -> rlm.RegressLM:
     t5 = t5gemma_model.T5GemmaModel(
-        "google/t5gemma-s-s-prefixlm",
+        model_name=model_name,
         max_input_len=512,  # Reduced from 2048 to save memory
         model_kwargs={
             "attn_implementation": "eager",
@@ -68,14 +68,14 @@ def inference(
         examples = {k: v.to(device) for k, v in examples.items()}
         _, output_floats_strs = model.model.decode(examples, num_samples=num_samples)
         floats = np.strings.slice(output_floats_strs, 0, 10)
-        floats = np.vectorize(to_float_or_nan)(floats)
+        floats = np.vectorize(to_int32_or_nan)(floats)
         all_floats.append(floats)
     return np.concatenate(all_floats)
 
 
-def to_float_or_nan(s):
+def to_int32_or_nan(s):
     try:
-        return float(s)
+        return np.int32(float(s))
     except ValueError:
         return np.nan
 
@@ -103,13 +103,13 @@ def lora_config() -> LoraConfig:
     )
 
 
-def training_args() -> TrainingArguments:
+def training_args(output_dir: str) -> TrainingArguments:
     return TrainingArguments(
-        output_dir="./saved_models/peft-t5-regression",
+        output_dir=output_dir,
         per_device_train_batch_size=32,
         per_device_eval_batch_size=32,
         learning_rate=1e-5,
-        num_train_epochs=2,
+        num_train_epochs=1,
         logging_steps=1,
         eval_strategy="no",
         eval_steps=50,
@@ -145,29 +145,43 @@ if __name__ == "__main__":
     dataset = "MP"
     task = "perspectivist"
     frac = 0.001
+    root = Path(__file__).parent
+    model_folder = root / "saved_models" / "peft-t5-regression"
+    lora_checkpoint = model_folder / "checkpoint-1890"
+    train = False
+
     train_df = explode_personas(
         load_dataset(dataset=dataset, split="train", task=task)
     ).sample(frac=frac)
     logger.info("Train size: %d", len(train_df))
 
-    model: rlm.RegressLM = create_model()
-    model.model.model = get_peft_model(model.model.model, lora_config())
+    model: rlm.RegressLM = create_model(model_name="google/t5gemma-s-s-prefixlm")
+    if train:
+        model.model.model = get_peft_model(model.model.model, lora_config())
+    else:
+        from peft import PeftModel
 
-    train_dataset = to_tensor_dataset(train_df, model)
-    # eval_dataset = to_tensor_dataset(val_df, model)
-    collator = DataCollatorForSeq2Seq(
-        tokenizer=model.model.tokenizer, model=model.model.model
-    )
+        model.model.model = PeftModel.from_pretrained(
+            model.model.model, lora_checkpoint
+        )
 
-    trainer = Trainer(
-        model=model.model.model,
-        args=training_args(),
-        train_dataset=train_dataset,
-        eval_dataset=None,
-        tokenizer=model.model.tokenizer,
-        data_collator=collator,
-    )
-    trainer.train()
+    if train:
+        train_dataset = to_tensor_dataset(train_df, model)
+        # eval_dataset = to_tensor_dataset(val_df, model)
+        collator = DataCollatorForSeq2Seq(
+            tokenizer=model.model.tokenizer, model=model.model.model
+        )
+        trainer = Trainer(
+            model=model.model.model,
+            args=training_args(output_dir=model_folder),
+            train_dataset=train_dataset,
+            eval_dataset=None,
+            tokenizer=model.model.tokenizer,
+            data_collator=collator,
+        )
+        trainer.train()
+        model.model.model.save_pretrained(model_folder)
+        logger.info("Saved model to %s", model_folder)
 
     eval_df = explode_personas(
         load_dataset(dataset=dataset, split="dev", task=task)
@@ -187,4 +201,9 @@ if __name__ == "__main__":
 
     logger.info("Is correct: %s", repr(bootstrap_avg(eval_df["correct"])))
 
-    logger.info("F1 score: %.2f", f1_score(eval_df["target"], eval_df["pred"], average="macro"))
+    precision, recall, fscore, _ = precision_recall_fscore_support(
+        eval_df["target"], eval_df["pred"], average="binary"
+    )
+    logger.info(
+        "F1 score: %.2f, precision: %.2f, recall: %.2f", fscore, precision, recall
+    )

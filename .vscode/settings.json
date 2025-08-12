@@ -3,5 +3,25 @@
         "tests"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "python.defaultInterpreterPath": "./venv/bin/python",
+    "python.analysis.extraPaths": [
+        "../regress-lm"
+    ],
+    "python.analysis.exclude": [
+        "**/venv/lib/**",
+        "**/venv/lib64/**",
+        "**/node_modules/**",
+        "**/__pycache__/**",
+        "**/outputs/**",
+        "**/parquets/**",
+        "**/backups/**"
+    ],
+    "python.analysis.indexing": true,
+    "python.analysis.packageIndexDepths": [
+        {"name": "transformers", "depth": 1},
+        {"name": "torch", "depth": 1},
+        {"name": "tokenizers", "depth": 1},
+        {"name": "sentencepiece", "depth": 1}
+    ]
 }
