@@ -178,7 +178,7 @@ def print_eval(eval_df: pd.DataFrame, preds: np.ndarray):
     logger.info("Dropping %d rows with NaN preds", eval_df["pred"].isna().sum())
     eval_df = eval_df.dropna(subset=["pred"])
 
-    valid_pe_preds = list(pe_pred_is_valid(eval_df["pred"], eval_df["dataset"]))
+    valid_pe_preds = np.array(list(pe_pred_is_valid(eval_df["pred"], eval_df["dataset"])))
     logger.info(
         "Dropping %d rows with invalid perspectivist preds", sum(~valid_pe_preds)
     )
