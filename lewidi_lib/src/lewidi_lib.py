@@ -1788,10 +1788,8 @@ allowed_pe_preds = {
 }
 
 
-@dataclass
-class SoftLabelEval:
-    eval_df: pd.DataFrame
-
-
-def eval_soft_labels(eval_df: pd.DataFrame):
-    return SoftLabelEval(eval_df)
+def listof_ints_to_softlabel(ints: list[int], dataset: Dataset) -> list[int]:
+    if dataset == "Paraphrase":
+        ints = pd.array(ints) + 5
+    counts = np.bincount(ints, minlength=n_classes(dataset))
+    return counts / len(ints)

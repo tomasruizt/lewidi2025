@@ -8,6 +8,7 @@ from lewidi_lib import (
     keep_only_data_parallel_assigned,
     keep_only_missing_examples,
     list_preds,
+    listof_ints_to_softlabel,
     load_dataset,
     load_preds,
     filter_preds_for_judge,
@@ -19,7 +20,7 @@ from lewidi_lib import (
 )
 from lewidi_org import average_WS
 from judge_lib import JudgeArgs, create_judge_batch
-from lewidi_regression import load_and_process_df
+from lewidi_regression import eval_soft_labels, load_and_process_df
 import numpy as np
 import pandas as pd
 from sbatch_lib import sketch_sbatch_progress
@@ -283,3 +284,27 @@ def test_load_and_process_df_all():
         n_exs_by_dataset=None,
     )
     assert len(df) == 18_564  # just many
+
+
+def test_listof_ints_to_softlabel():
+    ints = [0, 1, 1, 1]
+    mp_expected = [0.25, 0.75]
+    assert np.allclose(mp_expected, listof_ints_to_softlabel(ints, dataset="MP"))
+
+    ints = [1, 2, 6, 6]
+    csc_expected = [0.0, 0.25, 0.25, 0.0, 0.0, 0.0, 0.5]
+    assert np.allclose(csc_expected, listof_ints_to_softlabel(ints, dataset="CSC"))
+
+    ints = [-5, 5, 0, 1, 1]
+    par_expected = [0.2, 0, 0, 0, 0, 0.2, 0.4, 0, 0, 0, 0.2]
+    par_actual = listof_ints_to_softlabel(ints, dataset="Paraphrase")
+    assert np.allclose(par_expected, par_actual)
+
+
+def test_eval_regression_on_soft_labels():
+    eval_df = pd.read_parquet(
+        "/Users/tomasruiz/code/lediwi/regression/model-preds.parquet"
+    )
+    eval_obj = eval_soft_labels(eval_df)
+    assert len(eval_obj.joint_df) > 0
+    assert "ws_loss" in eval_obj.joint_df.columns

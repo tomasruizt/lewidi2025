@@ -1,9 +1,17 @@
+from dataclasses import dataclass
 from logging import getLogger
 from pathlib import Path
 from collections.abc import Iterator
 from functools import lru_cache
 from datasets import Dataset
-from lewidi_lib import Split, Task, assert_path_exists, load_dataset
+from lewidi_lib import (
+    Split,
+    Task,
+    assert_path_exists,
+    assign_col_ws_loss,
+    listof_ints_to_softlabel,
+    load_dataset,
+)
 import pandas as pd
 import json
 import numpy as np
@@ -236,3 +244,31 @@ def load_and_process_df(
     df = explode_personas(df)
     logger.info("%s dataset:\n%s", split, df.groupby("dataset").size())
     return df
+
+
+@dataclass
+class SoftLabelEval:
+    joint_df: pd.DataFrame
+    wsloss_perf: pd.Series
+
+
+def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
+    preds_sl = (
+        eval_df.groupby(["dataset", "dataset_idx"], as_index=False).agg(
+            all_preds=("pred", lambda xss: [x for xs in xss for x in xs])
+        )
+        # .drop(columns=["target"])
+    )
+    sl_col = []
+    for dataset, all_preds in zip(preds_sl["dataset"], preds_sl["all_preds"]):
+        sl_col.append(listof_ints_to_softlabel(all_preds, dataset=dataset))
+    preds_sl = preds_sl.assign(pred=sl_col)
+
+    datasets = ["CSC", "MP", "Paraphrase"]
+    ddf = load_lewidi_datasets(datasets, split="dev", task="soft-label")
+    tgts_df = ddf[["dataset", "dataset_idx", "target"]]
+    joint_df = preds_sl.merge(tgts_df, on=["dataset", "dataset_idx"])
+    joint_df = assign_col_ws_loss(joint_df)
+    wsloss_perf = joint_df.groupby("dataset")["ws_loss"].agg(bootstrap_avg)
+    logger.info("Wasserstein Loss Performance:\n%s", repr(wsloss_perf))
+    return SoftLabelEval(joint_df, wsloss_perf)
