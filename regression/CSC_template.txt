@@ -1,0 +1,15 @@
+Your persona:
+
+{persona}
+
+Instruction: You are provided in "Input" a pair of sentences ("Context", "Response") extracted from social media conversations. 
+Your task is to determine if the "Response" is sarcastic given the "Context". 
+Please provide a single "Label" ranging from 1 (not at all) to 6 (completely).
+
+Input:
+
+- Context: {context}
+- Response: {response}
+
+Label:
+

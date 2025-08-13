@@ -1,3 +1,4 @@
+from functools import lru_cache
 import json
 from typing import Iterator
 
@@ -6,7 +7,14 @@ from transformers import Trainer, TrainingArguments
 from regress_lm.models.pytorch.model import PyTorchFineTuner
 from regress_lm.models.pytorch import t5gemma_model
 from regress_lm import core, rlm
-from lewidi_lib import bootstrap_avg, enable_logging, load_dataset
+from lewidi_lib import (
+    Split,
+    Task,
+    assert_path_exists,
+    bootstrap_avg,
+    enable_logging,
+    load_dataset,
+)
 from logging import getLogger
 from pathlib import Path
 import pandas as pd
@@ -23,20 +31,25 @@ device = "cuda:0"
 
 
 def explode_personas(ddf: pd.DataFrame) -> pd.DataFrame:
-    template = (Path(__file__).parent / "MP_template.txt").read_text()
     examples = []
     for _, row in ddf.iterrows():
-        post = row["text"]["post"]
-        reply = row["text"]["reply"]
-        personas = row["annotator_metadata"]
-        tgts = row["target"]
+        template: str = get_template_cached(dataset=row["dataset"])
+        personas: list[dict] = row["annotator_metadata"]
+        tgts: list[int] = row["target"]
         assert len(tgts) == len(personas)
         for persona, tgt in zip(personas, tgts):
             persona_str = json.dumps(persona, indent=2)
-            prompt = template.format(post=post, reply=reply, persona=persona_str)
-            examples.append((row["dataset_idx"], prompt, float(tgt)))
-    df = pd.DataFrame(examples, columns=["dataset_idx", "prompt", "target"])
+            prompt = template.format(**row["text"], persona=persona_str)
+            examples.append((row["dataset"], row["dataset_idx"], prompt, float(tgt)))
+    df = pd.DataFrame(examples, columns=["dataset", "dataset_idx", "prompt", "target"])
     return df.astype({"target": "int"})
+
+
+@lru_cache
+def get_template_cached(dataset: Dataset) -> str:
+    path = Path(__file__).parent / f"{dataset}_template.txt"
+    assert_path_exists(path)
+    return path.read_text()
 
 
 def create_model(model_name: str = "google/t5gemma-s-s-prefixlm") -> rlm.RegressLM:
@@ -141,9 +154,62 @@ def to_example_inputs(df: pd.DataFrame) -> Iterator[core.ExampleInput]:
         yield core.ExampleInput(x=prompt)
 
 
+def load_model(do_train: bool, lora_checkpoint: Path | None) -> rlm.RegressLM:
+    model: rlm.RegressLM = create_model(model_name="google/t5gemma-s-s-prefixlm")
+    if do_train:
+        model.model.model = get_peft_model(model.model.model, lora_config())
+    else:
+        assert lora_checkpoint is not None
+        from peft import PeftModel
+
+        model.model.model = PeftModel.from_pretrained(
+            model.model.model, lora_checkpoint
+        )
+    return model
+
+
+def print_eval(eval_df: pd.DataFrame, preds: np.ndarray):
+    eval_df = (
+        eval_df.assign(pred=list(preds))
+        .explode("pred")
+        .reset_index(drop=True)
+        .assign(
+            correct=lambda df: df["pred"] == df["target"],
+        )
+        .astype({"pred": "int"})
+    )
+    logger.info("Dropping %d rows with NaN preds", eval_df["pred"].isna().sum())
+    eval_df = eval_df.dropna(subset=["pred"])
+
+    avg_correct_1 = bootstrap_avg(eval_df["correct"])
+    avg_correct_2 = bootstrap_avg(
+        eval_df.groupby(["dataset", "dataset_idx"])["correct"].mean()
+    )
+    logger.info("Is correct: %s", repr(avg_correct_1))
+    logger.info("Is correct grouped by dataset_idx: %s", repr(avg_correct_2))
+
+    precision, recall, fscore, _ = precision_recall_fscore_support(
+        eval_df["target"], eval_df["pred"], average="binary"
+    )
+    logger.info(
+        "F1 score: %.2f, precision: %.2f, recall: %.2f", fscore, precision, recall
+    )
+
+
+def load_lewidi_datasets(
+    datasets: list[Dataset], split: Split, task: Task
+) -> pd.DataFrame:
+    listof_dfs = [
+        load_dataset(dataset=d, split=split, task=task).assign(dataset=d)
+        for d in datasets
+    ]
+    df = pd.concat(listof_dfs, ignore_index=True)
+    return df
+
+
 if __name__ == "__main__":
     enable_logging()
-    dataset = "MP"
+    datasets = ["CSC", "MP"]
     task = "perspectivist"
     frac = 0.01
     root = Path(__file__).parent
@@ -151,21 +217,12 @@ if __name__ == "__main__":
     lora_checkpoint = model_folder / "checkpoint-1890"
     train = False
 
-    model: rlm.RegressLM = create_model(model_name="google/t5gemma-s-s-prefixlm")
     if train:
-        model.model.model = get_peft_model(model.model.model, lora_config())
-    else:
-        from peft import PeftModel
-
-        model.model.model = PeftModel.from_pretrained(
-            model.model.model, lora_checkpoint
-        )
-
-    if train:
-        train_df = explode_personas(
-            load_dataset(dataset=dataset, split="train", task=task)
-        ).sample(frac=frac)
+        train_df = load_lewidi_datasets(datasets, split="train", task=task)
+        train_df = explode_personas(train_df)
+        train_df = train_df.sample(frac=frac)
         logger.info("Train size: %d", len(train_df))
+        model = load_model(do_train=train, lora_checkpoint=lora_checkpoint)
         train_dataset = to_tensor_dataset(train_df, model)
         collator = DataCollatorForSeq2Seq(
             tokenizer=model.model.tokenizer, model=model.model.model
@@ -182,35 +239,15 @@ if __name__ == "__main__":
         model.model.model.save_pretrained(model_folder)
         logger.info("Saved model to %s", model_folder)
 
-    eval_df = explode_personas(
-        load_dataset(dataset=dataset, split="dev", task=task)
-    ).sample(frac=frac)
+    eval_df = load_lewidi_datasets(datasets, split="dev", task=task)
+    eval_df = explode_personas(eval_df)
+    eval_df = eval_df.sample(frac=frac)
     logger.info("Eval size: %d", len(eval_df))
+
+    if not train:
+        model = load_model(do_train=train, lora_checkpoint=lora_checkpoint)
 
     preds = inference(
         model, list(to_example_inputs(eval_df)), num_samples=3, batch_size=64
     )
-
-    eval_df = (
-        eval_df.assign(pred=list(preds))
-        .explode("pred")
-        .reset_index(drop=True)
-        .assign(
-            correct=lambda df: df["pred"] == df["target"],
-        )
-        .astype({"pred": "int"})
-    )
-    logger.info("Dropping %d rows with NaN preds", eval_df["pred"].isna().sum())
-    eval_df = eval_df.dropna(subset=["pred"])
-
-    avg_correct_1 = bootstrap_avg(eval_df["correct"])
-    avg_correct_2 = bootstrap_avg(eval_df.groupby("dataset_idx")["correct"].mean())
-    logger.info("Is correct: %s", repr(avg_correct_1))
-    logger.info("Is correct grouped by dataset_idx: %s", repr(avg_correct_2))
-
-    precision, recall, fscore, _ = precision_recall_fscore_support(
-        eval_df["target"], eval_df["pred"], average="binary"
-    )
-    logger.info(
-        "F1 score: %.2f, precision: %.2f, recall: %.2f", fscore, precision, recall
-    )
+    print_eval(eval_df, preds)
