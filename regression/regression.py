@@ -193,7 +193,7 @@ def print_eval(eval_df: pd.DataFrame, preds: np.ndarray):
     bin_eval_df = eval_df.query("dataset == 'MP' or dataset == 'VariErrNLI'")
     for dataset, gdf in bin_eval_df.groupby("dataset"):
         precision, recall, fscore, _ = precision_recall_fscore_support(
-            gdf["target"], gdf["pred"], average="macro"
+            gdf["target"], gdf["pred"], average="binary"
         )
         logger.info(
             "%s: F1 score: %.2f, precision: %.2f, recall: %.2f",
@@ -219,18 +219,18 @@ if __name__ == "__main__":
     enable_logging()
     configure_pandas_display()
 
-    datasets = ["CSC", "MP"]
+    datasets = ["CSC", "MP", "Paraphrase"]
     task = "perspectivist"
-    frac = 0.01
+    n_by_dataset = 500
     root = Path(__file__).parent
     model_folder = root / "saved_models" / "peft-t5-regression"
-    lora_checkpoint = model_folder / "checkpoint-269"
+    lora_checkpoint = model_folder / "checkpoint-363"
     train = False
 
     if train:
         train_df = load_lewidi_datasets(datasets, split="train", task=task)
         train_df = explode_personas(train_df)
-        train_df = train_df.sample(frac=frac)
+        train_df = train_df.sample(frac=1).groupby("dataset").head(n_by_dataset)
         logger.info("Train size: %d", len(train_df))
         model = load_model(do_train=train, lora_checkpoint=lora_checkpoint)
         train_dataset = to_tensor_dataset(train_df, model)
@@ -251,8 +251,8 @@ if __name__ == "__main__":
 
     eval_df = load_lewidi_datasets(datasets, split="dev", task=task)
     eval_df = explode_personas(eval_df)
-    eval_df = eval_df.sample(frac=frac)
-    logger.info("Eval size: %d", len(eval_df))
+    eval_df = eval_df.sample(frac=1).groupby("dataset").head(n_by_dataset)
+    logger.info("Eval dataset:\n%s", eval_df.groupby("dataset").size())
 
     if not train:
         model = load_model(do_train=train, lora_checkpoint=lora_checkpoint)

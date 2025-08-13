@@ -1,0 +1,14 @@
+Your persona:
+
+{persona}
+
+Instruction: You are provided two questions extracted from Quora. 
+Your task is to determine how stronly they are paraphrases of each other, ranging from -5 to 5.
+
+Input:
+
+- Question1: {Question1}
+- Question2: {Question2}
+
+Label:
+
