@@ -171,17 +171,21 @@ def assign_col_target_entropy(df: pd.DataFrame, dataset: Dataset) -> pd.DataFram
     return df.assign(target_entropy=col)
 
 
-def n_classes(dataset: Dataset) -> int:
+def n_classes(dataset: Dataset, use_6_for_csc: bool = False) -> int:
+    if use_6_for_csc:
+        csc_n_classes = 6
+    else:
+        csc_n_classes = 7
     return {
-        "CSC": 7,  # even though 0 is not a valid class
+        "CSC": csc_n_classes,  # even though 0 is not a valid class
         "MP": 2,
         "Paraphrase": 11,
         "VariErrNLI": 2,
     }[dataset]
 
 
-def assign_col_n_classes(df: pd.DataFrame) -> pd.DataFrame:
-    col = df["dataset"].apply(n_classes)
+def assign_col_n_classes(df: pd.DataFrame, use_6_for_csc: bool = False) -> pd.DataFrame:
+    col = df["dataset"].apply(n_classes, use_6_for_csc=use_6_for_csc)
     return df.assign(n_classes=col)
 
 
@@ -280,7 +284,7 @@ def enable_logging():
 
 
 def configure_pandas_display() -> None:
-    pd.set_option("display.max_colwidth", 1000)
+    pd.set_option("display.max_colwidth", 100)
 
 
 model_size_mapping = {

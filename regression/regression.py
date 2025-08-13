@@ -11,7 +11,9 @@ from lewidi_lib import (
     Split,
     Task,
     assert_path_exists,
+    assign_col_n_classes,
     bootstrap_avg,
+    configure_pandas_display,
     enable_logging,
     load_dataset,
 )
@@ -82,7 +84,9 @@ def inference(
         examples = {k: v.to(device) for k, v in examples.items()}
         _, output_floats_strs = model.model.decode(examples, num_samples=num_samples)
         floats = np.strings.slice(output_floats_strs, 0, 10)
-        floats = np.vectorize(to_int32_or_nan)(floats)
+        floats = np.array([to_int32_or_nan(x) for x in floats.flatten()]).reshape(
+            floats.shape
+        )
         all_floats.append(floats)
     return np.concatenate(all_floats)
 
@@ -145,7 +149,7 @@ def to_examples(df: pd.DataFrame) -> Iterator[core.Example]:
     for _, row in df.iterrows():
         prompt = row["prompt"]
         target = row["target"]
-        yield core.Example(x=prompt, y=target)
+        yield core.Example(x=prompt, y=float(target))
 
 
 def to_example_inputs(df: pd.DataFrame) -> Iterator[core.ExampleInput]:
@@ -169,31 +173,35 @@ def load_model(do_train: bool, lora_checkpoint: Path | None) -> rlm.RegressLM:
 
 
 def print_eval(eval_df: pd.DataFrame, preds: np.ndarray):
+    eval_df = eval_df.assign(pred=list(preds)).explode("pred").reset_index(drop=True)
+    logger.info("Dropping %d rows with NaN preds", eval_df["pred"].isna().sum())
     eval_df = (
-        eval_df.assign(pred=list(preds))
-        .explode("pred")
-        .reset_index(drop=True)
+        eval_df.dropna(subset=["pred"])
+        .astype({"pred": "int"})
+        .pipe(assign_col_n_classes, use_6_for_csc=True)
         .assign(
             correct=lambda df: df["pred"] == df["target"],
+            abs_dist=lambda df: (df["pred"] - df["target"]).abs()
+            / (df["n_classes"] - 1),
         )
-        .astype({"pred": "int"})
     )
-    logger.info("Dropping %d rows with NaN preds", eval_df["pred"].isna().sum())
-    eval_df = eval_df.dropna(subset=["pred"])
 
-    avg_correct_1 = bootstrap_avg(eval_df["correct"])
-    avg_correct_2 = bootstrap_avg(
-        eval_df.groupby(["dataset", "dataset_idx"])["correct"].mean()
-    )
-    logger.info("Is correct: %s", repr(avg_correct_1))
-    logger.info("Is correct grouped by dataset_idx: %s", repr(avg_correct_2))
+    for dataset, gdf in eval_df.groupby("dataset"):
+        logger.info("%s: correct %s", dataset, bootstrap_avg(gdf["correct"]))
+        logger.info("%s: abs_dist %s", dataset, bootstrap_avg(gdf["abs_dist"]))
 
-    precision, recall, fscore, _ = precision_recall_fscore_support(
-        eval_df["target"], eval_df["pred"], average="binary"
-    )
-    logger.info(
-        "F1 score: %.2f, precision: %.2f, recall: %.2f", fscore, precision, recall
-    )
+    bin_eval_df = eval_df.query("dataset == 'MP' or dataset == 'VariErrNLI'")
+    for dataset, gdf in bin_eval_df.groupby("dataset"):
+        precision, recall, fscore, _ = precision_recall_fscore_support(
+            gdf["target"], gdf["pred"], average="macro"
+        )
+        logger.info(
+            "%s: F1 score: %.2f, precision: %.2f, recall: %.2f",
+            dataset,
+            fscore,
+            precision,
+            recall,
+        )
 
 
 def load_lewidi_datasets(
@@ -209,12 +217,14 @@ def load_lewidi_datasets(
 
 if __name__ == "__main__":
     enable_logging()
+    configure_pandas_display()
+
     datasets = ["CSC", "MP"]
     task = "perspectivist"
     frac = 0.01
     root = Path(__file__).parent
     model_folder = root / "saved_models" / "peft-t5-regression"
-    lora_checkpoint = model_folder / "checkpoint-1890"
+    lora_checkpoint = model_folder / "checkpoint-269"
     train = False
 
     if train:
