@@ -9,6 +9,7 @@ from lewidi_lib import (
     Task,
     assert_path_exists,
     assign_col_ws_loss,
+    discard_na_response_rows,
     listof_ints_to_softlabel,
     load_dataset,
 )
@@ -171,18 +172,10 @@ def load_model(do_train: bool, lora_checkpoint: Path | None) -> rlm.RegressLM:
     return model
 
 
-def print_eval(eval_df: pd.DataFrame):
+def eval_perspectivist(eval_df: pd.DataFrame):
     eval_df = eval_df.explode("pred").reset_index(drop=True)
-    logger.info("Dropping %d rows with NaN preds", eval_df["pred"].isna().sum())
-    eval_df = eval_df.dropna(subset=["pred"])
-
-    valid_pe_preds = np.array(
-        list(pe_pred_is_valid(eval_df["pred"], eval_df["dataset"]))
-    )
-    logger.info(
-        "Dropping %d rows with invalid perspectivist preds", sum(~valid_pe_preds)
-    )
-    eval_df = eval_df[valid_pe_preds]
+    eval_df = discard_na_response_rows(eval_df, col="pred")
+    eval_df = discard_invalid_perspectivist_preds(eval_df)
 
     eval_df = (
         eval_df.astype({"pred": "int"})
@@ -211,6 +204,14 @@ def print_eval(eval_df: pd.DataFrame):
             precision,
             recall,
         )
+
+
+def discard_invalid_perspectivist_preds(df: pd.DataFrame) -> pd.DataFrame:
+    valid_pe_preds = np.array(list(pe_pred_is_valid(df["pred"], df["dataset"])))
+    logger.info(
+        "Dropping %d rows with invalid perspectivist preds", sum(~valid_pe_preds)
+    )
+    return df[valid_pe_preds]
 
 
 def load_lewidi_datasets(

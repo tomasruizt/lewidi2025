@@ -2,10 +2,11 @@ from lewidi_lib import configure_pandas_display, enable_logging
 from logging import getLogger
 from pathlib import Path
 from lewidi_regression import (
+    eval_soft_labels,
     inference,
     load_and_process_df,
     load_model,
-    print_eval,
+    eval_perspectivist,
     to_example_inputs,
     to_tensor_dataset,
     training_args,
@@ -27,8 +28,8 @@ if __name__ == "__main__":
     n_exs_by_dataset_eval = 50
     root = Path(__file__).parent
     model_folder = root / "saved_models" / "peft-t5-regression"
-    lora_checkpoint = model_folder / "checkpoint-363"
-    train = True
+    lora_checkpoint = model_folder / "checkpoint-2739"
+    train = False
 
     eval_df = load_and_process_df(
         datasets=datasets,
@@ -65,9 +66,23 @@ if __name__ == "__main__":
     if not train:
         model = load_model(do_train=train, lora_checkpoint=lora_checkpoint)
 
-    preds = inference(
-        model, list(to_example_inputs(eval_df)), num_samples=3, batch_size=64
+    del eval_df
+    full_eval_df = load_and_process_df(
+        datasets=datasets,
+        split="dev",
+        task=task,
+        n_exs_by_dataset=n_exs_by_dataset_eval,
     )
-    eval_df = eval_df.assign(pred=preds)
-    eval_df.to_parquet("model-preds.parquet", index=False)
-    print_eval(eval_df)
+
+    preds = inference(
+        model, list(to_example_inputs(full_eval_df)), num_samples=3, batch_size=64
+    )
+    full_eval_df = full_eval_df.assign(pred=list(preds))
+    preds_file = "model-preds.parquet"
+    full_eval_df.drop(columns=["annotator_metadata"]).to_parquet(
+        preds_file, index=False
+    )
+    logger.info("Dumped predictions to %s", preds_file)
+
+    eval_perspectivist(full_eval_df)
+    eval_soft_labels(full_eval_df)
