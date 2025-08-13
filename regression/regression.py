@@ -199,13 +199,6 @@ def print_eval(eval_df: pd.DataFrame, preds: np.ndarray):
         logger.info("%s: correct %s", dataset, bootstrap_avg(gdf["correct"]))
         logger.info("%s: abs_dist %s", dataset, bootstrap_avg(gdf["abs_dist"]))
 
-    avg_correct_1 = bootstrap_avg(eval_df["correct"])
-    avg_correct_2 = bootstrap_avg(
-        eval_df.groupby(["dataset", "dataset_idx"])["correct"].mean()
-    )
-    logger.info("Is correct: %s", repr(avg_correct_1))
-    logger.info("Is correct grouped by dataset_idx: %s", repr(avg_correct_2))
-
     bin_eval_df = eval_df.query("dataset == 'MP' or dataset == 'VariErrNLI'")
     for dataset, gdf in bin_eval_df.groupby("dataset"):
         precision, recall, fscore, _ = precision_recall_fscore_support(
