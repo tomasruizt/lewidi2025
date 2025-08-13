@@ -23,8 +23,8 @@ if __name__ == "__main__":
 
     datasets = ["CSC", "MP", "Paraphrase"]
     task = "perspectivist"
-    n_by_dataset_train = None  # 10_000
-    n_by_dataset_eval = 200
+    n_exs_by_dataset_train = None  # 10_000
+    n_exs_by_dataset_eval = 50
     root = Path(__file__).parent
     model_folder = root / "saved_models" / "peft-t5-regression"
     lora_checkpoint = model_folder / "checkpoint-363"
@@ -34,7 +34,7 @@ if __name__ == "__main__":
         datasets=datasets,
         split="dev",
         task=task,
-        n_by_dataset=n_by_dataset_eval,
+        n_exs_by_dataset=n_exs_by_dataset_eval,
     )
 
     if train:
@@ -42,7 +42,7 @@ if __name__ == "__main__":
             datasets=datasets,
             split="train",
             task=task,
-            n_by_dataset=n_by_dataset_train,
+            n_exs_by_dataset=n_exs_by_dataset_train,
         )
         model = load_model(do_train=train, lora_checkpoint=lora_checkpoint)
         train_dataset = to_tensor_dataset(train_df, model)

@@ -220,10 +220,19 @@ def load_and_process_df(
     datasets: list[Dataset],
     split: Split,
     task: Task,
-    n_by_dataset: int,
+    n_exs_by_dataset: int,
 ) -> pd.DataFrame:
     df = load_lewidi_datasets(datasets, split=split, task=task)
+    # sample n examples per dataset
+    ids = (
+        df[["dataset", "dataset_idx"]]
+        .drop_duplicates()
+        .sample(frac=1)
+        .groupby("dataset", as_index=False)
+        .head(n_exs_by_dataset)
+    )
+    # discard all other examples
+    df = df.merge(ids, on=["dataset", "dataset_idx"], how="inner")
     df = explode_personas(df)
-    df = df.sample(frac=1).groupby("dataset").head(n_by_dataset)
     logger.info("%s dataset:\n%s", split, df.groupby("dataset").size())
     return df

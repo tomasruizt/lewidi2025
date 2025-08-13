@@ -158,20 +158,20 @@ def load_most_freq_baseline(filename: str) -> pd.DataFrame:
     return rdf
 
 
-class TestArgs(Args):
+class ArgsTest(Args):
     """subclass that disables CLI argument parsing for testing"""
 
     model_config = {"cli_parse_args": False}
 
 
-class TestJudgeArgs(JudgeArgs):
+class JudgeArgsTest(JudgeArgs):
     """subclass that disables CLI argument parsing for testing"""
 
     model_config = {"cli_parse_args": False}
 
 
 def test_create_all_batches():
-    args = TestArgs(
+    args = ArgsTest(
         datasets=["CSC", "MP"],
         splits=["train"],
         template_ids=[60],
@@ -181,7 +181,7 @@ def test_create_all_batches():
 
 
 def test_create_judge_batch():
-    args = TestJudgeArgs(
+    args = JudgeArgsTest(
         preds_dir=test_files_folder / "diversity-filtering" / "preds",
         pred_dataset="MP",
         pred_model_id="mock",
@@ -198,7 +198,7 @@ def test_create_judge_batch():
 
 
 def test_run_inference():
-    args = TestArgs(
+    args = ArgsTest(
         model_id="test",
         datasets=["aime"],
         template_ids=["60"],
@@ -211,7 +211,7 @@ def test_run_inference():
 
 
 def test_run_inference_openrouter():
-    args = TestArgs(
+    args = ArgsTest(
         model_id="Qwen/Qwen3-32B",
         datasets=["MP"],
         template_ids=["60"],
@@ -269,6 +269,17 @@ def test_load_and_process_df():
         datasets=["MP", "CSC", "Paraphrase"],
         split="dev",
         task="perspectivist",
-        n_by_dataset=100,
+        n_exs_by_dataset=10,
     )
-    assert len(eval_df) == 300
+    assert eval_df["dataset"].nunique() == 3
+    assert eval_df.groupby("dataset")["dataset_idx"].nunique().sum() == 30
+
+
+def test_load_and_process_df_all():
+    df = load_and_process_df(
+        datasets=["MP", "CSC", "Paraphrase"],
+        split="dev",
+        task="perspectivist",
+        n_exs_by_dataset=None,
+    )
+    assert len(df) == 18_564  # just many
