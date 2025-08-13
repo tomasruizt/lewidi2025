@@ -68,4 +68,6 @@ if __name__ == "__main__":
     preds = inference(
         model, list(to_example_inputs(eval_df)), num_samples=3, batch_size=64
     )
-    print_eval(eval_df, preds)
+    eval_df = eval_df.assign(pred=preds)
+    eval_df.to_parquet("model-preds.parquet", index=False)
+    print_eval(eval_df)

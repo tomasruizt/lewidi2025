@@ -163,8 +163,8 @@ def load_model(do_train: bool, lora_checkpoint: Path | None) -> rlm.RegressLM:
     return model
 
 
-def print_eval(eval_df: pd.DataFrame, preds: np.ndarray):
-    eval_df = eval_df.assign(pred=list(preds)).explode("pred").reset_index(drop=True)
+def print_eval(eval_df: pd.DataFrame):
+    eval_df = eval_df.explode("pred").reset_index(drop=True)
     logger.info("Dropping %d rows with NaN preds", eval_df["pred"].isna().sum())
     eval_df = eval_df.dropna(subset=["pred"])
 
