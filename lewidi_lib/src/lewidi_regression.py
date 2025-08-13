@@ -254,11 +254,11 @@ class SoftLabelEval:
 
 
 def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
-    preds_sl = (
-        eval_df.groupby(["dataset", "dataset_idx"], as_index=False).agg(
-            all_preds=("pred", lambda xss: [x for xs in xss for x in xs])
-        )
-        # .drop(columns=["target"])
+    expanded = eval_df.explode("pred")
+    expanded = discard_na_response_rows(expanded, col="pred")
+    expanded = discard_invalid_perspectivist_preds(expanded)
+    preds_sl = expanded.groupby(["dataset", "dataset_idx"], as_index=False).agg(
+        all_preds=("pred", list)
     )
     sl_col = []
     for dataset, all_preds in zip(preds_sl["dataset"], preds_sl["all_preds"]):
