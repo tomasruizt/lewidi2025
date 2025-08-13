@@ -19,6 +19,7 @@ from lewidi_lib import (
 )
 from lewidi_org import average_WS
 from judge_lib import JudgeArgs, create_judge_batch
+from lewidi_regression import load_and_process_df
 import numpy as np
 import pandas as pd
 from sbatch_lib import sketch_sbatch_progress
@@ -261,3 +262,13 @@ def test_is_valid_pe_pred():
     )
     is_valid = list(pe_pred_is_valid(df["pred"], df["dataset"]))
     assert np.allclose(is_valid, df["expected_is_valid"])
+
+
+def test_load_and_process_df():
+    eval_df = load_and_process_df(
+        datasets=["MP", "CSC", "Paraphrase"],
+        split="dev",
+        task="perspectivist",
+        n_by_dataset=100,
+    )
+    assert len(eval_df) == 300

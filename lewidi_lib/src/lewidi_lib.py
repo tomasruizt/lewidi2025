@@ -1786,3 +1786,12 @@ allowed_pe_preds = {
     "CSC": {1, 2, 3, 4, 5, 6},
     "Paraphrase": {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5},
 }
+
+
+@dataclass
+class SoftLabelEval:
+    eval_df: pd.DataFrame
+
+
+def eval_soft_labels(eval_df: pd.DataFrame):
+    return SoftLabelEval(eval_df)
