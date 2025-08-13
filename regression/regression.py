@@ -34,8 +34,9 @@ def explode_personas(ddf: pd.DataFrame) -> pd.DataFrame:
         for persona, tgt in zip(personas, tgts):
             persona_str = json.dumps(persona, indent=2)
             prompt = template.format(post=post, reply=reply, persona=persona_str)
-            examples.append((prompt, float(tgt)))
-    return pd.DataFrame(examples, columns=["prompt", "target"])
+            examples.append((row["dataset_idx"], prompt, float(tgt)))
+    df = pd.DataFrame(examples, columns=["dataset_idx", "prompt", "target"])
+    return df.astype({"target": "int"})
 
 
 def create_model(model_name: str = "google/t5gemma-s-s-prefixlm") -> rlm.RegressLM:
@@ -75,7 +76,7 @@ def inference(
 
 def to_int32_or_nan(s):
     try:
-        return np.int32(float(s))
+        return np.int64(float(s))
     except ValueError:
         return np.nan
 
@@ -144,16 +145,11 @@ if __name__ == "__main__":
     enable_logging()
     dataset = "MP"
     task = "perspectivist"
-    frac = 0.001
+    frac = 0.01
     root = Path(__file__).parent
     model_folder = root / "saved_models" / "peft-t5-regression"
     lora_checkpoint = model_folder / "checkpoint-1890"
     train = False
-
-    train_df = explode_personas(
-        load_dataset(dataset=dataset, split="train", task=task)
-    ).sample(frac=frac)
-    logger.info("Train size: %d", len(train_df))
 
     model: rlm.RegressLM = create_model(model_name="google/t5gemma-s-s-prefixlm")
     if train:
@@ -166,8 +162,11 @@ if __name__ == "__main__":
         )
 
     if train:
+        train_df = explode_personas(
+            load_dataset(dataset=dataset, split="train", task=task)
+        ).sample(frac=frac)
+        logger.info("Train size: %d", len(train_df))
         train_dataset = to_tensor_dataset(train_df, model)
-        # eval_dataset = to_tensor_dataset(val_df, model)
         collator = DataCollatorForSeq2Seq(
             tokenizer=model.model.tokenizer, model=model.model.model
         )
@@ -189,17 +188,25 @@ if __name__ == "__main__":
     logger.info("Eval size: %d", len(eval_df))
 
     preds = inference(
-        model, list(to_example_inputs(eval_df)), num_samples=1, batch_size=64
+        model, list(to_example_inputs(eval_df)), num_samples=3, batch_size=64
     )
 
-    eval_df = eval_df.assign(
-        pred=preds[:, 0],
-        correct=lambda df: df["pred"] == df["target"],
+    eval_df = (
+        eval_df.assign(pred=list(preds))
+        .explode("pred")
+        .reset_index(drop=True)
+        .assign(
+            correct=lambda df: df["pred"] == df["target"],
+        )
+        .astype({"pred": "int"})
     )
     logger.info("Dropping %d rows with NaN preds", eval_df["pred"].isna().sum())
     eval_df = eval_df.dropna(subset=["pred"])
 
-    logger.info("Is correct: %s", repr(bootstrap_avg(eval_df["correct"])))
+    avg_correct_1 = bootstrap_avg(eval_df["correct"])
+    avg_correct_2 = bootstrap_avg(eval_df.groupby("dataset_idx")["correct"].mean())
+    logger.info("Is correct: %s", repr(avg_correct_1))
+    logger.info("Is correct grouped by dataset_idx: %s", repr(avg_correct_2))
 
     precision, recall, fscore, _ = precision_recall_fscore_support(
         eval_df["target"], eval_df["pred"], average="binary"
