@@ -64,6 +64,7 @@ def create_model(model_name: str = "google/t5gemma-s-s-prefixlm") -> rlm.Regress
             "torch_dtype": torch.bfloat16,
             "low_cpu_mem_usage": True,
         },
+        max_decode_len=10,
     )
     t5.to(device)
     t5.compile()
@@ -123,19 +124,21 @@ def lora_config() -> LoraConfig:
 
 
 def training_args(output_dir: str) -> TrainingArguments:
+    batch_size = 32  # 64 throws OOM on RTX3090
     return TrainingArguments(
         output_dir=output_dir,
-        per_device_train_batch_size=32,
-        per_device_eval_batch_size=32,
-        learning_rate=1e-5,
+        per_device_train_batch_size=batch_size,
+        per_device_eval_batch_size=batch_size,
+        learning_rate=1e-4,
         num_train_epochs=1,
-        logging_steps=1,
-        eval_strategy="no",
-        eval_steps=50,
-        save_steps=50,
+        logging_steps=10,
+        eval_strategy="steps",
+        eval_steps=200,
+        save_steps=200,
         save_total_limit=2,
-        fp16=False,
+        bf16=True,
         push_to_hub=False,
+        torch_compile=True,
     )
 
 
@@ -178,7 +181,9 @@ def print_eval(eval_df: pd.DataFrame, preds: np.ndarray):
     logger.info("Dropping %d rows with NaN preds", eval_df["pred"].isna().sum())
     eval_df = eval_df.dropna(subset=["pred"])
 
-    valid_pe_preds = np.array(list(pe_pred_is_valid(eval_df["pred"], eval_df["dataset"])))
+    valid_pe_preds = np.array(
+        list(pe_pred_is_valid(eval_df["pred"], eval_df["dataset"]))
+    )
     logger.info(
         "Dropping %d rows with invalid perspectivist preds", sum(~valid_pe_preds)
     )
@@ -230,19 +235,26 @@ if __name__ == "__main__":
 
     datasets = ["CSC", "MP", "Paraphrase"]
     task = "perspectivist"
-    n_by_dataset = 500
+    n_by_dataset_train = None  # 10_000
+    n_by_dataset_eval = 200
     root = Path(__file__).parent
     model_folder = root / "saved_models" / "peft-t5-regression"
     lora_checkpoint = model_folder / "checkpoint-363"
-    train = False
+    train = True
+
+    eval_df = load_lewidi_datasets(datasets, split="dev", task=task)
+    eval_df = explode_personas(eval_df)
+    eval_df = eval_df.sample(frac=1).groupby("dataset").head(n_by_dataset_eval)
+    logger.info("Eval dataset:\n%s", eval_df.groupby("dataset").size())
 
     if train:
         train_df = load_lewidi_datasets(datasets, split="train", task=task)
         train_df = explode_personas(train_df)
-        train_df = train_df.sample(frac=1).groupby("dataset").head(n_by_dataset)
-        logger.info("Train size: %d", len(train_df))
+        train_df = train_df.sample(frac=1).groupby("dataset").head(n_by_dataset_train)
+        logger.info("Train dataset:\n%s", train_df.groupby("dataset").size())
         model = load_model(do_train=train, lora_checkpoint=lora_checkpoint)
         train_dataset = to_tensor_dataset(train_df, model)
+        eval_dataset = to_tensor_dataset(eval_df, model)
         collator = DataCollatorForSeq2Seq(
             tokenizer=model.model.tokenizer, model=model.model.model
         )
@@ -250,18 +262,13 @@ if __name__ == "__main__":
             model=model.model.model,
             args=training_args(output_dir=model_folder),
             train_dataset=train_dataset,
-            eval_dataset=None,
+            eval_dataset=eval_dataset,
             tokenizer=model.model.tokenizer,
             data_collator=collator,
         )
         trainer.train()
         model.model.model.save_pretrained(model_folder)
         logger.info("Saved model to %s", model_folder)
-
-    eval_df = load_lewidi_datasets(datasets, split="dev", task=task)
-    eval_df = explode_personas(eval_df)
-    eval_df = eval_df.sample(frac=1).groupby("dataset").head(n_by_dataset)
-    logger.info("Eval dataset:\n%s", eval_df.groupby("dataset").size())
 
     if not train:
         model = load_model(do_train=train, lora_checkpoint=lora_checkpoint)
