@@ -16,6 +16,7 @@ from lewidi_lib import (
     configure_pandas_display,
     enable_logging,
     load_dataset,
+    pe_pred_is_valid,
 )
 from logging import getLogger
 from pathlib import Path
@@ -175,8 +176,16 @@ def load_model(do_train: bool, lora_checkpoint: Path | None) -> rlm.RegressLM:
 def print_eval(eval_df: pd.DataFrame, preds: np.ndarray):
     eval_df = eval_df.assign(pred=list(preds)).explode("pred").reset_index(drop=True)
     logger.info("Dropping %d rows with NaN preds", eval_df["pred"].isna().sum())
+    eval_df = eval_df.dropna(subset=["pred"])
+
+    valid_pe_preds = list(pe_pred_is_valid(eval_df["pred"], eval_df["dataset"]))
+    logger.info(
+        "Dropping %d rows with invalid perspectivist preds", sum(~valid_pe_preds)
+    )
+    eval_df = eval_df[valid_pe_preds]
+
     eval_df = (
-        eval_df.dropna(subset=["pred"])
+        eval_df.astype({"pred": "int"})
         .astype({"pred": "int"})
         .pipe(assign_col_n_classes, use_6_for_csc=True)
         .assign(
@@ -189,6 +198,13 @@ def print_eval(eval_df: pd.DataFrame, preds: np.ndarray):
     for dataset, gdf in eval_df.groupby("dataset"):
         logger.info("%s: correct %s", dataset, bootstrap_avg(gdf["correct"]))
         logger.info("%s: abs_dist %s", dataset, bootstrap_avg(gdf["abs_dist"]))
+
+    avg_correct_1 = bootstrap_avg(eval_df["correct"])
+    avg_correct_2 = bootstrap_avg(
+        eval_df.groupby(["dataset", "dataset_idx"])["correct"].mean()
+    )
+    logger.info("Is correct: %s", repr(avg_correct_1))
+    logger.info("Is correct grouped by dataset_idx: %s", repr(avg_correct_2))
 
     bin_eval_df = eval_df.query("dataset == 'MP' or dataset == 'VariErrNLI'")
     for dataset, gdf in bin_eval_df.groupby("dataset"):
