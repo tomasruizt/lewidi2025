@@ -10,7 +10,16 @@ import random
 import re
 import zipfile
 from scipy.stats import bootstrap
-from typing import Any, Callable, Generator, Iterable, Literal, Mapping, TypedDict
+from typing import (
+    Any,
+    Callable,
+    Generator,
+    Iterable,
+    Iterator,
+    Literal,
+    Mapping,
+    TypedDict,
+)
 import duckdb
 import json_repair
 from llmlib.vllmserver import spinup_vllm_server, VLLMServer
@@ -1761,4 +1770,19 @@ def compact_model_name(model_id: str) -> str:
 model_map = {
     "Qwen/Qwen3-32B": "Qwen3-32B",
     "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B": "DeepSeek-R1-8B",
+}
+
+
+def pe_pred_is_valid(
+    preds: Iterable[int], datasets: Iterable[Dataset]
+) -> Iterator[bool]:
+    for dataset, pred in zip(datasets, preds):
+        allowed_set = allowed_pe_preds[dataset]
+        yield int(pred) in allowed_set
+
+
+allowed_pe_preds = {
+    "MP": {0, 1},
+    "CSC": {1, 2, 3, 4, 5, 6},
+    "Paraphrase": {-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5},
 }

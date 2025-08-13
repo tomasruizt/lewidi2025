@@ -12,6 +12,7 @@ from lewidi_lib import (
     load_preds,
     filter_preds_for_judge,
     make_query_from_dict,
+    pe_pred_is_valid,
     soft_label_to_nparray,
     tgt_has_holes,
     ws_loss,
@@ -20,7 +21,6 @@ from lewidi_org import average_WS
 from judge_lib import JudgeArgs, create_judge_batch
 import numpy as np
 import pandas as pd
-import pytest
 from sbatch_lib import sketch_sbatch_progress
 
 
@@ -241,3 +241,23 @@ def test_group_pred():
 def test_load_dataset():
     ddf = load_dataset(dataset="aime", split="train", parse_tgt=False)
     assert len(ddf) > 100
+
+
+def test_is_valid_pe_pred():
+    df = pd.DataFrame(
+        [
+            ("MP", 0, True),
+            ("MP", 1, True),
+            ("MP", 2, False),
+            ("CSC", 0, False),
+            ("CSC", 6, True),
+            ("CSC", 7, False),
+            ("Paraphrase", -6, False),
+            ("Paraphrase", -5, True),
+            ("Paraphrase", 5, True),
+            ("Paraphrase", 6, False),
+        ],
+        columns=["dataset", "pred", "expected_is_valid"],
+    )
+    is_valid = list(pe_pred_is_valid(df["pred"], df["dataset"]))
+    assert np.allclose(is_valid, df["expected_is_valid"])
