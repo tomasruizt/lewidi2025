@@ -38,7 +38,7 @@ if __name__ == "__main__":
 
     task = "perspectivist"
     n_exs_by_dataset_train = None
-    n_exs_by_dataset_eval = None
+    n_exs_by_dataset_eval = 500
     root = Path(__file__).parent
     if len(args.datasets) == 1:
         model_folder = root / "saved_models" / args.datasets[0]
@@ -100,7 +100,7 @@ if __name__ == "__main__":
         datasets=args.datasets,
         split="dev",
         task=task,
-        n_exs_by_dataset=n_exs_by_dataset_eval,
+        n_exs_by_dataset=None,
         include_no_persona=False,
     )
 
