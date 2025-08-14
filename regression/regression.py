@@ -3,6 +3,7 @@ from lewidi_lib import configure_pandas_display, enable_logging
 from logging import getLogger
 from pathlib import Path
 from lewidi_regression import (
+    compute_majority_vote2,
     eval_soft_labels,
     inference,
     load_and_process_df,
@@ -26,14 +27,15 @@ if __name__ == "__main__":
 
     datasets = ["Paraphrase", "CSC", "MP"]  # , "Paraphrase"]
     task = "perspectivist"
-    n_exs_by_dataset_train = 100  # 10_000
+    n_exs_by_dataset_train = 400  # 10_000
     n_exs_by_dataset_eval = 50
     root = Path(__file__).parent
     model_folder = root / "saved_models" / "all_datsets"  # datasets[0]
-    lora_checkpoint = model_folder / "checkpoint-200"
+    lora_checkpoint = model_folder / "checkpoint-440"
     train = True
     train_include_no_persona = False
     train_torch_compile = True
+    save_and_eval_steps = 100
 
     eval_df = load_and_process_df(
         datasets=datasets,
@@ -63,8 +65,8 @@ if __name__ == "__main__":
             args=training_args(
                 output_dir=model_folder,
                 torch_compile=train_torch_compile,
-                eval_steps=40,
-                save_steps=40,
+                eval_steps=save_and_eval_steps,
+                save_steps=save_and_eval_steps,
             ),
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
@@ -101,5 +103,11 @@ if __name__ == "__main__":
     )
     logger.info("Dumped predictions to %s", preds_file)
 
+    logger.info("Distributional performance:")
     eval_perspectivist(full_eval_df)
     eval_soft_labels(full_eval_df)
+
+    maj_vote = compute_majority_vote2(full_eval_df)
+    logger.info("Majority vote performance:")
+    eval_perspectivist(maj_vote)
+    eval_soft_labels(maj_vote)

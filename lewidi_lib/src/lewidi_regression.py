@@ -137,7 +137,8 @@ def training_args(**kwars) -> TrainingArguments:
         eval_strategy="steps",
         eval_steps=kwars.get("eval_steps", 100),
         save_steps=kwars.get("save_steps", 100),
-        save_total_limit=kwars.get("save_total_limit", 2),
+        # No need for multiple checkpoints atm
+        save_total_limit=kwars.get("save_total_limit", 1),
         bf16=kwars.get("bf16", True),
         push_to_hub=kwars.get("push_to_hub", False),
         torch_compile=kwars.get("torch_compile", True),
@@ -145,6 +146,8 @@ def training_args(**kwars) -> TrainingArguments:
         metric_for_best_model=kwars.get("metric_for_best_model", "eval_loss"),
         greater_is_better=kwars.get("greater_is_better", False),
         weight_decay=kwars.get("weight_decay", 0.01),
+        # avoid torch.recompile for a small final batch
+        dataloader_drop_last=kwars.get("dataloader_drop_last", True),
     )
 
 
