@@ -1,3 +1,4 @@
+import pytest
 from pathlib import Path
 from inference_lib import Args, create_all_batches, run_inference
 import json_repair
@@ -303,10 +304,13 @@ def test_listof_ints_to_softlabel():
     assert np.allclose(par_expected, par_actual)
 
 
-def test_eval_regression_on_soft_labels():
-    eval_df = pd.read_parquet(
-        "/Users/tomasruiz/code/lediwi/regression/model-preds.parquet"
-    )
+@pytest.fixture(scope="session")
+def eval_df() -> pd.DataFrame:
+    file = Path(__file__).parent.parent / "regression/model-preds.parquet"
+    return pd.read_parquet(file)
+
+
+def test_eval_regression_on_soft_labels(eval_df: pd.DataFrame):
     eval_obj = eval_soft_labels(eval_df)
     assert len(eval_obj.joint_df) > 0
     assert "ws_loss" in eval_obj.joint_df.columns

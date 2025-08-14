@@ -1789,6 +1789,7 @@ allowed_pe_preds = {
 
 
 def listof_ints_to_softlabel(ints: list[int], dataset: Dataset) -> list[int]:
+    ints = np.array(ints, dtype=np.int64)
     if dataset == "Paraphrase":
         ints = pd.array(ints) + 5
     counts = np.bincount(ints, minlength=n_classes(dataset))
