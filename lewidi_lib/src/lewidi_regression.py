@@ -3,6 +3,7 @@ from logging import getLogger
 from pathlib import Path
 from collections.abc import Iterator
 from functools import lru_cache
+import statistics
 from datasets import Dataset
 from lewidi_lib import (
     Split,
@@ -181,7 +182,14 @@ def load_model(do_train: bool, lora_checkpoint: Path | None) -> rlm.RegressLM:
     return model
 
 
-def eval_perspectivist(eval_df: pd.DataFrame):
+@dataclass
+class PerspectivistEval:
+    joint_df: pd.DataFrame
+    perf_df: pd.Series
+    f1_df: pd.DataFrame
+
+
+def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
     eval_df = eval_df.explode("pred").reset_index(drop=True)
     eval_df = discard_na_response_rows(eval_df, col="pred")
     eval_df = discard_invalid_perspectivist_preds(eval_df)
@@ -197,22 +205,24 @@ def eval_perspectivist(eval_df: pd.DataFrame):
         )
     )
 
-    for dataset, gdf in eval_df.groupby("dataset"):
-        logger.info("%s: correct %s", dataset, bootstrap_avg(gdf["correct"]))
-        logger.info("%s: abs_dist %s", dataset, bootstrap_avg(gdf["abs_dist"]))
+    perf_df = eval_df.groupby("dataset").agg(
+        correct=("correct", bootstrap_avg), abs_dist=("abs_dist", bootstrap_avg)
+    )
+    logger.info("Perspectivist Performance:\n%s", repr(perf_df))
 
     bin_eval_df = eval_df.query("dataset == 'MP' or dataset == 'VariErrNLI'")
+
+    f1_rows = []
     for dataset, gdf in bin_eval_df.groupby("dataset"):
         precision, recall, fscore, _ = precision_recall_fscore_support(
             gdf["target"], gdf["pred"], average="binary"
         )
-        logger.info(
-            "%s: F1 score: %.2f, precision: %.2f, recall: %.2f",
-            dataset,
-            fscore,
-            precision,
-            recall,
-        )
+        f1_rows.append((dataset, fscore, precision, recall))
+
+    f1_df = pd.DataFrame(f1_rows, columns=["dataset", "f1", "precision", "recall"])
+    logger.info("Perspectivist F1:\n%s", repr(f1_df.round(2)))
+
+    return PerspectivistEval(joint_df=eval_df, perf_df=perf_df, f1_df=f1_df)
 
 
 def discard_invalid_perspectivist_preds(df: pd.DataFrame) -> pd.DataFrame:
@@ -269,12 +279,7 @@ class SoftLabelEval:
 
 
 def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
-    expanded = eval_df.explode("pred")
-    expanded = discard_na_response_rows(expanded, col="pred")
-    expanded = discard_invalid_perspectivist_preds(expanded)
-    preds_sl = expanded.groupby(["dataset", "dataset_idx"], as_index=False).agg(
-        all_preds=("pred", list)
-    )
+    preds_sl = discard_invalid_preds_and_collect(eval_df)
     sl_col = []
     for dataset, all_preds in zip(preds_sl["dataset"], preds_sl["all_preds"]):
         sl_col.append(listof_ints_to_softlabel(all_preds, dataset=dataset))
@@ -288,3 +293,18 @@ def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
     wsloss_perf = joint_df.groupby("dataset")["ws_loss"].agg(bootstrap_avg)
     logger.info("Wasserstein Loss Performance:\n%s", repr(wsloss_perf))
     return SoftLabelEval(joint_df, wsloss_perf)
+
+
+def discard_invalid_preds_and_collect(eval_df: pd.DataFrame) -> pd.DataFrame:
+    expanded = eval_df.explode("pred")
+    expanded = discard_na_response_rows(expanded, col="pred")
+    expanded = discard_invalid_perspectivist_preds(expanded)
+    collected = expanded.groupby(["dataset", "dataset_idx"], as_index=False).agg(
+        all_preds=("pred", list)
+    )
+    return collected
+
+
+def compute_majority_vote2(eval_df: pd.DataFrame) -> pd.DataFrame:
+    majority_vote = eval_df["pred"].apply(statistics.mode).astype("int")
+    return eval_df.assign(pred=majority_vote)

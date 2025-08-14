@@ -21,7 +21,12 @@ from lewidi_lib import (
 )
 from lewidi_org import average_WS
 from judge_lib import JudgeArgs, create_judge_batch
-from lewidi_regression import eval_soft_labels, load_and_process_df
+from lewidi_regression import (
+    compute_majority_vote2,
+    eval_perspectivist,
+    eval_soft_labels,
+    load_and_process_df,
+)
 import numpy as np
 import pandas as pd
 from sbatch_lib import sketch_sbatch_progress
@@ -310,7 +315,20 @@ def eval_df() -> pd.DataFrame:
     return pd.read_parquet(file)
 
 
-def test_eval_regression_on_soft_labels(eval_df: pd.DataFrame):
+def test_eval_soft_labels(eval_df: pd.DataFrame):
     eval_obj = eval_soft_labels(eval_df)
     assert len(eval_obj.joint_df) > 0
     assert "ws_loss" in eval_obj.joint_df.columns
+
+
+def test_eval_perspectivist(eval_df: pd.DataFrame):
+    eval_obj = eval_perspectivist(eval_df)
+    assert len(eval_obj.joint_df) > 0
+    assert "abs_dist" in eval_obj.joint_df.columns
+
+
+def test_eval_perspectivist_majority(eval_df: pd.DataFrame):
+    eval_df = compute_majority_vote2(eval_df)
+    eval_obj = eval_perspectivist(eval_df)
+    assert len(eval_obj.joint_df) > 0
+    assert "abs_dist" in eval_obj.joint_df.columns

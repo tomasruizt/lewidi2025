@@ -1610,6 +1610,7 @@ def maj_vote_single_person(ratings: list):
 
 def compute_maj_vote_baseline(joint_df: pd.DataFrame) -> pd.DataFrame:
     gby_cols = ["model_id", "dataset", "split", "dataset_idx"]
+    gby_cols = [c for c in gby_cols if c in joint_df.columns]
     baseline = (
         joint_df.groupby(gby_cols, observed=True)[joint_df.columns]
         .apply(lambda df: maj_vote_many_runs(df["dataset"].values[0], df["pred"]))
