@@ -126,7 +126,7 @@ def training_args(**kwars) -> TrainingArguments:
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         learning_rate=kwars.get("learning_rate", 1e-4),
-        num_train_epochs=kwars.get("num_train_epochs", 100),
+        num_train_epochs=kwars.get("num_train_epochs", 10),
         logging_steps=kwars.get("logging_steps", 10),
         eval_strategy="steps",
         eval_steps=kwars.get("eval_steps", 100),
@@ -135,6 +135,9 @@ def training_args(**kwars) -> TrainingArguments:
         bf16=kwars.get("bf16", True),
         push_to_hub=kwars.get("push_to_hub", False),
         torch_compile=kwars.get("torch_compile", True),
+        load_best_model_at_end=kwars.get("load_best_model_at_end", True),
+        metric_for_best_model=kwars.get("metric_for_best_model", "eval_loss"),
+        greater_is_better=kwars.get("greater_is_better", False),
     )
 
 

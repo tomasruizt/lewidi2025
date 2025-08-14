@@ -11,7 +11,7 @@ from lewidi_regression import (
     to_tensor_dataset,
     training_args,
 )
-from transformers import DataCollatorForSeq2Seq, Trainer
+from transformers import DataCollatorForSeq2Seq, Trainer, EarlyStoppingCallback
 
 logger = getLogger(__name__)
 
@@ -53,11 +53,16 @@ if __name__ == "__main__":
         )
         trainer = Trainer(
             model=model.model.model,
-            args=training_args(output_dir=model_folder),
+            args=training_args(
+                output_dir=model_folder,
+                torch_compile=False,
+                eval_steps=10,
+            ),
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
             tokenizer=model.model.tokenizer,
             data_collator=collator,
+            callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],
         )
         trainer.train()
         model.model.model.save_pretrained(model_folder)
