@@ -1,3 +1,4 @@
+import os
 from lewidi_lib import configure_pandas_display, enable_logging
 from logging import getLogger
 from pathlib import Path
@@ -19,23 +20,27 @@ device = "cuda:0"
 
 
 if __name__ == "__main__":
+    os.environ["TOKENIZERS_PARALLELISM"] = "true"
     enable_logging()
     configure_pandas_display()
 
-    datasets = ["CSC", "MP", "Paraphrase"]
+    datasets = ["Paraphrase", "CSC", "MP"]  # , "Paraphrase"]
     task = "perspectivist"
-    n_exs_by_dataset_train = None  # 10_000
+    n_exs_by_dataset_train = 100  # 10_000
     n_exs_by_dataset_eval = 50
     root = Path(__file__).parent
-    model_folder = root / "saved_models" / "peft-t5-regression"
-    lora_checkpoint = model_folder / "checkpoint-2739"
-    train = False
+    model_folder = root / "saved_models" / "all_datsets"  # datasets[0]
+    lora_checkpoint = model_folder / "checkpoint-200"
+    train = True
+    train_include_no_persona = False
+    train_torch_compile = True
 
     eval_df = load_and_process_df(
         datasets=datasets,
         split="dev",
         task=task,
         n_exs_by_dataset=n_exs_by_dataset_eval,
+        include_no_persona=False,
     )
 
     if train:
@@ -44,6 +49,7 @@ if __name__ == "__main__":
             split="train",
             task=task,
             n_exs_by_dataset=n_exs_by_dataset_train,
+            include_no_persona=train_include_no_persona,
         )
         model = load_model(do_train=train, lora_checkpoint=lora_checkpoint)
         train_dataset = to_tensor_dataset(train_df, model)
@@ -51,12 +57,14 @@ if __name__ == "__main__":
         collator = DataCollatorForSeq2Seq(
             tokenizer=model.model.tokenizer, model=model.model.model
         )
+
         trainer = Trainer(
             model=model.model.model,
             args=training_args(
                 output_dir=model_folder,
-                torch_compile=False,
-                eval_steps=10,
+                torch_compile=train_torch_compile,
+                eval_steps=40,
+                save_steps=40,
             ),
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
@@ -77,10 +85,14 @@ if __name__ == "__main__":
         split="dev",
         task=task,
         n_exs_by_dataset=n_exs_by_dataset_eval,
+        include_no_persona=False,
     )
 
     preds = inference(
-        model, list(to_example_inputs(full_eval_df)), num_samples=3, batch_size=64
+        model,
+        list(to_example_inputs(full_eval_df)),
+        num_samples=10,
+        batch_size=64,
     )
     full_eval_df = full_eval_df.assign(pred=list(preds))
     preds_file = "model-preds.parquet"

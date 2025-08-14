@@ -32,7 +32,7 @@ logger = getLogger(__name__)
 device = "cuda:0"
 
 
-def explode_personas(ddf: pd.DataFrame) -> pd.DataFrame:
+def explode_personas(ddf: pd.DataFrame, include_no_persona: bool) -> pd.DataFrame:
     df = ddf.explode(["annotator_metadata", "target"])
     prompts = []
     for row in df.itertuples():
@@ -40,6 +40,11 @@ def explode_personas(ddf: pd.DataFrame) -> pd.DataFrame:
         template = get_template_cached(row.dataset)
         prompt = template.format(**row.text, persona=persona_str)
         prompts.append(prompt)
+        if include_no_persona:
+            prompt = template.format(**row.text, persona="none")
+            prompts.append(prompt)
+    if include_no_persona:
+        df = pd.concat([df, df], ignore_index=True)
     df = df.assign(prompt=prompts).astype({"target": "int"})
     return df
 
@@ -113,7 +118,7 @@ def lora_config() -> LoraConfig:
             # LM head for regression output
             "out_proj",
         ],
-        lora_dropout=0.05,
+        lora_dropout=0.1,
         bias="none",
         task_type="SEQ_2_SEQ_LM",
     )
@@ -125,7 +130,7 @@ def training_args(**kwars) -> TrainingArguments:
         output_dir=kwars["output_dir"],
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
-        learning_rate=kwars.get("learning_rate", 1e-4),
+        learning_rate=kwars.get("learning_rate", 5e-5),
         num_train_epochs=kwars.get("num_train_epochs", 10),
         logging_steps=kwars.get("logging_steps", 10),
         eval_strategy="steps",
@@ -138,6 +143,7 @@ def training_args(**kwars) -> TrainingArguments:
         load_best_model_at_end=kwars.get("load_best_model_at_end", True),
         metric_for_best_model=kwars.get("metric_for_best_model", "eval_loss"),
         greater_is_better=kwars.get("greater_is_better", False),
+        weight_decay=kwars.get("weight_decay", 0.01),
     )
 
 
@@ -233,6 +239,7 @@ def load_and_process_df(
     split: Split,
     task: Task,
     n_exs_by_dataset: int,
+    include_no_persona: bool,
 ) -> pd.DataFrame:
     df = load_lewidi_datasets(datasets, split=split, task=task)
     # sample n examples per dataset
@@ -245,12 +252,13 @@ def load_and_process_df(
     )
     # discard all other examples
     df = df.merge(ids, on=["dataset", "dataset_idx"], how="inner")
-    df = explode_personas(df)
+    df = explode_personas(df, include_no_persona=include_no_persona)
     stats = df.groupby("dataset").agg(
         n_rows=("dataset_idx", "count"),
         nunique_dataset_idx=("dataset_idx", "nunique"),
     )
     logger.info("%s dataset:\n%s", split, stats)
+    df = df.sample(frac=1)
     return df
 
 

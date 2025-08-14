@@ -271,6 +271,7 @@ def test_load_and_process_df():
         split="dev",
         task="perspectivist",
         n_exs_by_dataset=10,
+        include_no_persona=True,
     )
     assert eval_df["dataset"].nunique() == 3
     assert eval_df.groupby("dataset")["dataset_idx"].nunique().sum() == 30
@@ -282,6 +283,7 @@ def test_load_and_process_df_all():
         split="dev",
         task="perspectivist",
         n_exs_by_dataset=None,
+        include_no_persona=False,
     )
     assert len(df) == 18_564  # just many
 
