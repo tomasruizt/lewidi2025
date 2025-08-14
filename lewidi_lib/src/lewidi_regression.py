@@ -119,22 +119,22 @@ def lora_config() -> LoraConfig:
     )
 
 
-def training_args(output_dir: str) -> TrainingArguments:
+def training_args(**kwars) -> TrainingArguments:
     batch_size = 32  # 64 throws OOM on RTX3090
     return TrainingArguments(
-        output_dir=output_dir,
+        output_dir=kwars["output_dir"],
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
-        learning_rate=1e-4,
-        num_train_epochs=1,
-        logging_steps=10,
+        learning_rate=kwars.get("learning_rate", 1e-4),
+        num_train_epochs=kwars.get("num_train_epochs", 100),
+        logging_steps=kwars.get("logging_steps", 10),
         eval_strategy="steps",
-        eval_steps=200,
-        save_steps=200,
-        save_total_limit=2,
-        bf16=True,
-        push_to_hub=False,
-        torch_compile=True,
+        eval_steps=kwars.get("eval_steps", 100),
+        save_steps=kwars.get("save_steps", 100),
+        save_total_limit=kwars.get("save_total_limit", 2),
+        bf16=kwars.get("bf16", True),
+        push_to_hub=kwars.get("push_to_hub", False),
+        torch_compile=kwars.get("torch_compile", True),
     )
 
 
