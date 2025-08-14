@@ -69,7 +69,6 @@ def create_model(model_name: str = "google/t5gemma-s-s-prefixlm") -> rlm.Regress
         max_decode_len=10,
     )
     t5.to(device)
-    t5.compile()
     model = rlm.RegressLM(t5, PyTorchFineTuner(t5))
     return model
 
@@ -192,6 +191,7 @@ class PerspectivistEval:
     f1_df: pd.DataFrame
 
 
+@torch.inference_mode()
 def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
     eval_df = eval_df.explode("pred").reset_index(drop=True)
     eval_df = discard_na_response_rows(eval_df, col="pred")
@@ -223,16 +223,17 @@ def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
         f1_rows.append((dataset, fscore, precision, recall))
 
     f1_df = pd.DataFrame(f1_rows, columns=["dataset", "f1", "precision", "recall"])
-    logger.info("Perspectivist F1:\n%s", repr(f1_df.round(2)))
+    if len(f1_df) > 0:
+        logger.info("Perspectivist F1:\n%s", repr(f1_df.round(2)))
 
     return PerspectivistEval(joint_df=eval_df, perf_df=perf_df, f1_df=f1_df)
 
 
 def discard_invalid_perspectivist_preds(df: pd.DataFrame) -> pd.DataFrame:
     valid_pe_preds = np.array(list(pe_pred_is_valid(df["pred"], df["dataset"])))
-    logger.info(
-        "Dropping %d rows with invalid perspectivist preds", sum(~valid_pe_preds)
-    )
+    n_invalid = sum(~valid_pe_preds)
+    if n_invalid > 0:
+        logger.info("Dropping %d rows with invalid perspectivist preds", n_invalid)
     return df[valid_pe_preds]
 
 
@@ -281,6 +282,7 @@ class SoftLabelEval:
     wsloss_perf: pd.Series
 
 
+@torch.inference_mode()
 def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
     preds_sl = discard_invalid_preds_and_collect(eval_df)
     sl_col = []
