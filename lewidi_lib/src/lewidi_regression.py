@@ -131,7 +131,7 @@ def training_args(**kwars) -> TrainingArguments:
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         learning_rate=kwars.get("learning_rate", 5e-5),
-        num_train_epochs=kwars.get("num_train_epochs", 10),
+        num_train_epochs=kwars.get("num_train_epochs", 5),
         logging_steps=kwars.get("logging_steps", 10),
         eval_strategy="steps",
         eval_steps=kwars.get("eval_steps", 100),
@@ -191,6 +191,12 @@ class PerspectivistEval:
     f1_df: pd.DataFrame
 
 
+def aware_mean(xs: list[int]) -> float:
+    if len(xs) > 5000:
+        return np.mean(xs)
+    return bootstrap_avg(xs)
+
+
 @torch.inference_mode()
 def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
     eval_df = eval_df.explode("pred").reset_index(drop=True)
@@ -209,7 +215,7 @@ def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
     )
 
     perf_df = eval_df.groupby("dataset").agg(
-        correct=("correct", bootstrap_avg), abs_dist=("abs_dist", bootstrap_avg)
+        correct=("correct", aware_mean), abs_dist=("abs_dist", aware_mean)
     )
     logger.info("Perspectivist Performance:\n%s", repr(perf_df))
 
@@ -295,7 +301,7 @@ def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
     tgts_df = ddf[["dataset", "dataset_idx", "target"]]
     joint_df = preds_sl.merge(tgts_df, on=["dataset", "dataset_idx"])
     joint_df = assign_col_ws_loss(joint_df)
-    wsloss_perf = joint_df.groupby("dataset")["ws_loss"].agg(bootstrap_avg)
+    wsloss_perf = joint_df.groupby("dataset")["ws_loss"].agg(aware_mean)
     logger.info("Wasserstein Loss Performance:\n%s", repr(wsloss_perf))
     return SoftLabelEval(joint_df, wsloss_perf)
 

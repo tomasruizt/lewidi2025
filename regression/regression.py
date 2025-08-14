@@ -26,6 +26,10 @@ class RLMArgs(BaseSettings, cli_parse_args=True):
     datasets: list[Dataset]
     train: bool
     train_include_no_persona: bool
+    num_preds_per_problem: int = 10
+    n_exs_by_dataset_dev: int | None = 500
+    n_exs_by_dataset_train: int | None = None
+    n_exs_by_dataset_full_eval: int | None = None
 
 
 if __name__ == "__main__":
@@ -37,8 +41,6 @@ if __name__ == "__main__":
     logger.info("RLMArgs: %s", args.model_dump_json())
 
     task = "perspectivist"
-    n_exs_by_dataset_train = None
-    n_exs_by_dataset_eval = 500
     root = Path(__file__).parent
     if len(args.datasets) == 1:
         model_folder = root / "saved_models" / args.datasets[0]
@@ -48,20 +50,19 @@ if __name__ == "__main__":
     train_torch_compile = True
     save_and_eval_steps = 100
 
-    eval_df = load_and_process_df(
-        datasets=args.datasets,
-        split="dev",
-        task=task,
-        n_exs_by_dataset=n_exs_by_dataset_eval,
-        include_no_persona=False,
-    )
-
     if args.train:
+        eval_df = load_and_process_df(
+            datasets=args.datasets,
+            split="dev",
+            task=task,
+            n_exs_by_dataset=args.n_exs_by_dataset_dev,
+            include_no_persona=False,
+        )
         train_df = load_and_process_df(
             datasets=args.datasets,
             split="train",
             task=task,
-            n_exs_by_dataset=n_exs_by_dataset_train,
+            n_exs_by_dataset=args.n_exs_by_dataset_train,
             include_no_persona=args.train_include_no_persona,
         )
         model = load_model(do_train=args.train, lora_checkpoint=best_model_path)
@@ -95,19 +96,18 @@ if __name__ == "__main__":
         # See: https://huggingface.co/docs/peft/en/developer_guides/torch_compile
         model.model.model.compile()
 
-    del eval_df
     full_eval_df = load_and_process_df(
         datasets=args.datasets,
         split="dev",
         task=task,
-        n_exs_by_dataset=None,
+        n_exs_by_dataset=args.n_exs_by_dataset_full_eval,
         include_no_persona=False,
     )
 
     preds = inference(
         model,
         list(to_example_inputs(full_eval_df)),
-        num_samples=10,
+        num_samples=args.num_preds_per_problem,
         batch_size=64,
     )
     full_eval_df = full_eval_df.assign(pred=list(preds))
