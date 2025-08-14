@@ -243,7 +243,11 @@ def load_and_process_df(
     # discard all other examples
     df = df.merge(ids, on=["dataset", "dataset_idx"], how="inner")
     df = explode_personas(df)
-    logger.info("%s dataset:\n%s", split, df.groupby("dataset").size())
+    stats = df.groupby("dataset").agg(
+        n_rows=("dataset_idx", "count"),
+        nunique_dataset_idx=("dataset_idx", "nunique"),
+    )
+    logger.info("%s dataset:\n%s", split, stats)
     return df
 
 
