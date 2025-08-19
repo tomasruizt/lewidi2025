@@ -8,10 +8,7 @@
 #SBATCH --time 5:00:00
 
 # Set container name based on job name and array task ID to avoid conflicts
-CONTAINER_NAME="lewidi_{JOBNAME}_${{SLURM_ARRAY_TASK_ID}}"
-
-# Calculate port based on base port and array task ID to avoid conflicts
-VLLM_PORT=$(({VLLM_PORT} + $SLURM_ARRAY_TASK_ID))
+CONTAINER_NAME="{JOBNAME}_${{SLURM_ARRAY_TASK_ID}}"
 
 # Delete any existing container with this name
 echo "Removing any existing container named $CONTAINER_NAME..."
@@ -30,9 +27,11 @@ enroot start --rw --root \
     --env HF_TOKEN=$HF_TOKEN \
     --env HF_HOME=$HF_HOME \
     $CONTAINER_NAME bash -c "source /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/regression/regression.py \
-    --root_dir /workspace/code/lewidi2025 \
+    --model_id {MODEL_ID} \
     --datasets {DATASETS} \
     --train {TRAIN} \
+    --full_eval_split {FULL_EVAL_SPLIT} \
+    --preds_file {PREDS_FILE} \
     --train_include_no_persona {TRAIN_INCLUDE_NO_PERSONA}"
 
 # Clean up: remove the container after job completion

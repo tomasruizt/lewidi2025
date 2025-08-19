@@ -183,8 +183,10 @@ def to_example_inputs(df: pd.DataFrame) -> Iterator[core.ExampleInput]:
         yield core.ExampleInput(x=prompt)
 
 
-def load_model(do_train: bool, lora_checkpoint: Path | None) -> rlm.RegressLM:
-    model: rlm.RegressLM = create_model(model_name="google/t5gemma-s-s-prefixlm")
+def load_model(
+    model_id: str, do_train: bool, lora_checkpoint: Path | None
+) -> rlm.RegressLM:
+    model: rlm.RegressLM = create_model(model_name=model_id)
     if do_train:
         model.model.model = get_peft_model(model.model.model, lora_config())
     else:
