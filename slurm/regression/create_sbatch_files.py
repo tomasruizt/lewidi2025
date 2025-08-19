@@ -38,6 +38,7 @@ CASES = [
 ]
 DATASETS = [
     DatasetCase("CSC"),
+    DatasetCase("MP"),
     DatasetCase("Paraphrase"),
 ]
 

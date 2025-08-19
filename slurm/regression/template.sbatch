@@ -5,7 +5,7 @@
 #SBATCH -o {LOGS_DIR}/%a_out.logs
 #SBATCH -e {LOGS_DIR}/%a_err.logs
 #SBATCH --job-name {JOBNAME}
-#SBATCH --time 5:00:00
+#SBATCH --time 2:00:00
 
 # Set container name based on job name and array task ID to avoid conflicts
 CONTAINER_NAME="{JOBNAME}_${{SLURM_ARRAY_TASK_ID}}"
