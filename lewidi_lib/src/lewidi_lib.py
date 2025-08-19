@@ -1427,6 +1427,10 @@ def submissions_root() -> Path:
     return Path(os.environ["DSS_HOME"]) / "lewidi-data/my_submissions"
 
 
+def submissions_root_regression() -> Path:
+    return Path(os.environ["DSS_HOME"]) / "lewidi-data/my_submissions_regression"
+
+
 def _as_list(x: np.ndarray | dict | list) -> list:
     if isinstance(x, list):
         return x
@@ -1446,8 +1450,10 @@ def reorder_like_ddf(rdf: pd.DataFrame, ddf: pd.DataFrame) -> pd.DataFrame:
     return ordered_rdf
 
 
-def create_zip_file(files: list[Path]) -> Path:
-    zip_file = submissions_root() / "res.zip"
+def create_zip_file(files: list[Path], root: Path | None = None) -> Path:
+    if root is None:
+        root = submissions_root()
+    zip_file = root / "res.zip"
     with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED) as zipf:
         for file_path in files:
             zipf.write(file_path, os.path.basename(file_path))

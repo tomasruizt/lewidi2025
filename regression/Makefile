@@ -29,7 +29,7 @@ submission:
 	--num_preds_per_problem 11 \
 	--n_exs_by_dataset_full_eval 800 \
 	--full_eval_split test_clear \
-	--preds_file ./saved_preds/CSC-test_clear-preds.parquet
+	--preds_file ./saved_preds/Paraphrase-test_clear-preds.parquet
 
 # Prevent make from treating dataset names as targets
 %:
