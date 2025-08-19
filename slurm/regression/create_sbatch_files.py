@@ -74,6 +74,7 @@ for i, (case, dataset) in enumerate(combinations):
         FULL_EVAL_SPLIT=full_eval_split,
         PREDS_FILE=tgt_dir / "preds.parquet",
         TRAIN_INCLUDE_NO_PERSONA=False,
+        SAVED_MODELS_DIR=tgt_dir / "saved_models",
     )
     script_path = Path(f"slurm_scripts/{jobname}.sbatch")
     script_path.write_text(filled)

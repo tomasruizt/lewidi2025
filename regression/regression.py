@@ -29,6 +29,7 @@ class RLMArgs(BaseSettings, cli_parse_args=True):
     n_exs_by_dataset_train: int | None = None
     n_exs_by_dataset_full_eval: int | None = None
     full_eval_split: Split = "dev"
+    saved_models_dir: Path | None = None
     preds_file: Path | None = None
 
 
@@ -41,11 +42,10 @@ if __name__ == "__main__":
     logger.info("RLMArgs: %s", args.model_dump_json())
 
     task = "perspectivist"
-    root = Path(__file__).parent
     if len(args.datasets) == 1:
-        model_folder = root / "saved_models" / args.datasets[0]
+        model_folder = args.saved_models_dir / args.datasets[0]
     else:
-        model_folder = root / "saved_models" / "all_datsets"
+        model_folder = args.saved_models_dir / "all_datsets"
     best_model_path = model_folder / "best_model"
     train_torch_compile = True
     save_and_eval_steps = 100

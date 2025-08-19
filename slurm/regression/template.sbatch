@@ -32,6 +32,7 @@ enroot start --rw --root \
     --train {TRAIN} \
     --full_eval_split {FULL_EVAL_SPLIT} \
     --preds_file {PREDS_FILE} \
+    --saved_models_dir {SAVED_MODELS_DIR} \
     --train_include_no_persona {TRAIN_INCLUDE_NO_PERSONA}"
 
 # Clean up: remove the container after job completion

@@ -1,10 +1,12 @@
 .PHONY: train
 .PHONY: inference
+.PHONY: submission
 
 # Usage: make train DATASET=CSC or make train CSC
 train:
 	python regression.py \
-	--root_dir . \
+	--model_id google/t5gemma-s-s-prefixlm \
+	--saved_models_dir ./saved_models \
 	--datasets $(or $(DATASET),$(filter-out train,$(MAKECMDGOALS)),CSC) \
 	--train True \
 	--train_include_no_persona False
@@ -12,7 +14,8 @@ train:
 # Usage: make inference DATASET=CSC or make inference CSC  
 inference:
 	python regression.py \
-	--root_dir . \
+	--model_id google/t5gemma-s-s-prefixlm \
+	--saved_models_dir ./saved_models \
 	--datasets $(or $(DATASET),$(filter-out inference,$(MAKECMDGOALS)),CSC) \
 	--train False \
 	--train_include_no_persona False \
@@ -22,7 +25,8 @@ inference:
 
 submission:
 	python regression.py \
-	--root_dir . \
+	--model_id google/t5gemma-s-s-prefixlm \
+	--saved_models_dir ./saved_models \
 	--datasets $(or $(DATASET),$(filter-out inference,$(MAKECMDGOALS)),CSC) \
 	--train False \
 	--train_include_no_persona False \
