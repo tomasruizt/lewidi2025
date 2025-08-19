@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from itertools import product
 from logging import getLogger
 from pathlib import Path
 from collections.abc import Iterator
@@ -9,11 +10,15 @@ from datasets import Dataset
 from lewidi_lib import (
     Split,
     Task,
+    assert_correct_n_annotators,
     assert_path_exists,
+    assert_submission_rows_sum_to_one,
     assign_col_ws_loss,
     discard_na_response_rows,
+    dump_submission_file,
     listof_ints_to_softlabel,
     load_dataset,
+    reorder_like_ddf,
 )
 import pandas as pd
 import json
@@ -337,12 +342,7 @@ class SoftLabelEval:
 
 @torch.inference_mode()
 def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
-    preds_sl = discard_invalid_preds_and_collect(eval_df)
-    sl_col = []
-    for dataset, all_preds in zip(preds_sl["dataset"], preds_sl["all_preds"]):
-        sl_col.append(listof_ints_to_softlabel(all_preds, dataset=dataset))
-    preds_sl = preds_sl.assign(pred=sl_col)
-
+    preds_sl = compute_softlabel_preds(eval_df)
     datasets = ["CSC", "MP", "Paraphrase"]
     ddf = load_lewidi_datasets(datasets, split="dev", task="soft-label")
     tgts_df = ddf[["dataset", "dataset_idx", "target"]]
@@ -354,13 +354,22 @@ def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
     return SoftLabelEval(joint_df, wsloss_perf)
 
 
+def compute_softlabel_preds(eval_df: pd.DataFrame) -> pd.DataFrame:
+    preds_sl = discard_invalid_preds_and_collect(eval_df)
+    sl_col = []
+    for dataset, all_preds in zip(preds_sl["dataset"], preds_sl["all_preds"]):
+        sl_col.append(listof_ints_to_softlabel(all_preds, dataset=dataset))
+    preds_sl = preds_sl.assign(pred=sl_col)
+    return preds_sl
+
+
 def discard_invalid_preds_and_collect(eval_df: pd.DataFrame) -> pd.DataFrame:
     expanded = eval_df.explode("pred")
     expanded = discard_na_response_rows(expanded, col="pred")
     expanded = discard_invalid_perspectivist_preds(expanded)
-    collected = expanded.groupby(["dataset", "dataset_idx"], as_index=False).agg(
-        all_preds=("pred", list)
-    )
+    collected = expanded.groupby(
+        ["dataset", "split", "dataset_idx"], as_index=False
+    ).agg(all_preds=("pred", list))
     return collected
 
 
@@ -388,3 +397,52 @@ def run_all_evals(full_eval_df: pd.DataFrame) -> None:
 
     sl_eval = sum([sl_eval1, sl_eval2, sl_eval3])
     logger.info("Soft Label Performance:\n%s", repr(sl_eval.wsloss_perf))
+
+
+def reorder_rlm_rdf_like_ddf(rdf: pd.DataFrame, ddf: pd.DataFrame) -> pd.DataFrame:
+    """Collects all predictions for a single dataset_idx into a single row, ordered by annotator_ids"""
+    # Order by annotator_ids
+    order_cols = ["dataset", "split", "dataset_idx", "annotator_ids"]
+    order = ddf[order_cols].explode("annotator_ids")
+    rdf_ordered = (
+        order.merge(rdf, on=order_cols, how="left")
+        .dropna(subset=["pred"])
+        .astype({"pred": "int"})
+    )
+    # Collect into a single row
+    rdf_single_row = rdf_ordered.groupby(
+        ["dataset", "split", "dataset_idx"], as_index=False
+    ).agg(pred=("pred", list))
+    return rdf_single_row
+
+
+def load_rlm_preds(dataset: Dataset, split: Split, task: Task) -> pd.DataFrame:
+    folder = Path("/home/tomasruiz/code/lewidi2025/regression/saved_preds")
+    file = folder / f"{dataset}-{split}-preds.parquet"
+    assert_path_exists(file)
+    rdf = pd.read_parquet(file)
+    if task == "soft-label":
+        rdf = compute_softlabel_preds(rdf)
+    else:
+        assert task == "perspectivist"
+        rdf = compute_majority_vote2(rdf)
+    return rdf
+
+
+def dump_submissions_regression(datasets: list[Dataset]) -> list[Path]:
+    split = "test_clear"
+    files = []
+    combinations = product(datasets, ["perspectivist", "soft-label"])
+    for dataset, task in combinations:
+        rdf = load_rlm_preds(dataset, split, task=task)
+        ddf = load_dataset(dataset, split, parse_tgt=False, task=task)
+        if task == "perspectivist":
+            rdf = reorder_rlm_rdf_like_ddf(rdf, ddf)
+            assert_correct_n_annotators(rdf, ddf)
+        if task == "soft-label":
+            assert_submission_rows_sum_to_one(rdf)
+        rdf = reorder_like_ddf(rdf, ddf)
+        rdf = rdf.dropna(subset="pred")
+        file = dump_submission_file(rdf, dataset, task=task)
+        files.append(file)
+    return files

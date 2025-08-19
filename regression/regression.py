@@ -112,7 +112,7 @@ if __name__ == "__main__":
     )
     full_eval_df = full_eval_df.assign(pred=list(preds))
     if args.preds_file is not None:
-        cols = ["dataset", "dataset_idx", "annotator_ids", "pred"]
+        cols = ["dataset", "split", "dataset_idx", "annotator_ids", "pred"]
         if "target" in full_eval_df.columns:
             cols.append("target")
         full_eval_df[cols].to_parquet(args.preds_file, index=False)

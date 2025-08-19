@@ -16,8 +16,20 @@ inference:
 	--datasets $(or $(DATASET),$(filter-out inference,$(MAKECMDGOALS)),CSC) \
 	--train False \
 	--train_include_no_persona False \
-	--num_preds_per_problem 10 \
-	--n_exs_by_dataset_full_eval 500
+	--num_preds_per_problem 11 \
+	--n_exs_by_dataset_full_eval 200 \
+	--full_eval_split dev
+
+submission:
+	python regression.py \
+	--root_dir . \
+	--datasets $(or $(DATASET),$(filter-out inference,$(MAKECMDGOALS)),CSC) \
+	--train False \
+	--train_include_no_persona False \
+	--num_preds_per_problem 11 \
+	--n_exs_by_dataset_full_eval 800 \
+	--full_eval_split test_clear \
+	--preds_file ./saved_preds/CSC-test_clear-preds.parquet
 
 # Prevent make from treating dataset names as targets
 %:

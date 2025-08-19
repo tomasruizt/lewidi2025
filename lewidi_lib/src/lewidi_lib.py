@@ -476,7 +476,7 @@ def sums_to_one(pred: np.ndarray | VariErrDict, atol: float = 0.01) -> bool:
     if isinstance(pred, dict):
         all_sum_to_1 = all(sums_to_one(v) for v in pred.values())
         return len(pred) == n_varierr_cats and all_sum_to_1
-    return np.abs(pred.sum() - 1) < atol
+    return np.abs(np.sum(pred) - 1) < atol
 
 
 def as_categorical(ss: pd.Series) -> pd.Categorical:
@@ -1421,8 +1421,10 @@ def _as_list(x: np.ndarray | dict | list) -> list:
 
 
 def reorder_like_ddf(rdf: pd.DataFrame, ddf: pd.DataFrame) -> pd.DataFrame:
-    order = ddf[["dataset_idx", "dataset"]]
-    ordered_rdf = order.merge(rdf, on="dataset_idx", how="left")
+    cols = ["dataset", "split", "dataset_idx"]
+    cols = [c for c in cols if c in rdf.columns]
+    order = ddf[cols]
+    ordered_rdf = order.merge(rdf, on=cols, how="left")
     assert len(ordered_rdf) == len(ddf), (len(ordered_rdf), len(ddf))
     return ordered_rdf
 
@@ -1453,14 +1455,12 @@ def dump_submission_files_softlabel(datasets: list[Dataset]) -> list[Path]:
     return files
 
 
-def dump_submission_files_perspectivist(
-    datasets: list[Dataset], load_preds_fn: Callable = load_preds_for_submission
-) -> list[Path]:
+def dump_submission_files_perspectivist(datasets: list[Dataset]) -> list[Path]:
     split = "test_clear"
     files = []
     for dataset in datasets:
         logger.info("Perspectivist: Creating submission file for dataset %s", dataset)
-        rdf = load_preds_fn(dataset, split, task="perspectivist")
+        rdf = load_preds_for_submission(dataset, split, task="perspectivist")
         ddf = load_dataset(
             dataset=dataset, split=split, parse_tgt=False, task="perspectivist"
         )
