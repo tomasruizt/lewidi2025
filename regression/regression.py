@@ -1,19 +1,16 @@
 import os
-import statistics
-from lewidi_lib import Dataset, configure_pandas_display, enable_logging
+from lewidi_lib import Dataset, Split, configure_pandas_display, enable_logging
 from logging import getLogger
 from pathlib import Path
 from lewidi_regression import (
-    compute_majority_vote2,
-    eval_soft_labels,
     inference,
     load_and_process_df,
     load_model,
-    eval_perspectivist,
     to_example_inputs,
     to_tensor_dataset,
     training_args,
 )
+from lewidi_regression import run_all_evals
 from pydantic_settings import BaseSettings
 from transformers import DataCollatorForSeq2Seq, Trainer, EarlyStoppingCallback
 
@@ -31,6 +28,8 @@ class RLMArgs(BaseSettings, cli_parse_args=True):
     n_exs_by_dataset_dev: int | None = 500
     n_exs_by_dataset_train: int | None = None
     n_exs_by_dataset_full_eval: int | None = None
+    full_eval_split: Split = "dev"
+    preds_file: Path | None = None
 
 
 if __name__ == "__main__":
@@ -99,7 +98,7 @@ if __name__ == "__main__":
 
     full_eval_df = load_and_process_df(
         datasets=args.datasets,
-        split="dev",
+        split=args.full_eval_split,
         task=task,
         n_exs_by_dataset=args.n_exs_by_dataset_full_eval,
         include_no_persona=False,
@@ -112,27 +111,12 @@ if __name__ == "__main__":
         batch_size=64,
     )
     full_eval_df = full_eval_df.assign(pred=list(preds))
-    preds_file = best_model_path / "model-preds.parquet"
-    full_eval_df.drop(columns=["annotator_metadata"]).to_parquet(
-        preds_file, index=False
-    )
-    logger.info("Dumped predictions to %s", preds_file)
+    if args.preds_file is not None:
+        cols = ["dataset", "dataset_idx", "annotator_ids", "pred"]
+        if "target" in full_eval_df.columns:
+            cols.append("target")
+        full_eval_df[cols].to_parquet(args.preds_file, index=False)
+        logger.info("Dumped predictions to %s", args.preds_file)
 
-    maj_vote1 = compute_majority_vote2(full_eval_df, op=statistics.median)
-    maj_vote2 = compute_majority_vote2(full_eval_df, op=statistics.mode)
-
-    pe_eval1 = eval_perspectivist(full_eval_df).assign_col("name", "simple")
-    pe_eval2 = eval_perspectivist(maj_vote1).assign_col("name", "maj(median)")
-    pe_eval3 = eval_perspectivist(maj_vote2).assign_col("name", "maj(mode)")
-
-    pe_eval = sum([pe_eval1, pe_eval2, pe_eval3])
-    logger.info("Perspectivist Performance:\n%s", repr(pe_eval.perf_df))
-    if len(pe_eval.f1_df) > 0:
-        logger.info("Perspectivist F1:\n%s", repr(pe_eval.f1_df))
-
-    sl_eval1 = eval_soft_labels(full_eval_df).assign_col("name", "simple")
-    sl_eval2 = eval_soft_labels(maj_vote1).assign_col("name", "maj(median)")
-    sl_eval3 = eval_soft_labels(maj_vote2).assign_col("name", "maj(mode)")
-
-    sl_eval = sum([sl_eval1, sl_eval2, sl_eval3])
-    logger.info("Soft Label Performance:\n%s", repr(sl_eval.wsloss_perf))
+    if args.full_eval_split != "test_clear":
+        run_all_evals(full_eval_df)

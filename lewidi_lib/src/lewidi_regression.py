@@ -35,7 +35,12 @@ device = "cuda:0"
 
 
 def explode_personas(ddf: pd.DataFrame, include_no_persona: bool) -> pd.DataFrame:
-    df = ddf.explode(["annotator_metadata", "target"])
+    cols_to_explode = ["annotator_metadata", "annotator_ids"]
+    has_target_col = "target" in ddf.columns
+    if has_target_col:
+        cols_to_explode.append("target")
+    df = ddf.explode(cols_to_explode)
+
     prompts = []
     for row in df.itertuples():
         persona_str = json.dumps(row.annotator_metadata, indent=2)
@@ -47,7 +52,9 @@ def explode_personas(ddf: pd.DataFrame, include_no_persona: bool) -> pd.DataFram
             prompts.append(prompt)
     if include_no_persona:
         df = pd.concat([df, df], ignore_index=True)
-    df = df.assign(prompt=prompts).astype({"target": "int"})
+    df = df.assign(prompt=prompts)
+    if has_target_col:
+        df = df.astype({"target": "int"})
     return df
 
 
@@ -360,3 +367,24 @@ def discard_invalid_preds_and_collect(eval_df: pd.DataFrame) -> pd.DataFrame:
 def compute_majority_vote2(eval_df: pd.DataFrame, op=statistics.mode) -> pd.DataFrame:
     majority_vote = eval_df["pred"].apply(op).astype("int")
     return eval_df.assign(pred=majority_vote)
+
+
+def run_all_evals(full_eval_df: pd.DataFrame) -> None:
+    maj_vote1 = compute_majority_vote2(full_eval_df, op=statistics.median)
+    maj_vote2 = compute_majority_vote2(full_eval_df, op=statistics.mode)
+
+    pe_eval1 = eval_perspectivist(full_eval_df).assign_col("name", "simple")
+    pe_eval2 = eval_perspectivist(maj_vote1).assign_col("name", "maj(median)")
+    pe_eval3 = eval_perspectivist(maj_vote2).assign_col("name", "maj(mode)")
+
+    pe_eval = sum([pe_eval1, pe_eval2, pe_eval3])
+    logger.info("Perspectivist Performance:\n%s", repr(pe_eval.perf_df))
+    if len(pe_eval.f1_df) > 0:
+        logger.info("Perspectivist F1:\n%s", repr(pe_eval.f1_df))
+
+    sl_eval1 = eval_soft_labels(full_eval_df).assign_col("name", "simple")
+    sl_eval2 = eval_soft_labels(maj_vote1).assign_col("name", "maj(median)")
+    sl_eval3 = eval_soft_labels(maj_vote2).assign_col("name", "maj(mode)")
+
+    sl_eval = sum([sl_eval1, sl_eval2, sl_eval3])
+    logger.info("Soft Label Performance:\n%s", repr(sl_eval.wsloss_perf))

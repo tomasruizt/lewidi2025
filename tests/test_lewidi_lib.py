@@ -20,6 +20,7 @@ from lewidi_lib import (
     soft_label_to_nparray,
     tgt_has_holes,
     ws_loss,
+    Split,
 )
 from lewidi_org import average_WS
 from judge_lib import JudgeArgs, create_judge_batch
@@ -273,10 +274,11 @@ def test_is_valid_pe_pred():
     assert np.allclose(is_valid, df["expected_is_valid"])
 
 
-def test_load_and_process_df():
+@pytest.mark.parametrize("split", ["train", "dev", "test_clear"])
+def test_load_and_process_df(split: Split):
     eval_df = load_and_process_df(
         datasets=["MP", "CSC", "Paraphrase"],
-        split="dev",
+        split=split,
         task="perspectivist",
         n_exs_by_dataset=10,
         include_no_persona=True,

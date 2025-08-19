@@ -81,6 +81,7 @@ def load_dataset(
         else:
             raise ValueError(f"Invalid task: {task}")
 
+    df["annotator_ids"] = df["annotations"].apply(lambda d: list(d.keys()))
     df["dataset"] = dataset
     df["split"] = split
     if dataset == "prm800k" or dataset == "aime":
@@ -100,6 +101,7 @@ def load_dataset(
         "soft_label",
         "annotations",
         "annotator_metadata",
+        "annotator_ids",
         "n_annotations",
         "n_annotators",
         "n_classes",
@@ -1451,12 +1453,14 @@ def dump_submission_files_softlabel(datasets: list[Dataset]) -> list[Path]:
     return files
 
 
-def dump_submission_files_perspectivist(datasets: list[Dataset]) -> list[Path]:
+def dump_submission_files_perspectivist(
+    datasets: list[Dataset], load_preds_fn: Callable = load_preds_for_submission
+) -> list[Path]:
     split = "test_clear"
     files = []
     for dataset in datasets:
         logger.info("Perspectivist: Creating submission file for dataset %s", dataset)
-        rdf = load_preds_for_submission(dataset, split, task="perspectivist")
+        rdf = load_preds_fn(dataset, split, task="perspectivist")
         ddf = load_dataset(
             dataset=dataset, split=split, parse_tgt=False, task="perspectivist"
         )
