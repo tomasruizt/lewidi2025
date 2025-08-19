@@ -1,4 +1,5 @@
 import os
+import statistics
 from lewidi_lib import Dataset, configure_pandas_display, enable_logging
 from logging import getLogger
 from pathlib import Path
@@ -117,11 +118,21 @@ if __name__ == "__main__":
     )
     logger.info("Dumped predictions to %s", preds_file)
 
-    logger.info("Distributional performance:")
-    eval_perspectivist(full_eval_df)
-    eval_soft_labels(full_eval_df)
+    maj_vote1 = compute_majority_vote2(full_eval_df, op=statistics.median)
+    maj_vote2 = compute_majority_vote2(full_eval_df, op=statistics.mode)
 
-    maj_vote = compute_majority_vote2(full_eval_df)
-    logger.info("Majority vote performance:")
-    eval_perspectivist(maj_vote)
-    eval_soft_labels(maj_vote)
+    pe_eval1 = eval_perspectivist(full_eval_df).assign_col("name", "simple")
+    pe_eval2 = eval_perspectivist(maj_vote1).assign_col("name", "maj(median)")
+    pe_eval3 = eval_perspectivist(maj_vote2).assign_col("name", "maj(mode)")
+
+    pe_eval = sum([pe_eval1, pe_eval2, pe_eval3])
+    logger.info("Perspectivist Performance:\n%s", repr(pe_eval.perf_df))
+    if len(pe_eval.f1_df) > 0:
+        logger.info("Perspectivist F1:\n%s", repr(pe_eval.f1_df))
+
+    sl_eval1 = eval_soft_labels(full_eval_df).assign_col("name", "simple")
+    sl_eval2 = eval_soft_labels(maj_vote1).assign_col("name", "maj(median)")
+    sl_eval3 = eval_soft_labels(maj_vote2).assign_col("name", "maj(mode)")
+
+    sl_eval = sum([sl_eval1, sl_eval2, sl_eval3])
+    logger.info("Soft Label Performance:\n%s", repr(sl_eval.wsloss_perf))

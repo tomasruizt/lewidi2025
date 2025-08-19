@@ -4,6 +4,7 @@ from pathlib import Path
 from collections.abc import Iterator
 from functools import lru_cache
 import statistics
+from typing import Any
 from datasets import Dataset
 from lewidi_lib import (
     Split,
@@ -190,6 +191,31 @@ class PerspectivistEval:
     perf_df: pd.Series
     f1_df: pd.DataFrame
 
+    def assign_col(self, col: str, val: Any) -> "PerspectivistEval":
+        """Calls df.assign(col=val) for each df in this object"""
+        return PerspectivistEval(
+            joint_df=self.joint_df.assign(**{col: val}),
+            perf_df=self.perf_df.assign(**{col: val}),
+            f1_df=self.f1_df.assign(**{col: val}),
+        )
+
+    def __add__(self, other: "PerspectivistEval") -> "PerspectivistEval":
+        return PerspectivistEval(
+            joint_df=concat([self.joint_df, other.joint_df]),
+            perf_df=concat([self.perf_df, other.perf_df]),
+            f1_df=concat([self.f1_df, other.f1_df]),
+        )
+
+    def __radd__(self, other) -> "PerspectivistEval":
+        if other == 0:
+            return self
+        else:
+            return self.__add__(other)
+
+
+def concat(dfs: list[pd.DataFrame]) -> pd.DataFrame:
+    return pd.concat(dfs, ignore_index=True)
+
 
 def aware_mean(xs: list[int]) -> float:
     if len(xs) > 5000:
@@ -214,11 +240,9 @@ def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
         )
     )
 
-    perf_df = eval_df.groupby("dataset").agg(
+    perf_df = eval_df.groupby("dataset", as_index=False).agg(
         correct=("correct", aware_mean), abs_dist=("abs_dist", aware_mean)
     )
-    logger.info("Perspectivist Performance:\n%s", repr(perf_df))
-
     bin_eval_df = eval_df.query("dataset == 'MP' or dataset == 'VariErrNLI'")
 
     f1_rows = []
@@ -229,9 +253,6 @@ def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
         f1_rows.append((dataset, fscore, precision, recall))
 
     f1_df = pd.DataFrame(f1_rows, columns=["dataset", "f1", "precision", "recall"])
-    if len(f1_df) > 0:
-        logger.info("Perspectivist F1:\n%s", repr(f1_df.round(2)))
-
     return PerspectivistEval(joint_df=eval_df, perf_df=perf_df, f1_df=f1_df)
 
 
@@ -287,6 +308,25 @@ class SoftLabelEval:
     joint_df: pd.DataFrame
     wsloss_perf: pd.Series
 
+    def assign_col(self, col: str, val: Any) -> "SoftLabelEval":
+        """Calls df.assign(col=val) for each df in this object"""
+        return SoftLabelEval(
+            joint_df=self.joint_df.assign(**{col: val}),
+            wsloss_perf=self.wsloss_perf.assign(**{col: val}),
+        )
+
+    def __add__(self, other: "SoftLabelEval") -> "SoftLabelEval":
+        return SoftLabelEval(
+            joint_df=concat([self.joint_df, other.joint_df]),
+            wsloss_perf=concat([self.wsloss_perf, other.wsloss_perf]),
+        )
+
+    def __radd__(self, other) -> "SoftLabelEval":
+        if other == 0:
+            return self
+        else:
+            return self.__add__(other)
+
 
 @torch.inference_mode()
 def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
@@ -301,8 +341,9 @@ def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
     tgts_df = ddf[["dataset", "dataset_idx", "target"]]
     joint_df = preds_sl.merge(tgts_df, on=["dataset", "dataset_idx"])
     joint_df = assign_col_ws_loss(joint_df)
-    wsloss_perf = joint_df.groupby("dataset")["ws_loss"].agg(aware_mean)
-    logger.info("Wasserstein Loss Performance:\n%s", repr(wsloss_perf))
+    wsloss_perf = joint_df.groupby("dataset", as_index=False).agg(
+        ws_loss=("ws_loss", aware_mean)
+    )
     return SoftLabelEval(joint_df, wsloss_perf)
 
 
@@ -316,6 +357,6 @@ def discard_invalid_preds_and_collect(eval_df: pd.DataFrame) -> pd.DataFrame:
     return collected
 
 
-def compute_majority_vote2(eval_df: pd.DataFrame) -> pd.DataFrame:
-    majority_vote = eval_df["pred"].apply(statistics.mode).astype("int")
+def compute_majority_vote2(eval_df: pd.DataFrame, op=statistics.mode) -> pd.DataFrame:
+    majority_vote = eval_df["pred"].apply(op).astype("int")
     return eval_df.assign(pred=majority_vote)
