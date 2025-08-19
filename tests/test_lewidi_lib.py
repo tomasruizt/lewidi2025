@@ -7,6 +7,7 @@ import json_repair
 from lewidi_lib import (
     VLLMArgs,
     extract_json_substring_from_response,
+    get_datasets_sizes,
     group_pred,
     keep_only_data_parallel_assigned,
     keep_only_missing_examples,
@@ -337,3 +338,9 @@ def test_eval_perspectivist_majority(eval_df: pd.DataFrame, op: Callable):
     eval_obj = eval_perspectivist(eval_df)
     assert len(eval_obj.joint_df) > 0
     assert "abs_dist" in eval_obj.joint_df.columns
+
+
+def test_get_datasets_sizes():
+    df = get_datasets_sizes()
+    cols = {"dataset", "split", "n_rows"}
+    assert cols.issubset(df.columns)

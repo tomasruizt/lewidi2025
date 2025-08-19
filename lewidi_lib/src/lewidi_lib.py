@@ -55,6 +55,20 @@ class VariErrDict(TypedDict):
 NLICat = Literal["entailment", "neutral", "contradiction"]
 
 
+def get_datasets_sizes() -> pd.DataFrame:
+    datasets = ["CSC", "MP", "Paraphrase", "VariErrNLI", "prm800k"]
+    splits = ["train", "dev", "test_clear"]
+    rows = []
+    for dataset, split in product(datasets, splits):
+        try:
+            df = load_raw_dataset(dataset, split)
+            rows.append({"dataset": dataset, "split": split, "n_rows": len(df)})
+        except FileNotFoundError:
+            continue
+    long = pd.DataFrame(rows)
+    return long.pivot(index="dataset", columns="split", values="n_rows")
+
+
 def load_dataset(
     dataset: Dataset, split: Split, parse_tgt: bool = True, task: "Task" = "soft-label"
 ) -> pd.DataFrame:
@@ -117,13 +131,16 @@ def load_dataset(
 
 
 def load_raw_dataset(dataset: Dataset, split: Split) -> tuple[Path, pd.DataFrame]:
-    root = dataset_dir(dataset)
-    ds = root / f"{dataset}_{split}.json"
-    assert ds.exists(), ds.absolute()
-
+    ds = raw_dataset_filepath(dataset, split)
+    assert_path_exists(ds)
     df = pd.read_json(ds, orient="index")
     df.reset_index(inplace=True, names="dataset_idx")
     return df
+
+
+def raw_dataset_filepath(dataset: Dataset, split: Split) -> Path:
+    root = dataset_dir(dataset)
+    return root / f"{dataset}_{split}.json"
 
 
 def dataset_dir(dataset: Dataset) -> Path:
