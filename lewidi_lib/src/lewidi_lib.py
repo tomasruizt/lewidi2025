@@ -1403,10 +1403,11 @@ def assert_submission_rows_sum_to_one(rdf: pd.DataFrame) -> None:
         raise ValueError(f"Expected all rows to sum to 1, but {n_invalid} rows did not")
 
 
-def dump_submission_file(rdf: pd.DataFrame, dataset: Dataset, task: Task) -> Path:
-    tgt_root = submissions_root()
+def dump_submission_file(
+    rdf: pd.DataFrame, dataset: Dataset, task: Task, tgt_dir: Path
+) -> Path:
     task_suffix = {"soft-label": "soft", "perspectivist": "pe"}[task]
-    tgt_file = tgt_root / f"{submission_ds_name[dataset]}_test_{task_suffix}.tsv"
+    tgt_file = tgt_dir / f"{submission_ds_name[dataset]}_test_{task_suffix}.tsv"
 
     rdf["pred"] = rdf["pred"].apply(_as_list)
     tgt_file.parent.mkdir(parents=True, exist_ok=True)
@@ -1450,10 +1451,9 @@ def reorder_like_ddf(rdf: pd.DataFrame, ddf: pd.DataFrame) -> pd.DataFrame:
     return ordered_rdf
 
 
-def create_zip_file(files: list[Path], root: Path | None = None) -> Path:
-    if root is None:
-        root = submissions_root()
-    zip_file = root / "res.zip"
+def create_zip_file(files: list[Path], tgt_dir: Path) -> Path:
+    tgt_dir.mkdir(parents=True, exist_ok=True)
+    zip_file = tgt_dir / "res.zip"
     with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED) as zipf:
         for file_path in files:
             zipf.write(file_path, os.path.basename(file_path))
@@ -1472,7 +1472,10 @@ def dump_submission_files_softlabel(datasets: list[Dataset]) -> list[Path]:
         model_avg = reorder_like_ddf(rdf=model_avg, ddf=ddf)
         assert_submission_rows_sum_to_one(model_avg)
         tgt_file = dump_submission_file(
-            rdf=model_avg, dataset=dataset, task="soft-label"
+            rdf=model_avg,
+            dataset=dataset,
+            task="soft-label",
+            tgt_dir=submissions_root(),
         )
         files.append(tgt_file)
     return files
@@ -1494,7 +1497,7 @@ def dump_submission_files_perspectivist(datasets: list[Dataset]) -> list[Path]:
         preds = reorder_like_ddf(rdf=preds, ddf=ddf)
         assert_correct_n_annotators(preds, ddf)
         tgt_file = dump_submission_file(
-            rdf=preds, dataset=dataset, task="perspectivist"
+            rdf=preds, dataset=dataset, task="perspectivist", tgt_dir=submissions_root()
         )
         files.append(tgt_file)
     return files

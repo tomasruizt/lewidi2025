@@ -110,7 +110,7 @@ def inference(
 def to_int32_or_nan(s):
     try:
         return np.int64(float(s))
-    except ValueError:
+    except (ValueError, OverflowError):
         return np.nan
 
 
@@ -239,10 +239,6 @@ def aware_mean(xs: list[int]) -> float:
 
 @torch.inference_mode()
 def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
-    eval_df = eval_df.explode("pred").reset_index(drop=True)
-    eval_df = discard_na_response_rows(eval_df, col="pred")
-    eval_df = discard_invalid_perspectivist_preds(eval_df)
-
     eval_df = (
         eval_df.astype({"pred": "int"})
         .astype({"pred": "int"})
@@ -268,6 +264,13 @@ def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
 
     f1_df = pd.DataFrame(f1_rows, columns=["dataset", "f1", "precision", "recall"])
     return PerspectivistEval(joint_df=eval_df, perf_df=perf_df, f1_df=f1_df)
+
+
+def explode_preds_and_discard_invalid(eval_df: pd.DataFrame) -> pd.DataFrame:
+    eval_df = eval_df.explode("pred").reset_index(drop=True)
+    eval_df = discard_na_response_rows(eval_df, col="pred")
+    eval_df = discard_invalid_perspectivist_preds(eval_df)
+    return eval_df
 
 
 def discard_invalid_perspectivist_preds(df: pd.DataFrame) -> pd.DataFrame:
@@ -357,43 +360,45 @@ def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
 
 
 def compute_softlabel_preds(eval_df: pd.DataFrame) -> pd.DataFrame:
-    preds_sl = discard_invalid_preds_and_collect(eval_df)
+    collected = collect_preds(eval_df, gby_annotator=False)
     sl_col = []
-    for dataset, all_preds in zip(preds_sl["dataset"], preds_sl["all_preds"]):
+    for dataset, all_preds in zip(collected["dataset"], collected["pred"]):
         sl_col.append(listof_ints_to_softlabel(all_preds, dataset=dataset))
-    preds_sl = preds_sl.assign(pred=sl_col)
-    return preds_sl
-
-
-def discard_invalid_preds_and_collect(eval_df: pd.DataFrame) -> pd.DataFrame:
-    expanded = eval_df.explode("pred")
-    expanded = discard_na_response_rows(expanded, col="pred")
-    expanded = discard_invalid_perspectivist_preds(expanded)
-    collected = expanded.groupby(
-        ["dataset", "split", "dataset_idx"], as_index=False
-    ).agg(all_preds=("pred", list))
+    collected = collected.assign(pred=sl_col)
     return collected
 
 
+def collect_preds(eval_df: pd.DataFrame, gby_annotator: bool) -> pd.DataFrame:
+    gby_cols = ["dataset", "split", "dataset_idx"]
+    if gby_annotator:
+        gby_cols.append("annotator_ids")
+        if "target" in eval_df.columns:
+            gby_cols.append("target")
+
+    preds_sl = eval_df.groupby(gby_cols, as_index=False).agg(pred=("pred", list))
+    return preds_sl
+
+
 def compute_majority_vote2(eval_df: pd.DataFrame, op=statistics.mode) -> pd.DataFrame:
-    majority_vote = eval_df["pred"].apply(op).astype("int")
-    return eval_df.assign(pred=majority_vote)
+    collected = collect_preds(eval_df, gby_annotator=True)
+    majority_vote_col = collected["pred"].apply(op).astype("int")
+    return collected.assign(pred=majority_vote_col)
 
 
-def run_all_evals(full_eval_df: pd.DataFrame) -> None:
-    maj_vote1 = compute_majority_vote2(full_eval_df, op=statistics.median)
-    maj_vote2 = compute_majority_vote2(full_eval_df, op=statistics.mode)
+def run_all_evals(eval_df: pd.DataFrame) -> None:
+    maj_vote1 = compute_majority_vote2(eval_df, op=statistics.median)
+    maj_vote2 = compute_majority_vote2(eval_df, op=statistics.mode)
 
-    pe_eval1 = eval_perspectivist(full_eval_df).assign_col("name", "simple")
+    pe_eval1 = eval_perspectivist(eval_df).assign_col("name", "simple")
     pe_eval2 = eval_perspectivist(maj_vote1).assign_col("name", "maj(median)")
     pe_eval3 = eval_perspectivist(maj_vote2).assign_col("name", "maj(mode)")
 
     pe_eval = sum([pe_eval1, pe_eval2, pe_eval3])
     logger.info("Perspectivist Performance:\n%s", repr(pe_eval.perf_df))
     if len(pe_eval.f1_df) > 0:
-        logger.info("Perspectivist F1:\n%s", repr(pe_eval.f1_df))
+        logger.info("Perspectivist F1:\n%s", repr(pe_eval.f1_df.round(2)))
 
-    sl_eval1 = eval_soft_labels(full_eval_df).assign_col("name", "simple")
+    sl_eval1 = eval_soft_labels(eval_df).assign_col("name", "simple")
     sl_eval2 = eval_soft_labels(maj_vote1).assign_col("name", "maj(median)")
     sl_eval3 = eval_soft_labels(maj_vote2).assign_col("name", "maj(mode)")
 
@@ -431,7 +436,7 @@ def load_rlm_preds(dataset: Dataset, split: Split, task: Task) -> pd.DataFrame:
     return rdf
 
 
-def dump_submissions_regression(datasets: list[Dataset]) -> list[Path]:
+def dump_submissions_regression(datasets: list[Dataset], tgt_dir: Path) -> list[Path]:
     split = "test_clear"
     files = []
     combinations = product(datasets, ["perspectivist", "soft-label"])
@@ -445,6 +450,6 @@ def dump_submissions_regression(datasets: list[Dataset]) -> list[Path]:
             assert_submission_rows_sum_to_one(rdf)
         rdf = reorder_like_ddf(rdf, ddf)
         rdf = rdf.dropna(subset="pred")
-        file = dump_submission_file(rdf, dataset, task=task)
+        file = dump_submission_file(rdf, dataset, task=task, tgt_dir=tgt_dir)
         files.append(file)
     return files

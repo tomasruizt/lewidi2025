@@ -3,6 +3,7 @@ from lewidi_lib import Dataset, Split, configure_pandas_display, enable_logging
 from logging import getLogger
 from pathlib import Path
 from lewidi_regression import (
+    explode_preds_and_discard_invalid,
     inference,
     load_and_process_df,
     load_model,
@@ -119,6 +120,8 @@ if __name__ == "__main__":
         batch_size=64,
     )
     full_eval_df = full_eval_df.assign(pred=list(preds))
+    full_eval_df = explode_preds_and_discard_invalid(full_eval_df)
+
     if args.preds_file is not None:
         cols = ["dataset", "split", "dataset_idx", "annotator_ids", "pred"]
         if "target" in full_eval_df.columns:
