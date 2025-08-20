@@ -31,7 +31,7 @@ submission:
 	--train False \
 	--train_include_no_persona False \
 	--num_preds_per_problem 11 \
-	--n_exs_by_dataset_full_eval 800 \
+	--n_exs_by_dataset_full_eval 5000 \
 	--full_eval_split test_clear \
 	--preds_file ./saved_preds/Paraphrase-test_clear-preds.parquet
 

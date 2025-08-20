@@ -251,7 +251,9 @@ def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
     )
 
     perf_df = eval_df.groupby("dataset", as_index=False).agg(
-        correct=("correct", aware_mean), abs_dist=("abs_dist", aware_mean)
+        correct=("correct", aware_mean),
+        abs_dist=("abs_dist", aware_mean),
+        count=("correct", "count"),
     )
     bin_eval_df = eval_df.query("dataset == 'MP' or dataset == 'VariErrNLI'")
 
@@ -260,9 +262,9 @@ def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
         precision, recall, fscore, _ = precision_recall_fscore_support(
             gdf["target"], gdf["pred"], average="binary"
         )
-        f1_rows.append((dataset, fscore, precision, recall))
+        f1_rows.append((dataset, fscore, precision, recall, len(gdf)))
 
-    f1_df = pd.DataFrame(f1_rows, columns=["dataset", "f1", "precision", "recall"])
+    f1_df = pd.DataFrame(f1_rows, columns=["dataset", "f1", "precision", "recall", "count"])
     return PerspectivistEval(joint_df=eval_df, perf_df=perf_df, f1_df=f1_df)
 
 
@@ -354,7 +356,8 @@ def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
     joint_df = preds_sl.merge(tgts_df, on=["dataset", "dataset_idx"])
     joint_df = assign_col_ws_loss(joint_df)
     wsloss_perf = joint_df.groupby("dataset", as_index=False).agg(
-        ws_loss=("ws_loss", aware_mean)
+        ws_loss=("ws_loss", aware_mean),
+        count=("ws_loss", "count"),
     )
     return SoftLabelEval(joint_df, wsloss_perf)
 
@@ -386,7 +389,7 @@ def compute_majority_vote2(eval_df: pd.DataFrame, op=statistics.mode) -> pd.Data
 
 
 def run_all_evals(eval_df: pd.DataFrame) -> None:
-    maj_vote1 = compute_majority_vote2(eval_df, op=statistics.median)
+    maj_vote1 = compute_majority_vote2(eval_df, op=statistics.median_low)
     maj_vote2 = compute_majority_vote2(eval_df, op=statistics.mode)
 
     pe_eval1 = eval_perspectivist(eval_df).assign_col("name", "simple")

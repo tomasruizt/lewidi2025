@@ -332,7 +332,7 @@ def test_eval_perspectivist(eval_df: pd.DataFrame):
     assert "abs_dist" in eval_obj.joint_df.columns
 
 
-@pytest.mark.parametrize("op", [statistics.mode, statistics.median])
+@pytest.mark.parametrize("op", [statistics.mode, statistics.median_low])
 def test_eval_perspectivist_majority(eval_df: pd.DataFrame, op: Callable):
     eval_df = compute_majority_vote2(eval_df, op=op)
     eval_obj = eval_perspectivist(eval_df)
