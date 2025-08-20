@@ -3,10 +3,10 @@ from lewidi_lib import Dataset, Split, configure_pandas_display, enable_logging
 from logging import getLogger
 from pathlib import Path
 from lewidi_regression import (
+    create_model,
     explode_preds_and_discard_invalid,
     inference,
     load_and_process_df,
-    load_model,
     to_example_inputs,
     to_tensor_dataset,
     training_args,
@@ -66,11 +66,7 @@ if __name__ == "__main__":
             n_exs_by_dataset=args.n_exs_by_dataset_train,
             include_no_persona=args.train_include_no_persona,
         )
-        model = load_model(
-            model_id=args.model_id,
-            do_train=args.train,
-            lora_checkpoint=best_model_path,
-        )
+        model = create_model(model_name=args.model_id)
         train_dataset = to_tensor_dataset(train_df, model)
         eval_dataset = to_tensor_dataset(eval_df, model)
         collator = DataCollatorForSeq2Seq(
@@ -96,13 +92,7 @@ if __name__ == "__main__":
         logger.info("Saved model to %s", model_folder)
 
     if not args.train:
-        model = load_model(
-            model_id=args.model_id,
-            do_train=args.train,
-            lora_checkpoint=best_model_path,
-        )
-        # Compile should work with LoRa
-        # See: https://huggingface.co/docs/peft/en/developer_guides/torch_compile
+        model = create_model(model_name=args.model_id)
         model.model.model.compile()
 
     full_eval_df = load_and_process_df(

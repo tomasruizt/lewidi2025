@@ -30,7 +30,6 @@ from regress_lm.models.pytorch import t5gemma_model
 from regress_lm import core, rlm
 from tqdm import trange
 from sklearn.metrics import precision_recall_fscore_support
-from peft import LoraConfig, get_peft_model
 from lewidi_lib import pe_pred_is_valid, assign_col_n_classes, bootstrap_avg
 
 logger = getLogger(__name__)
@@ -114,31 +113,8 @@ def to_int32_or_nan(s):
         return np.nan
 
 
-def lora_config() -> LoraConfig:
-    return LoraConfig(
-        r=16,
-        lora_alpha=32,
-        target_modules=[
-            # Attention modules (self + cross attention)
-            "q_proj",
-            "k_proj",
-            "v_proj",
-            "o_proj",
-            # MLP modules
-            "gate_proj",
-            "up_proj",
-            "down_proj",
-            # LM head for regression output
-            "out_proj",
-        ],
-        lora_dropout=0.1,
-        bias="none",
-        task_type="SEQ_2_SEQ_LM",
-    )
-
-
 def training_args(**kwars) -> TrainingArguments:
-    batch_size = 32  # 64 throws OOM on RTX3090
+    batch_size = 64
     return TrainingArguments(
         output_dir=kwars["output_dir"],
         per_device_train_batch_size=batch_size,
@@ -160,6 +136,10 @@ def training_args(**kwars) -> TrainingArguments:
         weight_decay=kwars.get("weight_decay", 0.01),
         # avoid torch.recompile for a small final batch
         dataloader_drop_last=kwars.get("dataloader_drop_last", True),
+        optim="galore_adamw",
+        optim_target_modules=[r".*.attn.*", r".*.mlp.*"],
+        optim_args="rank=64, update_proj_gap=100, scale=0.10",
+        gradient_checkpointing=True,
     )
 
 
@@ -181,22 +161,6 @@ def to_example_inputs(df: pd.DataFrame) -> Iterator[core.ExampleInput]:
     for _, row in df.iterrows():
         prompt = row["prompt"]
         yield core.ExampleInput(x=prompt)
-
-
-def load_model(
-    model_id: str, do_train: bool, lora_checkpoint: Path | None
-) -> rlm.RegressLM:
-    model: rlm.RegressLM = create_model(model_name=model_id)
-    if do_train:
-        model.model.model = get_peft_model(model.model.model, lora_config())
-    else:
-        assert lora_checkpoint is not None
-        from peft import PeftModel
-
-        model.model.model = PeftModel.from_pretrained(
-            model.model.model, lora_checkpoint
-        )
-    return model
 
 
 @dataclass
@@ -263,7 +227,9 @@ def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
         )
         f1_rows.append((dataset, fscore, precision, recall, len(gdf)))
 
-    f1_df = pd.DataFrame(f1_rows, columns=["dataset", "f1", "precision", "recall", "count"])
+    f1_df = pd.DataFrame(
+        f1_rows, columns=["dataset", "f1", "precision", "recall", "count"]
+    )
     return PerspectivistEval(joint_df=eval_df, perf_df=perf_df, f1_df=f1_df)
 
 
