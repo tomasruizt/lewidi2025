@@ -3,7 +3,9 @@ from lewidi_lib import Dataset, Split, configure_pandas_display, enable_logging
 from logging import getLogger
 from pathlib import Path
 from lewidi_regression import (
+    apply_lora_inplace,
     create_model,
+    eval_and_save_steps,
     explode_preds_and_discard_invalid,
     inference,
     load_and_process_df,
@@ -49,7 +51,6 @@ if __name__ == "__main__":
         model_folder = args.saved_models_dir / "all_datsets"
     best_model_path = model_folder / "best_model"
     train_torch_compile = True
-    save_and_eval_steps = 100
 
     if args.train:
         eval_df = load_and_process_df(
@@ -67,6 +68,8 @@ if __name__ == "__main__":
             include_no_persona=args.train_include_no_persona,
         )
         model = create_model(model_name=args.model_id)
+        apply_lora_inplace(model, do_train=args.train, lora_checkpoint=best_model_path)
+
         train_dataset = to_tensor_dataset(train_df, model)
         eval_dataset = to_tensor_dataset(eval_df, model)
         collator = DataCollatorForSeq2Seq(
@@ -78,8 +81,8 @@ if __name__ == "__main__":
             args=training_args(
                 output_dir=model_folder,
                 torch_compile=train_torch_compile,
-                eval_steps=save_and_eval_steps,
-                save_steps=save_and_eval_steps,
+                eval_steps=eval_and_save_steps(args.datasets),
+                save_steps=eval_and_save_steps(args.datasets),
             ),
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
@@ -93,6 +96,7 @@ if __name__ == "__main__":
 
     if not args.train:
         model = create_model(model_name=args.model_id)
+        apply_lora_inplace(model, do_train=args.train, lora_checkpoint=best_model_path)
         model.model.model.compile()
 
     full_eval_df = load_and_process_df(
@@ -107,7 +111,7 @@ if __name__ == "__main__":
         model,
         list(to_example_inputs(full_eval_df)),
         num_samples=args.num_preds_per_problem,
-        batch_size=64,
+        batch_size=8,
     )
     full_eval_df = full_eval_df.assign(pred=list(preds))
     full_eval_df = explode_preds_and_discard_invalid(full_eval_df)

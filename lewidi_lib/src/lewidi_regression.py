@@ -23,6 +23,7 @@ from lewidi_lib import (
 import pandas as pd
 import json
 import numpy as np
+from peft import LoraConfig, get_peft_model
 import torch
 from transformers import TrainingArguments
 from regress_lm.models.pytorch.model import PyTorchFineTuner
@@ -113,12 +114,26 @@ def to_int32_or_nan(s):
         return np.nan
 
 
+def eval_and_save_steps(datasets: list[Dataset]) -> int:
+    if len(datasets) > 1:
+        return 100
+    dataset = datasets[0]
+    if dataset == "Paraphrase":
+        return 400 // 20
+    elif dataset == "CSC":
+        return 5628 // 20
+    elif dataset == "MP":
+        return 12017 // 20
+    raise ValueError(f"Unknown dataset: {dataset}")
+
+
 def training_args(**kwars) -> TrainingArguments:
-    batch_size = 64
+    batch_size = 32
     return TrainingArguments(
         output_dir=kwars["output_dir"],
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
+        gradient_accumulation_steps=1,
         learning_rate=kwars.get("learning_rate", 5e-5),
         num_train_epochs=kwars.get("num_train_epochs", 5),
         logging_steps=kwars.get("logging_steps", 10),
@@ -136,11 +151,54 @@ def training_args(**kwars) -> TrainingArguments:
         weight_decay=kwars.get("weight_decay", 0.01),
         # avoid torch.recompile for a small final batch
         dataloader_drop_last=kwars.get("dataloader_drop_last", True),
-        optim="galore_adamw",
-        optim_target_modules=[r".*.attn.*", r".*.mlp.*"],
-        optim_args="rank=64, update_proj_gap=100, scale=0.10",
-        gradient_checkpointing=True,
+        # optim="galore_adamw",
+        # optim_target_modules=t5_modules_to_finetune(),
+        # optim_args="rank=128, update_proj_gap=500, scale=0.5",
+        # warmup_ratio=0.1,
+        # lr_scheduler_type="cosine",
+        # gradient_checkpointing=True,
     )
+
+
+def t5_modules_to_finetune() -> list[str]:
+    return [
+        # Attention modules (self + cross attention)
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        # MLP modules
+        "gate_proj",
+        "up_proj",
+        "down_proj",
+        # LM head for regression output
+        "out_proj",
+    ]
+
+
+def lora_config() -> LoraConfig:
+    return LoraConfig(
+        r=16,
+        lora_alpha=32,
+        target_modules=t5_modules_to_finetune(),
+        lora_dropout=0.1,
+        bias="none",
+        task_type="SEQ_2_SEQ_LM",
+    )
+
+
+def apply_lora_inplace(
+    model: rlm.RegressLM, do_train: bool, lora_checkpoint: Path | None
+) -> rlm.RegressLM:
+    if do_train:
+        model.model.model = get_peft_model(model.model.model, lora_config())
+    else:
+        assert lora_checkpoint is not None
+        from peft import PeftModel
+
+        model.model.model = PeftModel.from_pretrained(
+            model.model.model, lora_checkpoint
+        )
 
 
 def to_tensor_dataset(df: pd.DataFrame, model: rlm.RegressLM) -> Dataset:

@@ -39,6 +39,7 @@ CASES = [
     Case("google/t5gemma-9b-9b-prefixlm", n_gpus=1),
 ]
 DATASETS = [
+    # Datase size divided by something
     DatasetCase("CSC"),
     DatasetCase("MP"),
     DatasetCase("Paraphrase"),
@@ -61,6 +62,7 @@ for i, (case, dataset) in enumerate(combinations):
     tgt_dir = Path(
         f"/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/rlm/{case.model.replace('/', '_')}/{dataset.name}/"
     )
+    model_dir = Path(str(tgt_dir).replace("rlm", "rlm_models"))
 
     full_eval_split = "dev"
     filled = template.format(
@@ -75,7 +77,7 @@ for i, (case, dataset) in enumerate(combinations):
         FULL_EVAL_SPLIT=full_eval_split,
         PREDS_FILE=tgt_dir / "preds.parquet",
         TRAIN_INCLUDE_NO_PERSONA=False,
-        SAVED_MODELS_DIR=tgt_dir / "saved_models",
+        SAVED_MODELS_DIR=model_dir / "saved_models",
     )
     script_path = Path(f"slurm_scripts/{jobname}.sbatch")
     script_path.write_text(filled)
