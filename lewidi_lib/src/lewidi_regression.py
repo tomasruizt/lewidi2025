@@ -237,7 +237,6 @@ def aware_mean(xs: list[int]) -> float:
     return bootstrap_avg(xs)
 
 
-@torch.inference_mode()
 def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
     eval_df = (
         eval_df.astype({"pred": "int"})
@@ -347,7 +346,6 @@ class SoftLabelEval:
             return self.__add__(other)
 
 
-@torch.inference_mode()
 def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
     preds_sl = compute_softlabel_preds(eval_df)
     datasets = ["CSC", "MP", "Paraphrase"]

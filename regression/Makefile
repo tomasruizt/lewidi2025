@@ -11,6 +11,16 @@ train:
 	--train True \
 	--train_include_no_persona False
 
+all-datasets-train:
+	python regression.py \
+	--model_id google/t5gemma-s-s-prefixlm \
+	--saved_models_dir ./saved_models \
+	--datasets CSC,MP,Paraphrase \
+	--train True \
+	--train_include_no_persona False \
+	--n_exs_by_dataset_dev 200 \
+	--n_exs_by_dataset_train 1000
+
 # Usage: make inference DATASET=CSC or make inference CSC  
 inference:
 	python regression.py \
@@ -20,7 +30,7 @@ inference:
 	--train False \
 	--train_include_no_persona False \
 	--num_preds_per_problem 11 \
-	--n_exs_by_dataset_full_eval 200 \
+	--n_exs_by_dataset_full_eval 50 \
 	--full_eval_split dev
 
 submission:
