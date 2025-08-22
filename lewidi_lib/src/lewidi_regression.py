@@ -141,7 +141,7 @@ def training_args(**kwars) -> TrainingArguments:
         eval_steps=kwars.get("eval_steps", 100),
         save_steps=kwars.get("save_steps", 100),
         # No need for multiple checkpoints atm
-        save_total_limit=kwars.get("save_total_limit", 1),
+        save_total_limit=kwars.get("save_total_limit", 2),
         bf16=kwars.get("bf16", True),
         push_to_hub=kwars.get("push_to_hub", False),
         torch_compile=kwars.get("torch_compile", True),

@@ -90,7 +90,7 @@ if __name__ == "__main__":
             data_collator=collator,
             callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],
         )
-        trainer.train()
+        trainer.train(resume_from_checkpoint=True)
         model.model.model.save_pretrained(model_folder / "best_model")
         logger.info("Saved model to %s", model_folder)
 
