@@ -12,17 +12,22 @@ from lewidi_regression import (
     inference,
     load_and_process_df,
     memory_profile,
+    # memory_profile2,
     to_example_inputs,
     to_tensor_dataset,
     training_args,
 )
 from lewidi_regression import run_all_evals
 from pydantic_settings import BaseSettings
+import torch
 from transformers import DataCollatorForSeq2Seq, Trainer, EarlyStoppingCallback
 
 logger = getLogger(__name__)
 
 device = "cuda:0"
+
+# https://pytorch.org/blog/activation-checkpointing-techniques/
+torch._functorch.config.activation_memory_budget = 0.5
 
 
 class RLMArgs(BaseSettings, cli_parse_args=True):

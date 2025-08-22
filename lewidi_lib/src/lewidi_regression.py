@@ -136,7 +136,8 @@ def training_args(**kwars) -> TrainingArguments:
         output_dir=kwars["output_dir"],
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
-        gradient_accumulation_steps=1,
+        gradient_accumulation_steps=1,  # gradient accumulation increases runtime
+        gradient_checkpointing=False,  # we do selective activation checkpointing
         learning_rate=kwars.get("learning_rate", 5e-5),
         num_train_epochs=kwars.get("num_train_epochs", 5),
         logging_steps=kwars.get("logging_steps", 10),
@@ -515,6 +516,7 @@ def upsample_smaller_groups(df: pd.DataFrame, col: str) -> pd.DataFrame:
 
 @contextmanager
 def memory_profile():
+    """Code from: https://pytorch.org/blog/understanding-gpu-memory-1/"""
     with torch.profiler.profile(
         activities=[
             torch.profiler.ProfilerActivity.CPU,
@@ -530,22 +532,26 @@ def memory_profile():
 
 
 def trace_handler(prof: torch.profiler.profile):
-    TIME_FORMAT_STR: str = "%b_%d_%H_%M_%S"
     folder = Path("profiles")
     folder.mkdir(parents=True, exist_ok=True)
 
-    # Prefix for file names.
-    host_name = socket.gethostname()
-    timestamp = datetime.now().strftime(TIME_FORMAT_STR)
-    file_prefix = f"{host_name}_{timestamp}"
+    file = profile_output_file()
 
-    trace_file = folder / f"{file_prefix}.json"
+    trace_file = folder / f"{file}.json"
     logger.info("Exporting trace to %s", trace_file)
     prof.export_chrome_trace(str(trace_file))
 
-    html_file = folder / f"{file_prefix}.html"
+    html_file = folder / f"{file}.html"
     logger.info("Exporting memory timeline to %s", html_file)
     prof.export_memory_timeline(str(html_file), device="cuda:0")
+
+
+def profile_output_file() -> str:
+    TIME_FORMAT_STR: str = "%b_%d_%H_%M_%S"
+    host_name = socket.gethostname()
+    timestamp = datetime.now().strftime(TIME_FORMAT_STR)
+    file = f"{host_name}_{timestamp}"
+    return file
 
 
 class ProfCallback(TrainerCallback):
@@ -554,3 +560,16 @@ class ProfCallback(TrainerCallback):
 
     def on_step_end(self, args, state, control, **kwargs):
         self.prof.step()
+
+
+@contextmanager
+def memory_profile2():
+    """Code from: https://pytorch.org/blog/understanding-gpu-memory-1/"""
+    # Start recording memory snapshot history, initialized with a buffer
+    # capacity of 100,000 memory events, via the `max_entries` field.
+    torch.cuda.memory._record_memory_history(max_entries=100000)
+    yield None
+    file = profile_output_file()
+    torch.cuda.memory._dump_snapshot(f"profiles/{file}.pickle")
+    # Stop recording memory snapshot history.
+    torch.cuda.memory._record_memory_history(enabled=None)
