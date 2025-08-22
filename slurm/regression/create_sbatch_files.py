@@ -36,6 +36,7 @@ args = parse_args()
 CASES = [
     Case("google/t5gemma-s-s-prefixlm", n_gpus=1),
     Case("google/t5gemma-2b-2b-prefixlm", n_gpus=1),
+    Case("google/t5gemma-9b-2b-prefixlm", n_gpus=1),
     Case("google/t5gemma-9b-9b-prefixlm", n_gpus=1),
 ]
 DATASETS = [
