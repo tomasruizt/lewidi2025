@@ -34,6 +34,7 @@ class RLMArgs(BaseSettings, cli_parse_args=True):
     full_eval_split: Split = "dev"
     saved_models_dir: Path = Path("./saved_models")
     preds_file: Path | None = None
+    resume_from_checkpoint: bool = False
 
 
 if __name__ == "__main__":
@@ -90,7 +91,7 @@ if __name__ == "__main__":
             data_collator=collator,
             callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],
         )
-        trainer.train(resume_from_checkpoint=True)
+        trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
         model.model.model.save_pretrained(model_folder / "best_model")
         logger.info("Saved model to %s", model_folder)
 
