@@ -44,9 +44,8 @@ DATASETS = [
     DatasetCase("CSC"),
     DatasetCase("MP"),
     DatasetCase("Paraphrase"),
+    DatasetCase("CSC,MP,Paraphrase"),
 ]
-
-N_EXAMPLES = 1000
 
 tgt_dir = Path("slurm_scripts")
 os.makedirs(tgt_dir, exist_ok=True)
