@@ -520,7 +520,7 @@ def memory_profile():
             torch.profiler.ProfilerActivity.CPU,
             torch.profiler.ProfilerActivity.CUDA,
         ],
-        schedule=torch.profiler.schedule(wait=1, warmup=0, active=3, repeat=1),
+        schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
         record_shapes=True,  # Required for memory timeline export
         profile_memory=True,
         with_stack=True,  # Required for memory timeline export
