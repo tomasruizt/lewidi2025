@@ -4,12 +4,14 @@ from logging import getLogger
 from pathlib import Path
 from lewidi_lib import set_all_seeds
 from lewidi_regression import (
+    ProfCallback,
     apply_lora_inplace,
     create_model,
     eval_and_save_steps,
     explode_preds_and_discard_invalid,
     inference,
     load_and_process_df,
+    memory_profile,
     to_example_inputs,
     to_tensor_dataset,
     training_args,
@@ -32,11 +34,14 @@ class RLMArgs(BaseSettings, cli_parse_args=True):
     n_exs_by_dataset_dev: int | None = 500
     n_exs_by_dataset_train: int | None = None
     n_exs_by_dataset_full_eval: int | None = None
+    run_final_eval: bool = True
     full_eval_split: Split = "dev"
     saved_models_dir: Path = Path("./saved_models")
     preds_file: Path | None = None
     resume_from_checkpoint: bool = False
-seed: int = 0
+    seed: int = 0
+    do_profile: bool = False
+    train_torch_compile: bool = True
 
 
 def run_training(args: RLMArgs) -> None:
@@ -48,7 +53,6 @@ def run_training(args: RLMArgs) -> None:
     else:
         model_folder = args.saved_models_dir / "all_datsets"
     best_model_path = model_folder / "best_model"
-    train_torch_compile = True
 
     if args.train:
         eval_df = load_and_process_df(
@@ -80,7 +84,7 @@ def run_training(args: RLMArgs) -> None:
             model=model.model.model,
             args=training_args(
                 output_dir=model_folder,
-                torch_compile=train_torch_compile,
+                torch_compile=args.train_torch_compile,
                 eval_steps=eval_and_save_steps(args.datasets),
                 save_steps=eval_and_save_steps(args.datasets),
             ),
@@ -90,7 +94,12 @@ def run_training(args: RLMArgs) -> None:
             data_collator=collator,
             callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],
         )
-        trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
+        if args.do_profile:
+            with memory_profile() as prof:
+                trainer.add_callback(ProfCallback(prof))
+                trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
+        else:
+            trainer.train(resume_from_checkpoint=args.resume_from_checkpoint)
         model.model.model.save_pretrained(model_folder / "best_model")
         logger.info("Saved model to %s", model_folder)
 
@@ -98,6 +107,10 @@ def run_training(args: RLMArgs) -> None:
         model = create_model(model_name=args.model_id)
         apply_lora_inplace(model, do_train=args.train, lora_checkpoint=best_model_path)
         model.model.model.compile()
+
+    if not args.run_final_eval:
+        logger.info("Skipping final eval")
+        exit()
 
     full_eval_df = load_and_process_df(
         datasets=args.datasets,

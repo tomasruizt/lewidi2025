@@ -1,9 +1,12 @@
+from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
 from itertools import product
 from logging import getLogger
 from pathlib import Path
 from collections.abc import Iterator
 from functools import lru_cache
+import socket
 import statistics
 from typing import Any
 from datasets import Dataset
@@ -25,7 +28,7 @@ import json
 import numpy as np
 from peft import LoraConfig, get_peft_model
 import torch
-from transformers import TrainingArguments
+from transformers import TrainerCallback, TrainingArguments
 from regress_lm.models.pytorch.model import PyTorchFineTuner
 from regress_lm.models.pytorch import t5gemma_model
 from regress_lm import core, rlm
@@ -137,7 +140,7 @@ def training_args(**kwars) -> TrainingArguments:
         learning_rate=kwars.get("learning_rate", 5e-5),
         num_train_epochs=kwars.get("num_train_epochs", 5),
         logging_steps=kwars.get("logging_steps", 10),
-        eval_strategy="steps",
+        eval_strategy=kwars.get("eval_strategy", "steps"),
         eval_steps=kwars.get("eval_steps", 100),
         save_steps=kwars.get("save_steps", 100),
         # No need for multiple checkpoints atm
@@ -499,9 +502,55 @@ def upsample_smaller_groups(df: pd.DataFrame, col: str) -> pd.DataFrame:
     """
     max_group_size = df.groupby(col).size().max()
     dfs = []
-    for _, gdf in df.groupby(col):
+    for group, gdf in df.groupby(col):
         repeats = 1 + max_group_size // len(gdf)
         df = pd.concat([gdf] * repeats, ignore_index=True).head(max_group_size)
         dfs.append(df)
+        upsampling_factor = max_group_size / len(gdf)
+        if upsampling_factor > 1:
+            logger.info("Upsampling %s by factor %.2f", group, upsampling_factor)
     df = pd.concat(dfs, ignore_index=True)
     return df
+
+
+@contextmanager
+def memory_profile():
+    with torch.profiler.profile(
+        activities=[
+            torch.profiler.ProfilerActivity.CPU,
+            torch.profiler.ProfilerActivity.CUDA,
+        ],
+        schedule=torch.profiler.schedule(wait=1, warmup=0, active=3, repeat=1),
+        record_shapes=True,  # Required for memory timeline export
+        profile_memory=True,
+        with_stack=True,  # Required for memory timeline export
+        on_trace_ready=trace_handler,
+    ) as prof:
+        yield prof
+
+
+def trace_handler(prof: torch.profiler.profile):
+    TIME_FORMAT_STR: str = "%b_%d_%H_%M_%S"
+    folder = Path("profiles")
+    folder.mkdir(parents=True, exist_ok=True)
+
+    # Prefix for file names.
+    host_name = socket.gethostname()
+    timestamp = datetime.now().strftime(TIME_FORMAT_STR)
+    file_prefix = f"{host_name}_{timestamp}"
+
+    trace_file = folder / f"{file_prefix}.json"
+    logger.info("Exporting trace to %s", trace_file)
+    prof.export_chrome_trace(str(trace_file))
+
+    html_file = folder / f"{file_prefix}.html"
+    logger.info("Exporting memory timeline to %s", html_file)
+    prof.export_memory_timeline(str(html_file), device="cuda:0")
+
+
+class ProfCallback(TrainerCallback):
+    def __init__(self, prof):
+        self.prof = prof
+
+    def on_step_end(self, args, state, control, **kwargs):
+        self.prof.step()
