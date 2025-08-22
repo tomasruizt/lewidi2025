@@ -271,9 +271,11 @@ def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
         )
     )
 
+    mean = "mean"
+    # mean = aware_mean
     perf_df = eval_df.groupby("dataset", as_index=False).agg(
-        correct=("correct", aware_mean),
-        abs_dist=("abs_dist", aware_mean),
+        correct=("correct", mean),
+        abs_dist=("abs_dist", mean),
         count=("correct", "count"),
     )
     bin_eval_df = eval_df.query("dataset == 'MP' or dataset == 'VariErrNLI'")
@@ -378,7 +380,8 @@ def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
     joint_df = preds_sl.merge(tgts_df, on=["dataset", "dataset_idx"])
     joint_df = assign_col_ws_loss(joint_df)
     wsloss_perf = joint_df.groupby("dataset", as_index=False).agg(
-        ws_loss=("ws_loss", aware_mean),
+        ws_loss=("ws_loss", "mean"),
+        # ws_loss=("ws_loss", aware_mean),
         count=("ws_loss", "count"),
     )
     return SoftLabelEval(joint_df, wsloss_perf)
@@ -411,24 +414,28 @@ def compute_majority_vote2(eval_df: pd.DataFrame, op=statistics.mode) -> pd.Data
 
 
 def run_all_evals(eval_df: pd.DataFrame) -> None:
-    maj_vote1 = compute_majority_vote2(eval_df, op=statistics.median_low)
-    maj_vote2 = compute_majority_vote2(eval_df, op=statistics.mode)
+    maj_vote_ml = compute_majority_vote2(eval_df, op=statistics.median_low)
+    maj_vote_mh = compute_majority_vote2(eval_df, op=statistics.median_high)
+    maj_vote_mod = compute_majority_vote2(eval_df, op=statistics.mode)
 
-    pe_eval1 = eval_perspectivist(eval_df).assign_col("name", "simple")
-    pe_eval2 = eval_perspectivist(maj_vote1).assign_col("name", "maj(median)")
-    pe_eval3 = eval_perspectivist(maj_vote2).assign_col("name", "maj(mode)")
+    pe_eval_s = eval_perspectivist(eval_df).assign_col("name", "simple")
+    pe_eval_ml = eval_perspectivist(maj_vote_ml).assign_col("name", "maj(median_low)")
+    pe_eval_mh = eval_perspectivist(maj_vote_mh).assign_col("name", "maj(median_high)")
+    pe_eval_mod = eval_perspectivist(maj_vote_mod).assign_col("name", "maj(mode)")
 
-    pe_eval = sum([pe_eval1, pe_eval2, pe_eval3])
-    logger.info("Perspectivist Performance:\n%s", repr(pe_eval.perf_df))
+    pe_eval = sum([pe_eval_s, pe_eval_ml, pe_eval_mh, pe_eval_mod])
+    digits = 2
+    logger.info("Perspectivist Performance:\n%s", repr(pe_eval.perf_df.round(digits)))
     if len(pe_eval.f1_df) > 0:
-        logger.info("Perspectivist F1:\n%s", repr(pe_eval.f1_df.round(2)))
+        logger.info("Perspectivist F1:\n%s", repr(pe_eval.f1_df.round(digits)))
 
-    sl_eval1 = eval_soft_labels(eval_df).assign_col("name", "simple")
-    sl_eval2 = eval_soft_labels(maj_vote1).assign_col("name", "maj(median)")
-    sl_eval3 = eval_soft_labels(maj_vote2).assign_col("name", "maj(mode)")
+    sl_eval_s = eval_soft_labels(eval_df).assign_col("name", "simple")
+    sl_eval_ml = eval_soft_labels(maj_vote_ml).assign_col("name", "maj(median_low)")
+    sl_eval_mh = eval_soft_labels(maj_vote_mh).assign_col("name", "maj(median_high)")
+    sl_eval_mod = eval_soft_labels(maj_vote_mod).assign_col("name", "maj(mode)")
 
-    sl_eval = sum([sl_eval1, sl_eval2, sl_eval3])
-    logger.info("Soft Label Performance:\n%s", repr(sl_eval.wsloss_perf))
+    sl_eval = sum([sl_eval_s, sl_eval_ml, sl_eval_mh, sl_eval_mod])
+    logger.info("Soft Label Performance:\n%s", repr(sl_eval.wsloss_perf.round(digits)))
 
 
 def reorder_rlm_rdf_like_ddf(rdf: pd.DataFrame, ddf: pd.DataFrame) -> pd.DataFrame:
