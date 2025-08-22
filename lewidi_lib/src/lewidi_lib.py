@@ -29,7 +29,7 @@ import pandas as pd
 import logging
 import os
 from pathlib import Path
-import nltk
+import torch
 
 from prm800k import extract_rating, mapping
 from pydantic import BaseModel, RootModel
@@ -1350,9 +1350,7 @@ def compute_n_steps_equality(
 
 
 def step_split(string: str, step_split_type: str) -> int:
-    if step_split_type == "sent":
-        return len(nltk.sent_tokenize(string))
-    elif step_split_type == "linebreaks":
+    if step_split_type == "linebreaks":
         return len(string.split("\n\n"))
     else:
         raise ValueError(f"Invalid step_split_type: {step_split_type}")
@@ -1825,3 +1823,8 @@ def listof_ints_to_softlabel(ints: list[int], dataset: Dataset) -> list[int]:
         ints = pd.array(ints) + 5
     counts = np.bincount(ints, minlength=n_classes(dataset))
     return counts / len(ints)
+
+
+def set_all_seeds(seed: int):
+    np.random.seed(seed)
+    torch.manual_seed(seed)

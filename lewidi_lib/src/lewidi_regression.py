@@ -325,6 +325,7 @@ def load_and_process_df(
     task: Task,
     n_exs_by_dataset: int,
     include_no_persona: bool,
+    upsampling_col: str | None = None,
 ) -> pd.DataFrame:
     df = load_lewidi_datasets(datasets, split=split, task=task)
     # sample n examples per dataset
@@ -338,6 +339,10 @@ def load_and_process_df(
     # discard all other examples
     df = df.merge(ids, on=["dataset", "dataset_idx"], how="inner")
     df = explode_personas(df, include_no_persona=include_no_persona)
+
+    if upsampling_col is not None:
+        df = upsample_smaller_groups(df, col=upsampling_col)
+
     stats = df.groupby("dataset").agg(
         n_rows=("dataset_idx", "count"),
         nunique_dataset_idx=("dataset_idx", "nunique"),

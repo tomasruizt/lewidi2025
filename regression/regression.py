@@ -2,6 +2,7 @@ import os
 from lewidi_lib import Dataset, Split, configure_pandas_display, enable_logging
 from logging import getLogger
 from pathlib import Path
+from lewidi_lib import set_all_seeds
 from lewidi_regression import (
     apply_lora_inplace,
     create_model,
@@ -35,15 +36,11 @@ class RLMArgs(BaseSettings, cli_parse_args=True):
     saved_models_dir: Path = Path("./saved_models")
     preds_file: Path | None = None
     resume_from_checkpoint: bool = False
+seed: int = 0
 
 
-if __name__ == "__main__":
-    os.environ["TOKENIZERS_PARALLELISM"] = "true"
-    enable_logging()
-    configure_pandas_display()
-
-    args = RLMArgs()
-    logger.info("RLMArgs: %s", args.model_dump_json())
+def run_training(args: RLMArgs) -> None:
+    set_all_seeds(seed=args.seed)
 
     task = "perspectivist"
     if len(args.datasets) == 1:
@@ -60,6 +57,7 @@ if __name__ == "__main__":
             task=task,
             n_exs_by_dataset=args.n_exs_by_dataset_dev,
             include_no_persona=False,
+            upsampling_col="dataset",
         )
         train_df = load_and_process_df(
             datasets=args.datasets,
@@ -67,6 +65,7 @@ if __name__ == "__main__":
             task=task,
             n_exs_by_dataset=args.n_exs_by_dataset_train,
             include_no_persona=args.train_include_no_persona,
+            upsampling_col="dataset",
         )
         model = create_model(model_name=args.model_id)
         apply_lora_inplace(model, do_train=args.train, lora_checkpoint=best_model_path)
@@ -126,3 +125,12 @@ if __name__ == "__main__":
 
     if args.full_eval_split != "test_clear":
         run_all_evals(full_eval_df)
+
+
+if __name__ == "__main__":
+    os.environ["TOKENIZERS_PARALLELISM"] = "true"
+    enable_logging()
+    configure_pandas_display()
+    args = RLMArgs()
+    logger.info("RLMArgs: %s", args.model_dump_json())
+    run_training(args)
