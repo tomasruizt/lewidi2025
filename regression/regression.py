@@ -23,16 +23,16 @@ device = "cuda:0"
 
 
 class RLMArgs(BaseSettings, cli_parse_args=True):
-    model_id: str
-    datasets: list[Dataset]
-    train: bool
-    train_include_no_persona: bool
+    model_id: str = "google/t5gemma-s-s-prefixlm"
+    datasets: list[Dataset] = ["CSC"]
+    train: bool = True
+    train_include_no_persona: bool = False
     num_preds_per_problem: int = 10
     n_exs_by_dataset_dev: int | None = 500
     n_exs_by_dataset_train: int | None = None
     n_exs_by_dataset_full_eval: int | None = None
     full_eval_split: Split = "dev"
-    saved_models_dir: Path | None = None
+    saved_models_dir: Path = Path("./saved_models")
     preds_file: Path | None = None
 
 
