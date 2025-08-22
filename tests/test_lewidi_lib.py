@@ -30,6 +30,7 @@ from lewidi_regression import (
     eval_perspectivist,
     eval_soft_labels,
     load_and_process_df,
+    upsample_smaller_groups,
 )
 import numpy as np
 import pandas as pd
@@ -344,3 +345,33 @@ def test_get_datasets_sizes():
     df = get_datasets_sizes()
     cols = {"dataset", "split", "n_rows"}
     assert cols.issubset(df.columns)
+
+
+def test_upsample_smaller_groups():
+    df = pd.DataFrame(
+        [
+            ("a", 1),
+            ("a", 2),
+            ("b", 1),
+            ("b", 2),
+            ("b", 3),
+            ("c", 1),
+        ],
+        columns=["group", "value"],
+    )
+    expected_df = pd.DataFrame(
+        [
+            ("a", 1),
+            ("a", 2),
+            ("a", 1),
+            ("b", 1),
+            ("b", 2),
+            ("b", 3),
+            ("c", 1),
+            ("c", 1),
+            ("c", 1),
+        ],
+        columns=["group", "value"],
+    )
+    actual_df = upsample_smaller_groups(df, col="group")
+    assert actual_df.equals(expected_df)

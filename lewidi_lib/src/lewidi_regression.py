@@ -485,3 +485,18 @@ def dump_submissions_regression(datasets: list[Dataset], tgt_dir: Path) -> list[
         file = dump_submission_file(rdf, dataset, task=task, tgt_dir=tgt_dir)
         files.append(file)
     return files
+
+
+def upsample_smaller_groups(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    """
+    Reweights a dataframe by the group 'col' such that all the groups have the size of the largest group.
+    The rows of the smaller groups are repeated to match the size of the largest group.
+    """
+    max_group_size = df.groupby(col).size().max()
+    dfs = []
+    for _, gdf in df.groupby(col):
+        repeats = 1 + max_group_size // len(gdf)
+        df = pd.concat([gdf] * repeats, ignore_index=True).head(max_group_size)
+        dfs.append(df)
+    df = pd.concat(dfs, ignore_index=True)
+    return df
