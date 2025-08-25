@@ -1,0 +1,10 @@
+In CSC:
+- primary metrics: abs_dist, ws_loss
+- in PE: lowest abs_dist by 2b, both medians 
+- In SL: Simple is best by large margin (0.1)
+
+In Paraphrase:
+- 2b beats s-s by a large margin in both tasks
+- in PE: medians are best, low is sligthly better than high
+- in SL: Medians are best, low is sligthly better than high. Both better than simple by wide margin (0.11)
+

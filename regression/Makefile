@@ -14,13 +14,17 @@ train:
 
 all-datasets-train:
 	python regression.py \
-	--model_id google/t5gemma-s-s-prefixlm \
+	--model_id google/t5gemma-l-l-prefixlm \
 	--saved_models_dir ./saved_models \
 	--datasets CSC,MP,Paraphrase \
 	--train True \
 	--train_include_no_persona False \
 	--n_exs_by_dataset_dev 200 \
-	--n_exs_by_dataset_train 1000
+	--n_exs_by_dataset_train 5 \
+	--n_exs_by_dataset_full_eval 500 \
+	--run_final_eval False \
+	--train_torch_compile True \
+	--do_profile True
 
 # Usage: make inference DATASET=CSC or make inference CSC  
 inference:
