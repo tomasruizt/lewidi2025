@@ -27,7 +27,7 @@ logger = getLogger(__name__)
 device = "cuda:0"
 
 # https://pytorch.org/blog/activation-checkpointing-techniques/
-torch._functorch.config.activation_memory_budget = 0.5
+# torch._functorch.config.activation_memory_budget = 0.5
 
 
 class RLMArgs(BaseSettings, cli_parse_args=True):
@@ -95,7 +95,7 @@ def run_training(args: RLMArgs) -> None:
             ),
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            tokenizer=model.model.tokenizer,
+            processing_class=model.model.tokenizer,
             data_collator=collator,
             callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],
         )

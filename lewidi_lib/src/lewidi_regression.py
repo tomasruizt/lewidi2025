@@ -137,7 +137,7 @@ def training_args(**kwars) -> TrainingArguments:
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
         gradient_accumulation_steps=1,  # gradient accumulation increases runtime
-        gradient_checkpointing=False,  # we do selective activation checkpointing
+        gradient_checkpointing=False,
         learning_rate=kwars.get("learning_rate", 5e-5),
         num_train_epochs=kwars.get("num_train_epochs", 5),
         logging_steps=kwars.get("logging_steps", 10),
