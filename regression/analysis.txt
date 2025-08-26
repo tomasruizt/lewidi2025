@@ -8,3 +8,9 @@ In Paraphrase:
 - in PE: medians are best, low is sligthly better than high
 - in SL: Medians are best, low is sligthly better than high. Both better than simple by wide margin (0.11)
 
+
+# Multi-task learning
+For the s-s model, the performance of multi-task learning is worse than single-task learning for CSC, and MP. 
+Only in Paraphrase, performance is the same.
+
+For the 2b-2b model, the performance of multi-task learning is worse for CSC, MP, and Paraphrase (all datasets)

@@ -266,6 +266,13 @@ class PerspectivistEval(Mergable):
             f1_df=concat([self.f1_df, other.f1_df]),
         )
 
+    def query(self, query: str) -> "PerspectivistEval":
+        return PerspectivistEval(
+            joint_df=self.joint_df.query(query),
+            perf_df=self.perf_df.query(query),
+            f1_df=self.f1_df.query(query),
+        )
+
     def log_self(self, digits=2) -> None:
         logger.info("Perspectivist Performance:\n%s", repr(self.perf_df.round(digits)))
         if len(self.f1_df) > 0:
@@ -286,7 +293,7 @@ def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
     eval_df = (
         eval_df.astype({"pred": "int"})
         .astype({"pred": "int"})
-        .pipe(assign_col_n_classes, use_6_for_csc=True)
+        .pipe(assign_col_n_classes, use_6_for_csc=False)
         .assign(
             correct=lambda df: df["pred"] == df["target"],
             abs_dist=lambda df: (df["pred"] - df["target"]).abs()
@@ -378,23 +385,29 @@ def load_and_process_df(
 @dataclass
 class SoftLabelEval(Mergable):
     joint_df: pd.DataFrame
-    wsloss_perf: pd.Series
+    wsloss_df: pd.DataFrame
 
     def assign_col(self, col: str, val: Any) -> "SoftLabelEval":
         """Calls df.assign(col=val) for each df in this object"""
         return SoftLabelEval(
             joint_df=self.joint_df.assign(**{col: val}),
-            wsloss_perf=self.wsloss_perf.assign(**{col: val}),
+            wsloss_df=self.wsloss_df.assign(**{col: val}),
         )
 
     def merge(self, other: "SoftLabelEval") -> "SoftLabelEval":
         return SoftLabelEval(
             joint_df=concat([self.joint_df, other.joint_df]),
-            wsloss_perf=concat([self.wsloss_perf, other.wsloss_perf]),
+            wsloss_df=concat([self.wsloss_df, other.wsloss_df]),
+        )
+
+    def query(self, query: str) -> "SoftLabelEval":
+        return SoftLabelEval(
+            joint_df=self.joint_df.query(query),
+            wsloss_df=self.wsloss_df.query(query),
         )
 
     def log_self(self, digits=2) -> None:
-        logger.info("Soft Label Performance:\n%s", repr(self.wsloss_perf.round(digits)))
+        logger.info("Soft Label Performance:\n%s", repr(self.wsloss_df.round(digits)))
 
 
 def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
@@ -404,12 +417,12 @@ def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
     tgts_df = ddf[["dataset", "dataset_idx", "target"]]
     joint_df = preds_sl.merge(tgts_df, on=["dataset", "dataset_idx"])
     joint_df = assign_col_ws_loss(joint_df)
-    wsloss_perf = joint_df.groupby("dataset", as_index=False).agg(
+    wsloss_df = joint_df.groupby("dataset", as_index=False).agg(
         ws_loss=("ws_loss", "mean"),
         # ws_loss=("ws_loss", aware_mean),
         count=("ws_loss", "count"),
     )
-    return SoftLabelEval(joint_df, wsloss_perf)
+    return SoftLabelEval(joint_df, wsloss_df)
 
 
 def compute_softlabel_preds(eval_df: pd.DataFrame) -> pd.DataFrame:
@@ -457,6 +470,12 @@ class FullEval(Mergable):
         return FullEval(
             perspectivist=self.perspectivist + other.perspectivist,
             soft_label=self.soft_label + other.soft_label,
+        )
+
+    def query(self, query: str) -> "FullEval":
+        return FullEval(
+            perspectivist=self.perspectivist.query(query),
+            soft_label=self.soft_label.query(query),
         )
 
 
