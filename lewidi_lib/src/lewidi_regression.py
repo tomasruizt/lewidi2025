@@ -132,13 +132,13 @@ def eval_and_save_steps(datasets: list[Dataset]) -> int:
 
 
 def training_args(**kwars) -> TrainingArguments:
-    batch_size = 32
+    batch_size = kwars["batch_size"]  # must be defined
     return TrainingArguments(
         output_dir=kwars["output_dir"],
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
-        gradient_accumulation_steps=1,  # gradient accumulation increases runtime
-        gradient_checkpointing=True,
+        gradient_accumulation_steps=kwars["gradient_accumulation_steps"],  # must be defined
+        gradient_checkpointing=kwars["gradient_checkpointing"],  # must be defined
         learning_rate=kwars.get("learning_rate", 5e-5),
         num_train_epochs=kwars.get("num_train_epochs", 5),
         logging_steps=kwars.get("logging_steps", 10),

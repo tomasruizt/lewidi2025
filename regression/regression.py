@@ -19,6 +19,7 @@ from lewidi_regression import (
 )
 from lewidi_regression import run_all_evals
 from pydantic_settings import BaseSettings
+
 # import torch
 from transformers import DataCollatorForSeq2Seq, Trainer, EarlyStoppingCallback
 
@@ -42,12 +43,15 @@ class RLMArgs(BaseSettings, cli_parse_args=True):
     run_final_eval: bool = True
     full_eval_split: Split = "dev"
     saved_models_dir: Path = Path("./saved_models")
+    profiles_dir: Path = Path("./profiles")
     preds_file: Path | None = None
     resume_from_checkpoint: bool = False
     seed: int = 0
     do_profile: bool = False
     train_torch_compile: bool = False
-
+    batch_size: int = 32
+    gradient_checkpointing: bool = True
+    gradient_accumulation_steps: int = 1
 
 def run_training(args: RLMArgs) -> None:
     set_all_seeds(seed=args.seed)
@@ -92,6 +96,9 @@ def run_training(args: RLMArgs) -> None:
                 torch_compile=args.train_torch_compile,
                 eval_steps=eval_and_save_steps(args.datasets),
                 save_steps=eval_and_save_steps(args.datasets),
+                batch_size=args.batch_size,
+                gradient_checkpointing=args.gradient_checkpointing,
+                gradient_accumulation_steps=args.gradient_accumulation_steps,
             ),
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
@@ -129,7 +136,7 @@ def run_training(args: RLMArgs) -> None:
         model,
         list(to_example_inputs(full_eval_df)),
         num_samples=args.num_preds_per_problem,
-        batch_size=8,
+        batch_size=args.batch_size,
     )
     full_eval_df = full_eval_df.assign(pred=list(preds))
     full_eval_df = explode_preds_and_discard_invalid(full_eval_df)

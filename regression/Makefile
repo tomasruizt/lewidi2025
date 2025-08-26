@@ -1,6 +1,8 @@
 .PHONY: train
 .PHONY: inference
 .PHONY: submission
+.PHONY: all-datasets-train
+.PHONY: profile
 
 # Usage: make train DATASET=CSC or make train CSC
 train:
@@ -14,17 +16,27 @@ train:
 
 all-datasets-train:
 	python regression.py \
-	--model_id google/t5gemma-l-l-prefixlm \
+	--model_id google/t5gemma-2b-2b-prefixlm \
 	--saved_models_dir ./saved_models \
+	--preds_file ./saved_models/all_datasets/preds.parquet \
 	--datasets CSC,MP,Paraphrase \
 	--train True \
 	--train_include_no_persona False \
-	--n_exs_by_dataset_dev 200 \
+	--full_eval_split dev \
+
+profile:
+	python regression.py \
+	--model_id google/t5gemma-s-s-prefixlm \
+	--saved_models_dir ./saved_models \
+	--datasets CSC,MP,Paraphrase \
+	--train True \
 	--n_exs_by_dataset_train 5 \
-	--n_exs_by_dataset_full_eval 500 \
+	--train_torch_compile False \
+	--do_profile True \
 	--run_final_eval False \
-	--train_torch_compile True \
-	--do_profile True
+	--gradient_checkpointing True \
+	--batch_size 32 \
+	--gradient_accumulation_steps 1
 
 # Usage: make inference DATASET=CSC or make inference CSC  
 inference:
