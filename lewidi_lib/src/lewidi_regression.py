@@ -1,3 +1,4 @@
+from abc import ABC
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -225,8 +226,27 @@ def to_example_inputs(df: pd.DataFrame) -> Iterator[core.ExampleInput]:
         yield core.ExampleInput(x=prompt)
 
 
+class Mergable(ABC):
+    """
+    Enables sum([a1, a2, ...]) for objects a1, a2, ... of this class.
+    A subclass must implement .merge(a1, a2)
+    """
+
+    def merge(self, other: "Mergable") -> "Mergable":
+        raise NotImplementedError()
+
+    def __add__(self, other: "Mergable") -> "Mergable":
+        return self.merge(other)
+
+    def __radd__(self, other) -> "Mergable":
+        if other == 0:
+            return self
+        else:
+            return self.__add__(other)
+
+
 @dataclass
-class PerspectivistEval:
+class PerspectivistEval(Mergable):
     joint_df: pd.DataFrame
     perf_df: pd.Series
     f1_df: pd.DataFrame
@@ -239,18 +259,17 @@ class PerspectivistEval:
             f1_df=self.f1_df.assign(**{col: val}),
         )
 
-    def __add__(self, other: "PerspectivistEval") -> "PerspectivistEval":
+    def merge(self, other: "PerspectivistEval") -> "PerspectivistEval":
         return PerspectivistEval(
             joint_df=concat([self.joint_df, other.joint_df]),
             perf_df=concat([self.perf_df, other.perf_df]),
             f1_df=concat([self.f1_df, other.f1_df]),
         )
 
-    def __radd__(self, other) -> "PerspectivistEval":
-        if other == 0:
-            return self
-        else:
-            return self.__add__(other)
+    def log_self(self, digits=2) -> None:
+        logger.info("Perspectivist Performance:\n%s", repr(self.perf_df.round(digits)))
+        if len(self.f1_df) > 0:
+            logger.info("Perspectivist F1:\n%s", repr(self.f1_df.round(digits)))
 
 
 def concat(dfs: list[pd.DataFrame]) -> pd.DataFrame:
@@ -357,7 +376,7 @@ def load_and_process_df(
 
 
 @dataclass
-class SoftLabelEval:
+class SoftLabelEval(Mergable):
     joint_df: pd.DataFrame
     wsloss_perf: pd.Series
 
@@ -368,17 +387,14 @@ class SoftLabelEval:
             wsloss_perf=self.wsloss_perf.assign(**{col: val}),
         )
 
-    def __add__(self, other: "SoftLabelEval") -> "SoftLabelEval":
+    def merge(self, other: "SoftLabelEval") -> "SoftLabelEval":
         return SoftLabelEval(
             joint_df=concat([self.joint_df, other.joint_df]),
             wsloss_perf=concat([self.wsloss_perf, other.wsloss_perf]),
         )
 
-    def __radd__(self, other) -> "SoftLabelEval":
-        if other == 0:
-            return self
-        else:
-            return self.__add__(other)
+    def log_self(self, digits=2) -> None:
+        logger.info("Soft Label Performance:\n%s", repr(self.wsloss_perf.round(digits)))
 
 
 def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
@@ -422,7 +438,29 @@ def compute_majority_vote2(eval_df: pd.DataFrame, op=statistics.mode) -> pd.Data
     return collected.assign(pred=majority_vote_col)
 
 
-def run_all_evals(eval_df: pd.DataFrame) -> None:
+@dataclass
+class FullEval(Mergable):
+    perspectivist: PerspectivistEval
+    soft_label: SoftLabelEval
+
+    def log_self(self, digits=2) -> None:
+        self.perspectivist.log_self(digits)
+        self.soft_label.log_self(digits)
+
+    def assign_col(self, col: str, val: Any) -> "FullEval":
+        return FullEval(
+            perspectivist=self.perspectivist.assign_col(col, val),
+            soft_label=self.soft_label.assign_col(col, val),
+        )
+
+    def merge(self, other: "FullEval") -> "FullEval":
+        return FullEval(
+            perspectivist=self.perspectivist + other.perspectivist,
+            soft_label=self.soft_label + other.soft_label,
+        )
+
+
+def run_all_evals(eval_df: pd.DataFrame) -> FullEval:
     maj_vote_ml = compute_majority_vote2(eval_df, op=statistics.median_low)
     maj_vote_mh = compute_majority_vote2(eval_df, op=statistics.median_high)
     maj_vote_mod = compute_majority_vote2(eval_df, op=statistics.mode)
@@ -433,10 +471,6 @@ def run_all_evals(eval_df: pd.DataFrame) -> None:
     pe_eval_mod = eval_perspectivist(maj_vote_mod).assign_col("name", "maj(mode)")
 
     pe_eval = sum([pe_eval_s, pe_eval_ml, pe_eval_mh, pe_eval_mod])
-    digits = 2
-    logger.info("Perspectivist Performance:\n%s", repr(pe_eval.perf_df.round(digits)))
-    if len(pe_eval.f1_df) > 0:
-        logger.info("Perspectivist F1:\n%s", repr(pe_eval.f1_df.round(digits)))
 
     sl_eval_s = eval_soft_labels(eval_df).assign_col("name", "simple")
     sl_eval_ml = eval_soft_labels(maj_vote_ml).assign_col("name", "maj(median_low)")
@@ -444,7 +478,7 @@ def run_all_evals(eval_df: pd.DataFrame) -> None:
     sl_eval_mod = eval_soft_labels(maj_vote_mod).assign_col("name", "maj(mode)")
 
     sl_eval = sum([sl_eval_s, sl_eval_ml, sl_eval_mh, sl_eval_mod])
-    logger.info("Soft Label Performance:\n%s", repr(sl_eval.wsloss_perf.round(digits)))
+    return FullEval(perspectivist=pe_eval, soft_label=sl_eval)
 
 
 def reorder_rlm_rdf_like_ddf(rdf: pd.DataFrame, ddf: pd.DataFrame) -> pd.DataFrame:
