@@ -19,7 +19,7 @@ from lewidi_regression import (
 )
 from lewidi_regression import run_all_evals
 from pydantic_settings import BaseSettings
-import torch
+# import torch
 from transformers import DataCollatorForSeq2Seq, Trainer, EarlyStoppingCallback
 
 logger = getLogger(__name__)
@@ -46,7 +46,7 @@ class RLMArgs(BaseSettings, cli_parse_args=True):
     resume_from_checkpoint: bool = False
     seed: int = 0
     do_profile: bool = False
-    train_torch_compile: bool = True
+    train_torch_compile: bool = False
 
 
 def run_training(args: RLMArgs) -> None:
