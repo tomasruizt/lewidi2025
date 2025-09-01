@@ -1,0 +1,52 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../llm_app"
+		},
+		{
+			"path": "../../datasets/dss_home/lewidi-data"
+		},
+		{
+			"path": "../slurm-dev"
+		}
+	],
+	"settings": {
+		"makefile.configureOnOpen": false,
+		"python.defaultInterpreterPath": "./venv/bin/python",
+		"python.languageServer": "None",
+		"python.analysis.extraPaths": [
+			"../regress-lm"
+		],
+		"python.analysis.exclude": [
+			"**/venv/lib/**",
+			"**/venv/lib64/**",
+			"**/node_modules/**",
+			"**/__pycache__/**",
+			"**/outputs/**",
+			"**/parquets/**",
+			"**/backups/**"
+		],
+		"python.analysis.indexing": true,
+		"python.analysis.packageIndexDepths": [
+			{"name": "transformers", "depth": 1},
+			{"name": "torch", "depth": 1},
+			{"name": "tokenizers", "depth": 1},
+			{"name": "sentencepiece", "depth": 1}
+		],
+		"cursorpyright.analysis.exclude": [
+			"**/venv/lib/**",
+			"**/venv/lib64/**",
+			"**/node_modules/**",
+			"**/__pycache__/**",
+			"**/outputs/**",
+			"**/parquets/**",
+			"**/backups/**"
+		],
+		"cursorpyright.analysis.extraPaths": [
+			"../regress-lm"
+		]
+	}
+}

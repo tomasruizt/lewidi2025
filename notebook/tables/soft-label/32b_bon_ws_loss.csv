@@ -1,9 +1,9 @@
 judge,dataset,ws_loss
 Qwen/Qwen3-32B,CSC,1.009
 Qwen/Qwen3-32B,MP,0.258
-Qwen/Qwen3-32B,Paraphrase,1.933
-Qwen/Qwen3-32B,VariErrNLI,0.223
+Qwen/Qwen3-32B,PAR,1.933
+Qwen/Qwen3-32B,VEN,0.223
 deepseek-ai/DeepSeek-R1-0528-Qwen3-8B,CSC,1.003
 deepseek-ai/DeepSeek-R1-0528-Qwen3-8B,MP,0.269
-deepseek-ai/DeepSeek-R1-0528-Qwen3-8B,Paraphrase,1.917
-deepseek-ai/DeepSeek-R1-0528-Qwen3-8B,VariErrNLI,0.224
+deepseek-ai/DeepSeek-R1-0528-Qwen3-8B,PAR,1.917
+deepseek-ai/DeepSeek-R1-0528-Qwen3-8B,VEN,0.224

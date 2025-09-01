@@ -1830,9 +1830,9 @@ def set_all_seeds(seed: int):
     torch.manual_seed(seed)
 
 
-def rename_dataset(df: pd.DataFrame) -> pd.DataFrame:
-    new_dataset = df["dataset"].map(lambda x: dataset_shortname.get(x, x))
-    return df.assign(dataset=new_dataset)
+def rename_dataset(df: pd.DataFrame, col: str = "dataset") -> pd.DataFrame:
+    new_dataset = df[col].map(lambda x: dataset_shortname.get(x, x))
+    return df.assign(**{col: new_dataset})
 
 
 dataset_shortname = {
