@@ -1828,3 +1828,14 @@ def listof_ints_to_softlabel(ints: list[int], dataset: Dataset) -> list[int]:
 def set_all_seeds(seed: int):
     np.random.seed(seed)
     torch.manual_seed(seed)
+
+
+def rename_dataset(df: pd.DataFrame) -> pd.DataFrame:
+    new_dataset = df["dataset"].map(lambda x: dataset_shortname.get(x, x))
+    return df.assign(dataset=new_dataset)
+
+
+dataset_shortname = {
+    "VariErrNLI": "VEN",
+    "Paraphrase": "PAR",
+}
