@@ -5,6 +5,7 @@ from pathlib import Path
 from lewidi_lib import set_all_seeds
 from lewidi_regression import (
     ProfCallback,
+    apply_lora_inplace,
     create_model,
     eval_and_save_steps,
     explode_preds_and_discard_invalid,
@@ -61,6 +62,7 @@ def run_training(args: RLMArgs) -> None:
         model_folder = args.saved_models_dir / args.datasets[0]
     else:
         model_folder = args.saved_models_dir / "all_datsets"
+    best_model_path = model_folder / "best_model"
 
     if args.train:
         eval_df = load_and_process_df(
@@ -80,6 +82,7 @@ def run_training(args: RLMArgs) -> None:
             upsampling_col="dataset",
         )
         model = create_model(model_name=args.model_id)
+        apply_lora_inplace(model, do_train=args.train, lora_checkpoint=best_model_path)
 
         train_dataset = to_tensor_dataset(train_df, model)
         eval_dataset = to_tensor_dataset(eval_df, model)
@@ -115,6 +118,7 @@ def run_training(args: RLMArgs) -> None:
 
     if not args.train:
         model = create_model(model_name=args.model_id)
+        apply_lora_inplace(model, do_train=args.train, lora_checkpoint=best_model_path)
         model.model.model.compile()
 
     if not args.run_final_eval:
