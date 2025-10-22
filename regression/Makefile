@@ -13,6 +13,7 @@ train:
 	--datasets $(or $(DATASET),$(filter-out train,$(MAKECMDGOALS)),CSC) \
 	--train True \
 	--train_include_no_persona False \
+	--gradient_checkpointing True \
 	--train_torch_compile True \
 	--preds_file ./saved_preds/$(or $(DATASET),$(filter-out train,$(MAKECMDGOALS)),CSC)-train-preds.parquet
 

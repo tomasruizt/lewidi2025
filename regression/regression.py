@@ -48,7 +48,15 @@ class RLMArgs(BaseSettings, cli_parse_args=True):
     resume_from_checkpoint: bool = False
     seed: int = 0
     do_profile: bool = False
-    train_torch_compile: bool = False
+    # There is a bad performance regression in the interaction
+    # between torch_compile and gradient_checkpointing that 
+    # results in the first loss being ~3.57 rather than ~0.66.
+    # torch_compile; gradient_checkpointing; good_perf
+    #          True;                   True; True
+    #          True;                  False; True
+    #         False;                  False; True
+    #         False;                   True; False <<<
+    train_torch_compile: bool = True
     batch_size: int = 32
     gradient_checkpointing: bool = True
     gradient_accumulation_steps: int = 1
