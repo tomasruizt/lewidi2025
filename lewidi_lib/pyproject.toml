@@ -17,7 +17,8 @@ dependencies = [
 ]
 
 [project.scripts]
-lewidi-plot = "metrics_plotter:main"
+lewidi-plot-loss = "scripts.read_loss_metrics:main"
+lewidi-plot-vllm-metrics = "metrics_plotter:main"
 lewidi-sbatch-progress = "sbatch_lib:main"
 lewidi-extract-gemini-preds = "extract_gemini_preds:main"
 lewidi-datasets-sizes = "lewidi_lib:get_datasets_sizes"

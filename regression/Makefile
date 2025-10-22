@@ -70,6 +70,13 @@ submission:
 copy-data:
 	rsync -avH login.ai.lrz.de:/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/rlm/ /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/
 
+
+loss-plots:
+	mkdir -p imgs/loss/google_t5gemma-s-s-prefixlm
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/MP/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-s-s-prefixlm/MP.pdf
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/CSC/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-s-s-prefixlm/CSC.pdf
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/Paraphrase/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-s-s-prefixlm/Paraphrase.pdf
+
 # Prevent make from treating dataset names as targets
 %:
 	@:
