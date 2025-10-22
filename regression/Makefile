@@ -6,16 +6,18 @@
 .PHONY: copy-data
 
 # Usage: make train DATASET=CSC or make train CSC
+MODEL_ID ?= google/t5gemma-s-s-prefixlm
+
 train:
 	python regression.py \
-	--model_id google/t5gemma-s-s-prefixlm \
-	--saved_models_dir ./saved_models \
+	--model_id $(MODEL_ID) \
+	--saved_models_dir ./saved_models/$(MODEL_ID) \
 	--datasets $(or $(DATASET),$(filter-out train,$(MAKECMDGOALS)),CSC) \
 	--train True \
 	--train_include_no_persona False \
 	--gradient_checkpointing True \
 	--train_torch_compile True \
-	--preds_file ./saved_preds/$(or $(DATASET),$(filter-out train,$(MAKECMDGOALS)),CSC)-train-preds.parquet
+	--preds_file ./saved_preds/$(MODEL_ID)/$(or $(DATASET),$(filter-out train,$(MAKECMDGOALS)),CSC)-train-preds.parquet
 
 all-datasets-train:
 	python regression.py \
