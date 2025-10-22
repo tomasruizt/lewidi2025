@@ -3,6 +3,7 @@ from lewidi_lib import Dataset, Split, configure_pandas_display, enable_logging
 from logging import getLogger
 from pathlib import Path
 from lewidi_regression import (
+    apply_lora_inplace,
     create_model,
     eval_and_save_steps,
     explode_preds_and_discard_invalid,
@@ -67,6 +68,7 @@ if __name__ == "__main__":
             include_no_persona=args.train_include_no_persona,
         )
         model = create_model(model_name=args.model_id)
+        apply_lora_inplace(model, do_train=args.train, lora_checkpoint=best_model_path)
 
         train_dataset = to_tensor_dataset(train_df, model)
         eval_dataset = to_tensor_dataset(eval_df, model)
@@ -94,6 +96,7 @@ if __name__ == "__main__":
 
     if not args.train:
         model = create_model(model_name=args.model_id)
+        apply_lora_inplace(model, do_train=args.train, lora_checkpoint=best_model_path)
         model.model.model.compile()
 
     full_eval_df = load_and_process_df(
