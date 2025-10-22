@@ -29,10 +29,11 @@ enroot start --rw --root \
     $CONTAINER_NAME bash -c "source /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/regression/regression.py \
     --model_id {MODEL_ID} \
     --datasets {DATASETS} \
-    --train {TRAIN} \
+    --train True \
     --full_eval_split {FULL_EVAL_SPLIT} \
     --preds_file {PREDS_FILE} \
     --saved_models_dir {SAVED_MODELS_DIR} \
+    --train_torch_compile True \
     --train_include_no_persona {TRAIN_INCLUDE_NO_PERSONA}"
 
 # Clean up: remove the container after job completion

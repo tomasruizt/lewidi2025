@@ -73,7 +73,6 @@ for i, (case, dataset) in enumerate(combinations):
         JOBNAME=jobname,
         MODEL_ID=case.model,
         DATASETS=dataset.name,
-        TRAIN=True,
         FULL_EVAL_SPLIT=full_eval_split,
         PREDS_FILE=tgt_dir / "preds.parquet",
         TRAIN_INCLUDE_NO_PERSONA=False,
