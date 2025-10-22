@@ -79,8 +79,8 @@ def create_model(model_name: str = "google/t5gemma-s-s-prefixlm") -> rlm.Regress
         model_name=model_name,
         max_input_len=512,  # Reduced from 2048 to save memory
         model_kwargs={
-            # eager consumes about 2x more VRAM in activations. Presumably the full attn weights
-            "attn_implementation": "sdpa",
+            # eager consumes about 2x more VRAM in activations than "sdpa". Presumably the full attn weights
+            "attn_implementation": "eager",
             "torch_dtype": torch.bfloat16,
         },
         max_decode_len=10,
