@@ -3,6 +3,7 @@
 .PHONY: submission
 .PHONY: all-datasets-train
 .PHONY: profile
+.PHONY: copy-data
 
 # Usage: make train DATASET=CSC or make train CSC
 train:
@@ -12,7 +13,8 @@ train:
 	--datasets $(or $(DATASET),$(filter-out train,$(MAKECMDGOALS)),CSC) \
 	--train True \
 	--train_include_no_persona False \
-	--preds_file ./saved_preds/$(DATASET)-train-preds.parquet
+	--train_torch_compile True \
+	--preds_file ./saved_preds/$(or $(DATASET),$(filter-out train,$(MAKECMDGOALS)),CSC)-train-preds.parquet
 
 all-datasets-train:
 	python regression.py \
@@ -60,7 +62,10 @@ submission:
 	--num_preds_per_problem 11 \
 	--n_exs_by_dataset_full_eval 5000 \
 	--full_eval_split test_clear \
-	--preds_file ./saved_preds/$(DATASET)-test_clear-preds.parquet
+	--preds_file ./saved_preds/$(or $(DATASET),$(filter-out submission,$(MAKECMDGOALS)),CSC)-test_clear-preds.parquet
+
+copy-data:
+	rsync -avH login.ai.lrz.de:/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/rlm/ /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/
 
 # Prevent make from treating dataset names as targets
 %:

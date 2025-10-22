@@ -3,5 +3,18 @@
         "tests"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "python.defaultInterpreterPath": "./venv/bin/python",
+    "cursorpyright.analysis.exclude": [
+        "**/venv/lib/**",
+        "**/venv/lib64/**",
+        "**/node_modules/**",
+        "**/__pycache__/**",
+        "**/outputs/**",
+        "**/parquets/**",
+        "**/backups/**"
+    ],
+    "cursorpyright.analysis.extraPaths": [
+        "../regress-lm"
+    ]
 }
