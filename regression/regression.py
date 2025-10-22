@@ -49,7 +49,7 @@ class RLMArgs(BaseSettings, cli_parse_args=True):
     seed: int = 0
     do_profile: bool = False
     # There is a bad performance regression in the interaction
-    # between torch_compile and gradient_checkpointing that 
+    # between torch_compile and gradient_checkpointing that
     # results in the first loss being ~3.57 rather than ~0.66.
     # torch_compile; gradient_checkpointing; good_perf
     #          True;                   True; True
@@ -154,6 +154,7 @@ def run_training(args: RLMArgs) -> None:
         cols = ["dataset", "split", "dataset_idx", "annotator_ids", "pred"]
         if "target" in full_eval_df.columns:
             cols.append("target")
+        args.preds_file.parent.mkdir(parents=True, exist_ok=True)
         full_eval_df[cols].to_parquet(args.preds_file, index=False)
         logger.info("Dumped predictions to %s", args.preds_file)
 
