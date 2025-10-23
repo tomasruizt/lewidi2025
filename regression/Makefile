@@ -7,17 +7,21 @@
 
 # Usage: make train DATASET=CSC or make train CSC
 MODEL_ID ?= google/t5gemma-s-s-prefixlm
+DATASET ?= CSC
 
 train:
+	@mkdir -p logs/$(MODEL_ID)
+
 	python regression.py \
 	--model_id $(MODEL_ID) \
 	--saved_models_dir ./saved_models/$(MODEL_ID) \
-	--datasets $(or $(DATASET),$(filter-out train,$(MAKECMDGOALS)),CSC) \
+	--datasets $(DATASET) \
 	--train True \
+	--logging_steps 10 \
 	--train_include_no_persona False \
 	--gradient_checkpointing True \
 	--train_torch_compile True \
-	--preds_file ./saved_preds/$(MODEL_ID)/$(or $(DATASET),$(filter-out train,$(MAKECMDGOALS)),CSC)-train-preds.parquet
+	--preds_file ./saved_preds/$(MODEL_ID)/$(DATASET)-train-preds.parquet | tee logs/$(MODEL_ID)/$(DATASET).log
 
 all-datasets-train:
 	python regression.py \

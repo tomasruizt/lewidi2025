@@ -52,6 +52,7 @@ def explode_personas(ddf: pd.DataFrame, include_no_persona: bool) -> pd.DataFram
     df = ddf.explode(cols_to_explode)
 
     prompts = []
+    prompts_no_persona = []
     for row in df.itertuples():
         persona_str = json.dumps(row.annotator_metadata, indent=2)
         template = get_template_cached(row.dataset)
@@ -59,10 +60,13 @@ def explode_personas(ddf: pd.DataFrame, include_no_persona: bool) -> pd.DataFram
         prompts.append(prompt)
         if include_no_persona:
             prompt = template.format(**row.text, persona="none")
-            prompts.append(prompt)
-    if include_no_persona:
-        df = pd.concat([df, df], ignore_index=True)
+            prompts_no_persona.append(prompt)
     df = df.assign(prompt=prompts)
+
+    if include_no_persona:
+        df_nop = df.assign(prompt=prompts_no_persona)
+        df = pd.concat([df, df_nop], ignore_index=True)
+
     if has_target_col:
         df = df.astype({"target": "int"})
     return df
@@ -143,7 +147,7 @@ def training_args(**kwars) -> TrainingArguments:
         gradient_checkpointing=kwars["gradient_checkpointing"],  # must be defined
         learning_rate=kwars.get("learning_rate", 5e-5),
         num_train_epochs=kwars.get("num_train_epochs", 10),
-        logging_steps=kwars.get("eval_steps", 100) * 5,
+        logging_steps=kwars.get("logging_steps", kwars.get("eval_steps", 100) * 5),
         eval_strategy=kwars.get("eval_strategy", "steps"),
         eval_steps=kwars.get("eval_steps", 100),
         save_steps=kwars.get("save_steps", 100),

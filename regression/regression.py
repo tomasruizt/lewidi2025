@@ -40,6 +40,7 @@ class RLMArgs(BaseSettings, cli_parse_args=True):
     n_exs_by_dataset_dev: int | None = 500
     n_exs_by_dataset_train: int | None = None
     n_exs_by_dataset_full_eval: int | None = None
+    logging_steps: int | None = None
     run_final_eval: bool = True
     full_eval_split: Split = "dev"
     saved_models_dir: Path = Path("./saved_models")
@@ -105,6 +106,7 @@ def run_training(args: RLMArgs) -> None:
                 torch_compile=args.train_torch_compile,
                 eval_steps=eval_and_save_steps(args.datasets),
                 save_steps=eval_and_save_steps(args.datasets),
+                logging_steps=args.logging_steps,
                 batch_size=args.batch_size,
                 gradient_checkpointing=args.gradient_checkpointing,
                 gradient_accumulation_steps=args.gradient_accumulation_steps,
