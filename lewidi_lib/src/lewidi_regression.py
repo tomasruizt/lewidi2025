@@ -17,6 +17,7 @@ from lewidi_lib import (
     assert_correct_n_annotators,
     assert_path_exists,
     assert_submission_rows_sum_to_one,
+    assign_col_l0_loss,
     assign_col_ws_loss,
     discard_na_response_rows,
     dump_submission_file,
@@ -137,7 +138,8 @@ def training_args(**kwars) -> TrainingArguments:
         output_dir=kwars["output_dir"],
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
-        gradient_accumulation_steps=kwars["gradient_accumulation_steps"],  # must be defined
+        # must be defined
+        gradient_accumulation_steps=kwars["gradient_accumulation_steps"],
         gradient_checkpointing=kwars["gradient_checkpointing"],  # must be defined
         learning_rate=kwars.get("learning_rate", 5e-5),
         num_train_epochs=kwars.get("num_train_epochs", 5),
@@ -417,9 +419,10 @@ def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
     tgts_df = ddf[["dataset", "dataset_idx", "target"]]
     joint_df = preds_sl.merge(tgts_df, on=["dataset", "dataset_idx"])
     joint_df = assign_col_ws_loss(joint_df)
+    joint_df = assign_col_l0_loss(joint_df)
     wsloss_df = joint_df.groupby("dataset", as_index=False).agg(
         ws_loss=("ws_loss", "mean"),
-        # ws_loss=("ws_loss", aware_mean),
+        l0_loss=("l0_loss", "mean"),
         count=("ws_loss", "count"),
     )
     return SoftLabelEval(joint_df, wsloss_df)

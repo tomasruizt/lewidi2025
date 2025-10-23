@@ -512,9 +512,9 @@ def l0_loss(
 ) -> np.ndarray:
     if dataset == "VariErrNLI":
         diffs = pd.json_normalize(tgt) - pd.json_normalize(pred)
-        absmean = diffs.apply(lambda s: np.abs(as_np(s)).mean(axis=1))
-        return absmean.mean(axis=1).values
-    l0 = np.abs(as_np(tgt) - as_np(pred)).mean(axis=1)
+        abssum = diffs.apply(lambda s: np.abs(as_np(s)).sum(axis=1))
+        return abssum.mean(axis=1).values
+    l0 = np.abs(as_np(tgt) - as_np(pred)).sum(axis=1)
     return l0
 
 

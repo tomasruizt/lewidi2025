@@ -317,7 +317,7 @@ def test_listof_ints_to_softlabel():
 
 @pytest.fixture(scope="session")
 def eval_df() -> pd.DataFrame:
-    file = Path(__file__).parent.parent / "regression/model-preds.parquet"
+    file = Path(__file__).parent / "testfiles" / "regression" / "preds.parquet"
     return pd.read_parquet(file)
 
 
@@ -325,6 +325,7 @@ def test_eval_soft_labels(eval_df: pd.DataFrame):
     eval_obj = eval_soft_labels(eval_df)
     assert len(eval_obj.joint_df) > 0
     assert "ws_loss" in eval_obj.joint_df.columns
+    assert "l0_loss" in eval_obj.joint_df.columns
 
 
 def test_eval_perspectivist(eval_df: pd.DataFrame):
