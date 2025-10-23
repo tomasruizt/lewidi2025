@@ -124,11 +124,11 @@ def eval_and_save_steps(datasets: list[Dataset]) -> int:
         return 100
     dataset = datasets[0]
     if dataset == "Paraphrase":
-        return 400 // 20
+        return 400 // 15
     elif dataset == "CSC":
-        return 5628 // 20
+        return 5628 // 15
     elif dataset == "MP":
-        return 12017 // 20
+        return 12017 // 15
     raise ValueError(f"Unknown dataset: {dataset}")
 
 
@@ -142,8 +142,8 @@ def training_args(**kwars) -> TrainingArguments:
         gradient_accumulation_steps=kwars["gradient_accumulation_steps"],
         gradient_checkpointing=kwars["gradient_checkpointing"],  # must be defined
         learning_rate=kwars.get("learning_rate", 5e-5),
-        num_train_epochs=kwars.get("num_train_epochs", 5),
-        logging_steps=kwars.get("logging_steps", 10),
+        num_train_epochs=kwars.get("num_train_epochs", 10),
+        logging_steps=kwars.get("eval_steps", 100) * 5,
         eval_strategy=kwars.get("eval_strategy", "steps"),
         eval_steps=kwars.get("eval_steps", 100),
         save_steps=kwars.get("save_steps", 100),

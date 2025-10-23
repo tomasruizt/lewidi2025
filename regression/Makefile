@@ -77,6 +77,11 @@ loss-plots:
 	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/CSC/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-s-s-prefixlm/CSC.pdf
 	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/Paraphrase/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-s-s-prefixlm/Paraphrase.pdf
 
+	mkdir -p imgs/loss/google_t5gemma-2b-2b-prefixlm
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-2b-2b-prefixlm/MP/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-2b-2b-prefixlm/MP.pdf
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-2b-2b-prefixlm/CSC/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-2b-2b-prefixlm/CSC.pdf
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-2b-2b-prefixlm/Paraphrase/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-2b-2b-prefixlm/Paraphrase.pdf
+
 # Prevent make from treating dataset names as targets
 %:
 	@:
