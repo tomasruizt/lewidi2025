@@ -113,7 +113,7 @@ def run_training(args: RLMArgs) -> None:
             eval_dataset=eval_dataset,
             processing_class=model.model.tokenizer,
             data_collator=collator,
-            callbacks=[EarlyStoppingCallback(early_stopping_patience=5)],
+            callbacks=[EarlyStoppingCallback(early_stopping_patience=4)],
         )
         if args.do_profile:
             with memory_profile() as prof:
