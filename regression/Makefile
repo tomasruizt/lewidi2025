@@ -77,19 +77,19 @@ copy-data:
 
 loss-plots:
 	mkdir -p imgs/loss/google_t5gemma-s-s-prefixlm
-	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/MP/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-s-s-prefixlm/MP.pdf
-	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/CSC/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-s-s-prefixlm/CSC.pdf
-	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/Paraphrase/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-s-s-prefixlm/Paraphrase.pdf
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/MP/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-s-s-prefixlm/MP.png
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/CSC/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-s-s-prefixlm/CSC.png
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/Paraphrase/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-s-s-prefixlm/Paraphrase.png
 
 	mkdir -p imgs/loss/google_t5gemma-2b-2b-prefixlm
-	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-2b-2b-prefixlm/MP/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-2b-2b-prefixlm/MP.pdf
-	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-2b-2b-prefixlm/CSC/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-2b-2b-prefixlm/CSC.pdf
-	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-2b-2b-prefixlm/Paraphrase/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-2b-2b-prefixlm/Paraphrase.pdf
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-2b-2b-prefixlm/MP/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-2b-2b-prefixlm/MP.png
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-2b-2b-prefixlm/CSC/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-2b-2b-prefixlm/CSC.png
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-2b-2b-prefixlm/Paraphrase/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-2b-2b-prefixlm/Paraphrase.png
 
 	mkdir -p imgs/loss/google_t5gemma-9b-2b-prefixlm
-	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-9b-2b-prefixlm/MP/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-9b-2b-prefixlm/MP.pdf
-	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-9b-2b-prefixlm/CSC/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-9b-2b-prefixlm/CSC.pdf
-	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-9b-2b-prefixlm/Paraphrase/logs/0_out.logs && mv loss.pdf imgs/loss/google_t5gemma-9b-2b-prefixlm/Paraphrase.pdf
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-9b-2b-prefixlm/MP/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-9b-2b-prefixlm/MP.png
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-9b-2b-prefixlm/CSC/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-9b-2b-prefixlm/CSC.png
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-9b-2b-prefixlm/Paraphrase/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-9b-2b-prefixlm/Paraphrase.png
 
 # Prevent make from treating dataset names as targets
 %:

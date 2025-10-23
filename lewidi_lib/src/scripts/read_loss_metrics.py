@@ -32,24 +32,39 @@ def load_rows(file: str) -> Iterable[dict]:
 
 
 def dump_plot_loss(train_df: pd.DataFrame, eval_df: pd.DataFrame) -> None:
-    joint_df = pd.concat(
-        [
-            train_df[["loss", "epoch"]].assign(series="train"),
-            eval_df[["eval_loss", "epoch"]]
-            .assign(series="eval")
-            .rename(columns={"eval_loss": "loss"}),
-        ]
+    train_loss_df = (
+        train_df[["loss", "epoch"]]
+        .assign(series="train", variable="loss")
+        .rename(columns={"loss": "value"})
     )
+    eval_loss_df = (
+        eval_df[["eval_loss", "epoch"]]
+        .assign(series="eval", variable="loss")
+        .rename(columns={"eval_loss": "value"})
+    )
+    grad_norm_df = (
+        train_df[["grad_norm", "epoch"]]
+        .assign(series="train", variable="grad_norm")
+        .rename(columns={"grad_norm": "value"})
+    )
+    joint_df = pd.concat([train_loss_df, eval_loss_df, grad_norm_df])
 
-    ax = sns.lineplot(
+    sns.set_context("talk")
+
+    fg = sns.relplot(
         data=joint_df.iloc[1:],
         x="epoch",
-        y="loss",
+        y="value",
+        row="variable",
         hue="series",
         marker="o",
+        kind="line",
+        facet_kws={"sharey": False},
+        aspect=2,
     )
-    ax.grid(alpha=0.5)
-    ax.figure.savefig("loss.pdf", bbox_inches="tight")
+    for ax in fg.axes.flat:
+        ax.grid(alpha=0.5)
+    fg.figure.savefig("metrics.png", bbox_inches="tight", dpi=300)
 
 
 if __name__ == "__main__":
