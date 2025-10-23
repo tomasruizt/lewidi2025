@@ -138,7 +138,9 @@ def eval_and_save_steps(datasets: list[Dataset]) -> int:
     raise ValueError(f"Unknown dataset: {dataset}")
 
 
-def training_args(**kwars) -> TrainingArguments:
+def training_args(logging_steps: int | None, **kwars) -> TrainingArguments:
+    if logging_steps is None:
+        logging_steps = kwars.get("eval_steps", 100) * 5
     batch_size = kwars["batch_size"]  # must be defined
     return TrainingArguments(
         output_dir=kwars["output_dir"],
@@ -149,7 +151,7 @@ def training_args(**kwars) -> TrainingArguments:
         gradient_checkpointing=kwars["gradient_checkpointing"],  # must be defined
         learning_rate=kwars.get("learning_rate", 5e-5),
         num_train_epochs=kwars.get("num_train_epochs", 10),
-        logging_steps=kwars.get("logging_steps", kwars.get("eval_steps", 100) * 5),
+        logging_steps=logging_steps,
         eval_strategy=kwars.get("eval_strategy", "steps"),
         eval_steps=kwars.get("eval_steps", 100),
         save_steps=kwars.get("save_steps", 100),
