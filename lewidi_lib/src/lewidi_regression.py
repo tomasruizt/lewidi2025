@@ -108,6 +108,8 @@ def inference(
         examples = model.model.convert_inputs(batch)
         examples = {k: v.to(device) for k, v in examples.items()}
         _, output_floats_strs = model.model.decode(examples, num_samples=num_samples)
+        # np.strings.slice requires numpy>=2.3:
+        # https://numpy.org/doc/2.3/release/2.3.0-notes.html#new-function-numpy-strings-slice
         floats = np.strings.slice(output_floats_strs, 0, 10)
         floats = np.array([to_int32_or_nan(x) for x in floats.flatten()]).reshape(
             floats.shape
