@@ -9,6 +9,7 @@ import argparse
 class Case:
     model: str
     n_gpus: int
+    time: str  # format: "HH:MM:SS"
 
 
 @dataclass
@@ -34,10 +35,10 @@ def partition(n_gpus: int) -> str:
 args = parse_args()
 
 CASES = [
-    Case("google/t5gemma-s-s-prefixlm", n_gpus=1),
-    Case("google/t5gemma-2b-2b-prefixlm", n_gpus=1),
-    Case("google/t5gemma-9b-2b-prefixlm", n_gpus=1),
-    Case("google/t5gemma-9b-9b-prefixlm", n_gpus=1),
+    Case("google/t5gemma-s-s-prefixlm", n_gpus=1, time="1:00:00"),
+    Case("google/t5gemma-2b-2b-prefixlm", n_gpus=1, time="4:00:00"),
+    Case("google/t5gemma-9b-2b-prefixlm", n_gpus=1, time="12:00:00"),
+    Case("google/t5gemma-9b-9b-prefixlm", n_gpus=1, time="12:00:00"),
 ]
 DATASETS = [
     # Datase size divided by something
