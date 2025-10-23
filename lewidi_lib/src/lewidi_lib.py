@@ -527,7 +527,8 @@ def as_np(s: pd.Series | np.ndarray) -> np.ndarray:
 
 def ws_loss(tgt: np.ndarray | dict, pred: np.ndarray | dict, dataset: Dataset) -> float:
     """wasserstein distance between two distributions https://stackoverflow.com/a/76061410/5730291"""
-    n = n_classes(dataset)
+    # LeWiDi uses 7 classes for WS-loss, and 6 for perspectivist
+    n = n_classes(dataset, use_6_for_csc=False)
     if dataset == "VariErrNLI":
         dists = []
         for k, tgt_val in tgt.items():

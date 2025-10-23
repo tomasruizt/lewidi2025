@@ -293,7 +293,7 @@ def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
     eval_df = (
         eval_df.astype({"pred": "int"})
         .astype({"pred": "int"})
-        .pipe(assign_col_n_classes, use_6_for_csc=False)
+        .pipe(assign_col_n_classes, use_6_for_csc=True)
         .assign(
             correct=lambda df: df["pred"] == df["target"],
             abs_dist=lambda df: (df["pred"] - df["target"]).abs()
