@@ -103,10 +103,10 @@ def inference(
     batch_size: int = 10,
 ) -> np.ndarray:
     all_floats = []
-    for i in trange(0, len(exs), batch_size):
+    for i in trange(0, len(exs), batch_size, desc="Inference"):
         batch = exs[i : i + batch_size]
         examples = model.model.convert_inputs(batch)
-        examples = {k: v.to(device) for k, v in examples.items()}
+        examples = {k: v.to(device, non_blocking=True) for k, v in examples.items()}
         _, output_floats_strs = model.model.decode(examples, num_samples=num_samples)
         # np.strings.slice requires numpy>=2.3:
         # https://numpy.org/doc/2.3/release/2.3.0-notes.html#new-function-numpy-strings-slice
