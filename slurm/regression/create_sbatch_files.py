@@ -68,6 +68,7 @@ for i, (case, dataset) in enumerate(combinations):
     full_eval_split = "dev"
     filled = template.format(
         PARTITION=partition(case.n_gpus),
+        TIME=case.time,
         N_GPUS=case.n_gpus,
         SLURM_ARRAY_SIZE=0,
         LOGS_DIR=tgt_dir / "logs",
