@@ -62,15 +62,18 @@ class RLMArgs(BaseSettings, cli_parse_args=True):
     gradient_checkpointing: bool = True
     gradient_accumulation_steps: int = 1
 
+    def model_folder(self) -> Path:
+        if len(self.datasets) == 1:
+            return self.saved_models_dir / self.datasets[0]
+        else:
+            return self.saved_models_dir / "all_datasets"
+
 
 def run_training(args: RLMArgs) -> None:
     set_all_seeds(seed=args.seed)
 
     task = "perspectivist"
-    if len(args.datasets) == 1:
-        model_folder = args.saved_models_dir / args.datasets[0]
-    else:
-        model_folder = args.saved_models_dir / "all_datsets"
+    model_folder = args.model_folder()
     best_model_path = model_folder / "best_model"
 
     if args.train:
