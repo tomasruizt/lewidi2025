@@ -72,6 +72,14 @@ submission:
 copy-data:
 	rsync -avH login.ai.lrz.de:/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/rlm/ /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/
 
+RLM_SUBMISSION_DIR = /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-submission
+SAVED_PREDS_DIR = /home/tomasruiz/code/lewidi2025/regression/saved_preds
+
+fetch-submission-preds:
+	rsync -avH login.ai.lrz.de:/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/rlm-submission/ $(RLM_SUBMISSION_DIR)/
+	ln -sf $(RLM_SUBMISSION_DIR)/google_t5gemma-9b-2b-prefixlm/CSC/preds.parquet $(SAVED_PREDS_DIR)/CSC-test_clear-preds.parquet
+	ln -sf $(RLM_SUBMISSION_DIR)/google_t5gemma-9b-2b-prefixlm/Paraphrase/preds.parquet $(SAVED_PREDS_DIR)/Paraphrase-test_clear-preds.parquet
+	ln -sf $(RLM_SUBMISSION_DIR)/google_t5gemma-9b-2b-prefixlm/MP/preds.parquet $(SAVED_PREDS_DIR)/MP-test_clear-preds.parquet
 
 loss-plots:
 	mkdir -p imgs/loss/google_t5gemma-s-s-prefixlm

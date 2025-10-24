@@ -537,7 +537,7 @@ def load_rlm_preds(dataset: Dataset, split: Split, task: Task) -> pd.DataFrame:
         rdf = compute_softlabel_preds(rdf)
     else:
         assert task == "perspectivist"
-        rdf = compute_majority_vote2(rdf)
+        rdf = compute_majority_vote2(rdf, op=statistics.median_high)
     return rdf
 
 
