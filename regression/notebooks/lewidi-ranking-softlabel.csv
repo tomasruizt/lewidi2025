@@ -1,0 +1,37 @@
+Team;WS;rank;Dataset
+Opt-ICL;0.746;1;CSC
+RLM;0.7616;;CSC
+DeMeVa;0.792;1;CSC
+McMaster;0.803;3;CSC
+aadisanghani;0.803;3;CSC
+twinhter;0.835;5;CSC
+BoN Appetit Team;0.928;6;CSC
+Most frequent label (Baseline);1.170;7;CSC
+harikrishnan_gs;1.295;8;CSC
+NLP-ResTeam;1.393;9;CSC
+LPI-RIT;1.451;9;CSC
+Random label (Baseline);1.543;11;CSC
+RLM;0.3459;;MP
+Opt-ICL;0.422;1;MP
+PromotionGo;0.428;1;MP
+McMaster;0.439;3;MP
+aadisanghani;0.439;3;MP
+twinhter;0.447;5;MP
+BoN Appetit Team;0.466;6;MP
+DeMeVa;0.469;6;MP
+Most frequent label (Baseline);0.518;8;MP
+LPI-RIT;0.540;9;MP
+NLP-ResTeam;0.551;9;MP
+Random label (Baseline);0.687;11;MP
+twinhter;0.983;1;Par
+DeMeVa;1.120;1;Par
+Opt-ICL;1.200;1;Par
+RLM;1.3446;;Par
+McMaster;1.605;4;Par
+tdang;1.665;4;Par
+BoN Appetit Team;1.797;4;Par
+aadisanghani;3.051;7;Par
+NLP-ResTeam;3.136;7;Par
+Most frequent label (Baseline);3.231;7;Par
+Random label (Baseline);3.350;7;Par
+LPI-RIT;3.715;7;Par

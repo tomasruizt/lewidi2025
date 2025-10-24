@@ -1,5 +1,10 @@
+profiles/
+
 regression/saved_models/
 regression/logs/*
+regression/backup/
+regression/imgs/
+
 profiling/
 parquets*/
 backups/

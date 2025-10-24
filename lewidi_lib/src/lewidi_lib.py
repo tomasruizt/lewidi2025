@@ -29,7 +29,7 @@ import pandas as pd
 import logging
 import os
 from pathlib import Path
-import nltk
+import torch
 
 from prm800k import extract_rating, mapping
 from pydantic import BaseModel, RootModel
@@ -512,9 +512,9 @@ def l0_loss(
 ) -> np.ndarray:
     if dataset == "VariErrNLI":
         diffs = pd.json_normalize(tgt) - pd.json_normalize(pred)
-        absmean = diffs.apply(lambda s: np.abs(as_np(s)).mean(axis=1))
-        return absmean.mean(axis=1).values
-    l0 = np.abs(as_np(tgt) - as_np(pred)).mean(axis=1)
+        abssum = diffs.apply(lambda s: np.abs(as_np(s)).sum(axis=1))
+        return abssum.mean(axis=1).values
+    l0 = np.abs(as_np(tgt) - as_np(pred)).sum(axis=1)
     return l0
 
 
@@ -527,7 +527,8 @@ def as_np(s: pd.Series | np.ndarray) -> np.ndarray:
 
 def ws_loss(tgt: np.ndarray | dict, pred: np.ndarray | dict, dataset: Dataset) -> float:
     """wasserstein distance between two distributions https://stackoverflow.com/a/76061410/5730291"""
-    n = n_classes(dataset)
+    # LeWiDi uses 7 classes for WS-loss, and 6 for perspectivist
+    n = n_classes(dataset, use_6_for_csc=False)
     if dataset == "VariErrNLI":
         dists = []
         for k, tgt_val in tgt.items():
@@ -1350,9 +1351,7 @@ def compute_n_steps_equality(
 
 
 def step_split(string: str, step_split_type: str) -> int:
-    if step_split_type == "sent":
-        return len(nltk.sent_tokenize(string))
-    elif step_split_type == "linebreaks":
+    if step_split_type == "linebreaks":
         return len(string.split("\n\n"))
     else:
         raise ValueError(f"Invalid step_split_type: {step_split_type}")
@@ -1825,3 +1824,19 @@ def listof_ints_to_softlabel(ints: list[int], dataset: Dataset) -> list[int]:
         ints = pd.array(ints) + 5
     counts = np.bincount(ints, minlength=n_classes(dataset))
     return counts / len(ints)
+
+
+def set_all_seeds(seed: int):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+
+def rename_dataset(df: pd.DataFrame, col: str = "dataset") -> pd.DataFrame:
+    new_dataset = df[col].map(lambda x: dataset_shortname.get(x, x))
+    return df.assign(**{col: new_dataset})
+
+
+dataset_shortname = {
+    "VariErrNLI": "VEN",
+    "Paraphrase": "PAR",
+}

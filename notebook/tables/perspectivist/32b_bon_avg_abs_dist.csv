@@ -1,9 +1,9 @@
 judge,dataset,avg_abs_dist
 Qwen/Qwen3-32B,CSC,0.236
 Qwen/Qwen3-32B,MP,0.422
-Qwen/Qwen3-32B,Paraphrase,0.245
-Qwen/Qwen3-32B,VariErrNLI,0.317
+Qwen/Qwen3-32B,PAR,0.245
+Qwen/Qwen3-32B,VEN,0.317
 deepseek-ai/DeepSeek-R1-0528-Qwen3-8B,CSC,0.241
 deepseek-ai/DeepSeek-R1-0528-Qwen3-8B,MP,0.45
-deepseek-ai/DeepSeek-R1-0528-Qwen3-8B,Paraphrase,0.249
-deepseek-ai/DeepSeek-R1-0528-Qwen3-8B,VariErrNLI,0.319
+deepseek-ai/DeepSeek-R1-0528-Qwen3-8B,PAR,0.249
+deepseek-ai/DeepSeek-R1-0528-Qwen3-8B,VEN,0.319

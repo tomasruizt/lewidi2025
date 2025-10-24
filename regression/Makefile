@@ -1,50 +1,101 @@
 .PHONY: train
 .PHONY: inference
 .PHONY: submission
+.PHONY: all-datasets-train
+.PHONY: profile
+.PHONY: copy-data
 
 # Usage: make train DATASET=CSC or make train CSC
+MODEL_ID ?= google/t5gemma-s-s-prefixlm
+DATASET ?= Paraphrase
+SAVED_MODELS_DIR ?= ./saved_models/$(MODEL_ID)
+
 train:
+	@mkdir -p logs/$(MODEL_ID)
+
 	python regression.py \
-	--model_id google/t5gemma-s-s-prefixlm \
-	--saved_models_dir ./saved_models \
-	--datasets $(or $(DATASET),$(filter-out train,$(MAKECMDGOALS)),CSC) \
+	--model_id $(MODEL_ID) \
+	--saved_models_dir $(SAVED_MODELS_DIR) \
+	--datasets $(DATASET) \
 	--train True \
+	--logging_steps 10 \
 	--train_include_no_persona False \
-	--preds_file ./saved_preds/$(DATASET)-train-preds.parquet
+	--gradient_checkpointing True \
+	--train_torch_compile True \
+	--preds_file ./saved_preds/$(MODEL_ID)/$(DATASET)-train-preds.parquet | tee logs/$(MODEL_ID)/$(DATASET).log
 
 all-datasets-train:
 	python regression.py \
-	--model_id google/t5gemma-s-s-prefixlm \
-	--saved_models_dir ./saved_models \
+	--model_id $(MODEL_ID) \
+	--saved_models_dir $(SAVED_MODELS_DIR) \
+	--preds_file ./saved_preds/all_datasets/preds.parquet \
 	--datasets CSC,MP,Paraphrase \
 	--train True \
 	--train_include_no_persona False \
-	--n_exs_by_dataset_dev 200 \
-	--n_exs_by_dataset_train 1000
+	--full_eval_split dev \
+
+profile:
+	python regression.py \
+	--model_id $(MODEL_ID) \
+	--saved_models_dir $(SAVED_MODELS_DIR) \
+	--datasets CSC,MP,Paraphrase \
+	--train True \
+	--n_exs_by_dataset_train 5 \
+	--train_torch_compile False \
+	--do_profile True \
+	--run_final_eval False \
+	--gradient_checkpointing True \
+	--batch_size 32 \
+	--gradient_accumulation_steps 1
 
 # Usage: make inference DATASET=CSC or make inference CSC  
 inference:
 	python regression.py \
-	--model_id google/t5gemma-s-s-prefixlm \
-	--saved_models_dir ./saved_models \
-	--datasets $(or $(DATASET),$(filter-out inference,$(MAKECMDGOALS)),CSC) \
+	--model_id $(MODEL_ID) \
+	--saved_models_dir $(SAVED_MODELS_DIR) \
+	--datasets $(DATASET) \
 	--train False \
 	--train_include_no_persona False \
-	--num_preds_per_problem 11 \
 	--n_exs_by_dataset_full_eval 50 \
 	--full_eval_split dev
 
 submission:
 	python regression.py \
-	--model_id google/t5gemma-s-s-prefixlm \
-	--saved_models_dir ./saved_models \
-	--datasets $(or $(DATASET),$(filter-out inference,$(MAKECMDGOALS)),CSC) \
+	--model_id $(MODEL_ID) \
+	--saved_models_dir $(SAVED_MODELS_DIR) \
+	--datasets $(DATASET) \
 	--train False \
 	--train_include_no_persona False \
-	--num_preds_per_problem 11 \
-	--n_exs_by_dataset_full_eval 5000 \
 	--full_eval_split test_clear \
-	--preds_file ./saved_preds/$(DATASET)-test_clear-preds.parquet
+	--preds_file ./saved_preds/$(MODEL_ID)/$(DATASET)-test_clear-preds.parquet
+
+copy-data:
+	rsync -avH login.ai.lrz.de:/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/rlm/ /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/
+
+RLM_SUBMISSION_DIR = /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-submission
+SAVED_PREDS_DIR = /home/tomasruiz/code/lewidi2025/regression/saved_preds
+
+fetch-submission-preds:
+	rsync -avH login.ai.lrz.de:/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/rlm-submission/ $(RLM_SUBMISSION_DIR)/
+	ln -sf $(RLM_SUBMISSION_DIR)/google_t5gemma-9b-2b-prefixlm/CSC/preds.parquet $(SAVED_PREDS_DIR)/CSC-test_clear-preds.parquet
+	ln -sf $(RLM_SUBMISSION_DIR)/google_t5gemma-9b-2b-prefixlm/Paraphrase/preds.parquet $(SAVED_PREDS_DIR)/Paraphrase-test_clear-preds.parquet
+	ln -sf $(RLM_SUBMISSION_DIR)/google_t5gemma-9b-2b-prefixlm/MP/preds.parquet $(SAVED_PREDS_DIR)/MP-test_clear-preds.parquet
+
+loss-plots:
+	mkdir -p imgs/loss/google_t5gemma-s-s-prefixlm
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/MP/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-s-s-prefixlm/MP.png
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/CSC/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-s-s-prefixlm/CSC.png
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm-pre-optimization/rlm/google_t5gemma-s-s-prefixlm/Paraphrase/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-s-s-prefixlm/Paraphrase.png
+
+	mkdir -p imgs/loss/google_t5gemma-2b-2b-prefixlm
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-2b-2b-prefixlm/MP/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-2b-2b-prefixlm/MP.png
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-2b-2b-prefixlm/CSC/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-2b-2b-prefixlm/CSC.png
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-2b-2b-prefixlm/Paraphrase/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-2b-2b-prefixlm/Paraphrase.png
+
+	mkdir -p imgs/loss/google_t5gemma-9b-2b-prefixlm
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-9b-2b-prefixlm/MP/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-9b-2b-prefixlm/MP.png
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-9b-2b-prefixlm/CSC/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-9b-2b-prefixlm/CSC.png
+	lewidi-plot-loss --file /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/google_t5gemma-9b-2b-prefixlm/Paraphrase/logs/0_out.logs && mv metrics.png imgs/loss/google_t5gemma-9b-2b-prefixlm/Paraphrase.png
 
 # Prevent make from treating dataset names as targets
 %:

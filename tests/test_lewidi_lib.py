@@ -30,6 +30,7 @@ from lewidi_regression import (
     eval_perspectivist,
     eval_soft_labels,
     load_and_process_df,
+    upsample_smaller_groups,
 )
 import numpy as np
 import pandas as pd
@@ -316,7 +317,7 @@ def test_listof_ints_to_softlabel():
 
 @pytest.fixture(scope="session")
 def eval_df() -> pd.DataFrame:
-    file = Path(__file__).parent.parent / "regression/model-preds.parquet"
+    file = Path(__file__).parent / "testfiles" / "regression" / "preds.parquet"
     return pd.read_parquet(file)
 
 
@@ -324,6 +325,7 @@ def test_eval_soft_labels(eval_df: pd.DataFrame):
     eval_obj = eval_soft_labels(eval_df)
     assert len(eval_obj.joint_df) > 0
     assert "ws_loss" in eval_obj.joint_df.columns
+    assert "l0_loss" in eval_obj.joint_df.columns
 
 
 def test_eval_perspectivist(eval_df: pd.DataFrame):
@@ -344,3 +346,33 @@ def test_get_datasets_sizes():
     df = get_datasets_sizes()
     cols = {"dataset", "split", "n_rows"}
     assert cols.issubset(df.columns)
+
+
+def test_upsample_smaller_groups():
+    df = pd.DataFrame(
+        [
+            ("a", 1),
+            ("a", 2),
+            ("b", 1),
+            ("b", 2),
+            ("b", 3),
+            ("c", 1),
+        ],
+        columns=["group", "value"],
+    )
+    expected_df = pd.DataFrame(
+        [
+            ("a", 1),
+            ("a", 2),
+            ("a", 1),
+            ("b", 1),
+            ("b", 2),
+            ("b", 3),
+            ("c", 1),
+            ("c", 1),
+            ("c", 1),
+        ],
+        columns=["group", "value"],
+    )
+    actual_df = upsample_smaller_groups(df, col="group")
+    assert actual_df.equals(expected_df)

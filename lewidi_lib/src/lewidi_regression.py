@@ -1,9 +1,13 @@
+from abc import ABC
+from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import datetime
 from itertools import product
 from logging import getLogger
 from pathlib import Path
 from collections.abc import Iterator
 from functools import lru_cache
+import socket
 import statistics
 from typing import Any
 from datasets import Dataset
@@ -13,6 +17,7 @@ from lewidi_lib import (
     assert_correct_n_annotators,
     assert_path_exists,
     assert_submission_rows_sum_to_one,
+    assign_col_l0_loss,
     assign_col_ws_loss,
     discard_na_response_rows,
     dump_submission_file,
@@ -25,7 +30,7 @@ import json
 import numpy as np
 from peft import LoraConfig, get_peft_model
 import torch
-from transformers import TrainingArguments
+from transformers import TrainerCallback, TrainingArguments
 from regress_lm.models.pytorch.model import PyTorchFineTuner
 from regress_lm.models.pytorch import t5gemma_model
 from regress_lm import core, rlm
@@ -47,6 +52,7 @@ def explode_personas(ddf: pd.DataFrame, include_no_persona: bool) -> pd.DataFram
     df = ddf.explode(cols_to_explode)
 
     prompts = []
+    prompts_no_persona = []
     for row in df.itertuples():
         persona_str = json.dumps(row.annotator_metadata, indent=2)
         template = get_template_cached(row.dataset)
@@ -54,10 +60,13 @@ def explode_personas(ddf: pd.DataFrame, include_no_persona: bool) -> pd.DataFram
         prompts.append(prompt)
         if include_no_persona:
             prompt = template.format(**row.text, persona="none")
-            prompts.append(prompt)
-    if include_no_persona:
-        df = pd.concat([df, df], ignore_index=True)
+            prompts_no_persona.append(prompt)
     df = df.assign(prompt=prompts)
+
+    if include_no_persona:
+        df_nop = df.assign(prompt=prompts_no_persona)
+        df = pd.concat([df, df_nop], ignore_index=True)
+
     if has_target_col:
         df = df.astype({"target": "int"})
     return df
@@ -75,9 +84,9 @@ def create_model(model_name: str = "google/t5gemma-s-s-prefixlm") -> rlm.Regress
         model_name=model_name,
         max_input_len=512,  # Reduced from 2048 to save memory
         model_kwargs={
-            "attn_implementation": "eager",
-            "torch_dtype": torch.bfloat16,
-            "low_cpu_mem_usage": True,
+            # eager consumes about 2x more VRAM in activations than "sdpa". Presumably the full attn weights
+            "attn_implementation": "sdpa",
+            "dtype": torch.bfloat16,
         },
         max_decode_len=10,
     )
@@ -94,11 +103,13 @@ def inference(
     batch_size: int = 10,
 ) -> np.ndarray:
     all_floats = []
-    for i in trange(0, len(exs), batch_size):
+    for i in trange(0, len(exs), batch_size, desc="Inference"):
         batch = exs[i : i + batch_size]
         examples = model.model.convert_inputs(batch)
-        examples = {k: v.to(device) for k, v in examples.items()}
+        examples = {k: v.to(device, non_blocking=True) for k, v in examples.items()}
         _, output_floats_strs = model.model.decode(examples, num_samples=num_samples)
+        # np.strings.slice requires numpy>=2.3:
+        # https://numpy.org/doc/2.3/release/2.3.0-notes.html#new-function-numpy-strings-slice
         floats = np.strings.slice(output_floats_strs, 0, 10)
         floats = np.array([to_int32_or_nan(x) for x in floats.flatten()]).reshape(
             floats.shape
@@ -119,29 +130,33 @@ def eval_and_save_steps(datasets: list[Dataset]) -> int:
         return 100
     dataset = datasets[0]
     if dataset == "Paraphrase":
-        return 400 // 20
+        return 400 // 15
     elif dataset == "CSC":
-        return 5628 // 20
+        return 5628 // 15
     elif dataset == "MP":
-        return 12017 // 20
+        return 12017 // 15
     raise ValueError(f"Unknown dataset: {dataset}")
 
 
-def training_args(**kwars) -> TrainingArguments:
-    batch_size = 32
+def training_args(logging_steps: int | None, **kwars) -> TrainingArguments:
+    if logging_steps is None:
+        logging_steps = kwars.get("eval_steps", 100) // 5
+    batch_size = kwars["batch_size"]  # must be defined
     return TrainingArguments(
         output_dir=kwars["output_dir"],
         per_device_train_batch_size=batch_size,
         per_device_eval_batch_size=batch_size,
-        gradient_accumulation_steps=1,
+        # must be defined
+        gradient_accumulation_steps=kwars["gradient_accumulation_steps"],
+        gradient_checkpointing=kwars["gradient_checkpointing"],  # must be defined
         learning_rate=kwars.get("learning_rate", 5e-5),
-        num_train_epochs=kwars.get("num_train_epochs", 5),
-        logging_steps=kwars.get("logging_steps", 10),
-        eval_strategy="steps",
+        num_train_epochs=kwars.get("num_train_epochs", 10),
+        logging_steps=logging_steps,
+        eval_strategy=kwars.get("eval_strategy", "steps"),
         eval_steps=kwars.get("eval_steps", 100),
         save_steps=kwars.get("save_steps", 100),
         # No need for multiple checkpoints atm
-        save_total_limit=kwars.get("save_total_limit", 1),
+        save_total_limit=kwars.get("save_total_limit", 2),
         bf16=kwars.get("bf16", True),
         push_to_hub=kwars.get("push_to_hub", False),
         torch_compile=kwars.get("torch_compile", True),
@@ -221,8 +236,27 @@ def to_example_inputs(df: pd.DataFrame) -> Iterator[core.ExampleInput]:
         yield core.ExampleInput(x=prompt)
 
 
+class Mergable(ABC):
+    """
+    Enables sum([a1, a2, ...]) for objects a1, a2, ... of this class.
+    A subclass must implement .merge(a1, a2)
+    """
+
+    def merge(self, other: "Mergable") -> "Mergable":
+        raise NotImplementedError()
+
+    def __add__(self, other: "Mergable") -> "Mergable":
+        return self.merge(other)
+
+    def __radd__(self, other) -> "Mergable":
+        if other == 0:
+            return self
+        else:
+            return self.__add__(other)
+
+
 @dataclass
-class PerspectivistEval:
+class PerspectivistEval(Mergable):
     joint_df: pd.DataFrame
     perf_df: pd.Series
     f1_df: pd.DataFrame
@@ -235,18 +269,24 @@ class PerspectivistEval:
             f1_df=self.f1_df.assign(**{col: val}),
         )
 
-    def __add__(self, other: "PerspectivistEval") -> "PerspectivistEval":
+    def merge(self, other: "PerspectivistEval") -> "PerspectivistEval":
         return PerspectivistEval(
             joint_df=concat([self.joint_df, other.joint_df]),
             perf_df=concat([self.perf_df, other.perf_df]),
             f1_df=concat([self.f1_df, other.f1_df]),
         )
 
-    def __radd__(self, other) -> "PerspectivistEval":
-        if other == 0:
-            return self
-        else:
-            return self.__add__(other)
+    def query(self, query: str) -> "PerspectivistEval":
+        return PerspectivistEval(
+            joint_df=self.joint_df.query(query),
+            perf_df=self.perf_df.query(query),
+            f1_df=self.f1_df.query(query),
+        )
+
+    def log_self(self, digits=2) -> None:
+        logger.info("Perspectivist Performance:\n%s", repr(self.perf_df.round(digits)))
+        if len(self.f1_df) > 0:
+            logger.info("Perspectivist F1:\n%s", repr(self.f1_df.round(digits)))
 
 
 def concat(dfs: list[pd.DataFrame]) -> pd.DataFrame:
@@ -271,9 +311,11 @@ def eval_perspectivist(eval_df: pd.DataFrame) -> PerspectivistEval:
         )
     )
 
+    mean = "mean"
+    # mean = aware_mean
     perf_df = eval_df.groupby("dataset", as_index=False).agg(
-        correct=("correct", aware_mean),
-        abs_dist=("abs_dist", aware_mean),
+        correct=("correct", mean),
+        abs_dist=("abs_dist", mean),
         count=("correct", "count"),
     )
     bin_eval_df = eval_df.query("dataset == 'MP' or dataset == 'VariErrNLI'")
@@ -323,6 +365,7 @@ def load_and_process_df(
     task: Task,
     n_exs_by_dataset: int,
     include_no_persona: bool,
+    upsampling_col: str | None = None,
 ) -> pd.DataFrame:
     df = load_lewidi_datasets(datasets, split=split, task=task)
     # sample n examples per dataset
@@ -336,6 +379,10 @@ def load_and_process_df(
     # discard all other examples
     df = df.merge(ids, on=["dataset", "dataset_idx"], how="inner")
     df = explode_personas(df, include_no_persona=include_no_persona)
+
+    if upsampling_col is not None:
+        df = upsample_smaller_groups(df, col=upsampling_col)
+
     stats = df.groupby("dataset").agg(
         n_rows=("dataset_idx", "count"),
         nunique_dataset_idx=("dataset_idx", "nunique"),
@@ -346,28 +393,31 @@ def load_and_process_df(
 
 
 @dataclass
-class SoftLabelEval:
+class SoftLabelEval(Mergable):
     joint_df: pd.DataFrame
-    wsloss_perf: pd.Series
+    wsloss_df: pd.DataFrame
 
     def assign_col(self, col: str, val: Any) -> "SoftLabelEval":
         """Calls df.assign(col=val) for each df in this object"""
         return SoftLabelEval(
             joint_df=self.joint_df.assign(**{col: val}),
-            wsloss_perf=self.wsloss_perf.assign(**{col: val}),
+            wsloss_df=self.wsloss_df.assign(**{col: val}),
         )
 
-    def __add__(self, other: "SoftLabelEval") -> "SoftLabelEval":
+    def merge(self, other: "SoftLabelEval") -> "SoftLabelEval":
         return SoftLabelEval(
             joint_df=concat([self.joint_df, other.joint_df]),
-            wsloss_perf=concat([self.wsloss_perf, other.wsloss_perf]),
+            wsloss_df=concat([self.wsloss_df, other.wsloss_df]),
         )
 
-    def __radd__(self, other) -> "SoftLabelEval":
-        if other == 0:
-            return self
-        else:
-            return self.__add__(other)
+    def query(self, query: str) -> "SoftLabelEval":
+        return SoftLabelEval(
+            joint_df=self.joint_df.query(query),
+            wsloss_df=self.wsloss_df.query(query),
+        )
+
+    def log_self(self, digits=2) -> None:
+        logger.info("Soft Label Performance:\n%s", repr(self.wsloss_df.round(digits)))
 
 
 def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
@@ -377,11 +427,13 @@ def eval_soft_labels(eval_df: pd.DataFrame) -> SoftLabelEval:
     tgts_df = ddf[["dataset", "dataset_idx", "target"]]
     joint_df = preds_sl.merge(tgts_df, on=["dataset", "dataset_idx"])
     joint_df = assign_col_ws_loss(joint_df)
-    wsloss_perf = joint_df.groupby("dataset", as_index=False).agg(
-        ws_loss=("ws_loss", aware_mean),
+    joint_df = assign_col_l0_loss(joint_df)
+    wsloss_df = joint_df.groupby("dataset", as_index=False).agg(
+        ws_loss=("ws_loss", "mean"),
+        l0_loss=("l0_loss", "mean"),
         count=("ws_loss", "count"),
     )
-    return SoftLabelEval(joint_df, wsloss_perf)
+    return SoftLabelEval(joint_df, wsloss_df)
 
 
 def compute_softlabel_preds(eval_df: pd.DataFrame) -> pd.DataFrame:
@@ -410,25 +462,53 @@ def compute_majority_vote2(eval_df: pd.DataFrame, op=statistics.mode) -> pd.Data
     return collected.assign(pred=majority_vote_col)
 
 
-def run_all_evals(eval_df: pd.DataFrame) -> None:
-    maj_vote1 = compute_majority_vote2(eval_df, op=statistics.median_low)
-    maj_vote2 = compute_majority_vote2(eval_df, op=statistics.mode)
+@dataclass
+class FullEval(Mergable):
+    perspectivist: PerspectivistEval
+    soft_label: SoftLabelEval
 
-    pe_eval1 = eval_perspectivist(eval_df).assign_col("name", "simple")
-    pe_eval2 = eval_perspectivist(maj_vote1).assign_col("name", "maj(median)")
-    pe_eval3 = eval_perspectivist(maj_vote2).assign_col("name", "maj(mode)")
+    def log_self(self, digits=2) -> None:
+        self.perspectivist.log_self(digits)
+        self.soft_label.log_self(digits)
 
-    pe_eval = sum([pe_eval1, pe_eval2, pe_eval3])
-    logger.info("Perspectivist Performance:\n%s", repr(pe_eval.perf_df))
-    if len(pe_eval.f1_df) > 0:
-        logger.info("Perspectivist F1:\n%s", repr(pe_eval.f1_df.round(2)))
+    def assign_col(self, col: str, val: Any) -> "FullEval":
+        return FullEval(
+            perspectivist=self.perspectivist.assign_col(col, val),
+            soft_label=self.soft_label.assign_col(col, val),
+        )
 
-    sl_eval1 = eval_soft_labels(eval_df).assign_col("name", "simple")
-    sl_eval2 = eval_soft_labels(maj_vote1).assign_col("name", "maj(median)")
-    sl_eval3 = eval_soft_labels(maj_vote2).assign_col("name", "maj(mode)")
+    def merge(self, other: "FullEval") -> "FullEval":
+        return FullEval(
+            perspectivist=self.perspectivist + other.perspectivist,
+            soft_label=self.soft_label + other.soft_label,
+        )
 
-    sl_eval = sum([sl_eval1, sl_eval2, sl_eval3])
-    logger.info("Soft Label Performance:\n%s", repr(sl_eval.wsloss_perf))
+    def query(self, query: str) -> "FullEval":
+        return FullEval(
+            perspectivist=self.perspectivist.query(query),
+            soft_label=self.soft_label.query(query),
+        )
+
+
+def run_all_evals(eval_df: pd.DataFrame) -> FullEval:
+    maj_vote_ml = compute_majority_vote2(eval_df, op=statistics.median_low)
+    maj_vote_mh = compute_majority_vote2(eval_df, op=statistics.median_high)
+    maj_vote_mod = compute_majority_vote2(eval_df, op=statistics.mode)
+
+    pe_eval_s = eval_perspectivist(eval_df).assign_col("name", "simple")
+    pe_eval_ml = eval_perspectivist(maj_vote_ml).assign_col("name", "maj(median_low)")
+    pe_eval_mh = eval_perspectivist(maj_vote_mh).assign_col("name", "maj(median_high)")
+    pe_eval_mod = eval_perspectivist(maj_vote_mod).assign_col("name", "maj(mode)")
+
+    pe_eval = sum([pe_eval_s, pe_eval_ml, pe_eval_mh, pe_eval_mod])
+
+    sl_eval_s = eval_soft_labels(eval_df).assign_col("name", "simple")
+    sl_eval_ml = eval_soft_labels(maj_vote_ml).assign_col("name", "maj(median_low)")
+    sl_eval_mh = eval_soft_labels(maj_vote_mh).assign_col("name", "maj(median_high)")
+    sl_eval_mod = eval_soft_labels(maj_vote_mod).assign_col("name", "maj(mode)")
+
+    sl_eval = sum([sl_eval_s, sl_eval_ml, sl_eval_mh, sl_eval_mod])
+    return FullEval(perspectivist=pe_eval, soft_label=sl_eval)
 
 
 def reorder_rlm_rdf_like_ddf(rdf: pd.DataFrame, ddf: pd.DataFrame) -> pd.DataFrame:
@@ -457,7 +537,7 @@ def load_rlm_preds(dataset: Dataset, split: Split, task: Task) -> pd.DataFrame:
         rdf = compute_softlabel_preds(rdf)
     else:
         assert task == "perspectivist"
-        rdf = compute_majority_vote2(rdf)
+        rdf = compute_majority_vote2(rdf, op=statistics.median_high)
     return rdf
 
 
@@ -478,3 +558,82 @@ def dump_submissions_regression(datasets: list[Dataset], tgt_dir: Path) -> list[
         file = dump_submission_file(rdf, dataset, task=task, tgt_dir=tgt_dir)
         files.append(file)
     return files
+
+
+def upsample_smaller_groups(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    """
+    Reweights a dataframe by the group 'col' such that all the groups have the size of the largest group.
+    The rows of the smaller groups are repeated to match the size of the largest group.
+    """
+    max_group_size = df.groupby(col).size().max()
+    dfs = []
+    for group, gdf in df.groupby(col):
+        repeats = 1 + max_group_size // len(gdf)
+        df = pd.concat([gdf] * repeats, ignore_index=True).head(max_group_size)
+        dfs.append(df)
+        upsampling_factor = max_group_size / len(gdf)
+        if upsampling_factor > 1:
+            logger.info("Upsampling %s by factor %.2f", group, upsampling_factor)
+    df = pd.concat(dfs, ignore_index=True)
+    return df
+
+
+@contextmanager
+def memory_profile():
+    """Code from: https://pytorch.org/blog/understanding-gpu-memory-1/"""
+    with torch.profiler.profile(
+        activities=[
+            torch.profiler.ProfilerActivity.CPU,
+            torch.profiler.ProfilerActivity.CUDA,
+        ],
+        schedule=torch.profiler.schedule(wait=1, warmup=1, active=3, repeat=1),
+        record_shapes=True,  # Required for memory timeline export
+        profile_memory=True,
+        with_stack=True,  # Required for memory timeline export
+        on_trace_ready=trace_handler,
+    ) as prof:
+        yield prof
+
+
+def trace_handler(prof: torch.profiler.profile):
+    folder = Path("profiles")
+    folder.mkdir(parents=True, exist_ok=True)
+
+    file = profile_output_file()
+
+    trace_file = folder / f"{file}.json"
+    logger.info("Exporting trace to %s", trace_file)
+    prof.export_chrome_trace(str(trace_file))
+
+    html_file = folder / f"{file}.html"
+    logger.info("Exporting memory timeline to %s", html_file)
+    prof.export_memory_timeline(str(html_file), device="cuda:0")
+
+
+def profile_output_file() -> str:
+    TIME_FORMAT_STR: str = "%b_%d_%H_%M_%S"
+    host_name = socket.gethostname()
+    timestamp = datetime.now().strftime(TIME_FORMAT_STR)
+    file = f"{host_name}_{timestamp}"
+    return file
+
+
+class ProfCallback(TrainerCallback):
+    def __init__(self, prof):
+        self.prof = prof
+
+    def on_step_end(self, args, state, control, **kwargs):
+        self.prof.step()
+
+
+@contextmanager
+def memory_profile2():
+    """Code from: https://pytorch.org/blog/understanding-gpu-memory-1/"""
+    # Start recording memory snapshot history, initialized with a buffer
+    # capacity of 100,000 memory events, via the `max_entries` field.
+    torch.cuda.memory._record_memory_history(max_entries=100000)
+    yield None
+    file = profile_output_file()
+    torch.cuda.memory._dump_snapshot(f"profiles/{file}.pickle")
+    # Stop recording memory snapshot history.
+    torch.cuda.memory._record_memory_history(enabled=None)
