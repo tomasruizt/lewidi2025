@@ -1,6 +1,6 @@
 Team;WS;rank;Dataset
 Opt-ICL;0.746;1;CSC
-RLM;0.78;;CSC
+RLM;0.7616;;CSC
 DeMeVa;0.792;1;CSC
 McMaster;0.803;3;CSC
 aadisanghani;0.803;3;CSC
@@ -11,7 +11,7 @@ harikrishnan_gs;1.295;8;CSC
 NLP-ResTeam;1.393;9;CSC
 LPI-RIT;1.451;9;CSC
 Random label (Baseline);1.543;11;CSC
-RLM;0.35;;MP
+RLM;0.3459;;MP
 Opt-ICL;0.422;1;MP
 PromotionGo;0.428;1;MP
 McMaster;0.439;3;MP
@@ -26,7 +26,7 @@ Random label (Baseline);0.687;11;MP
 twinhter;0.983;1;Par
 DeMeVa;1.120;1;Par
 Opt-ICL;1.200;1;Par
-RLM;1.53;;Par
+RLM;1.3446;;Par
 McMaster;1.605;4;Par
 tdang;1.665;4;Par
 BoN Appetit Team;1.797;4;Par
