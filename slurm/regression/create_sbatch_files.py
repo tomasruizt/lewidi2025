@@ -124,7 +124,7 @@ for case, dataset in combinations:
         os.system(f"sbatch {script_path}")
 
 # Submission
-submit_case = replace(best_known_case, time="00:30:00")
+submit_case = replace(best_known_case, time="01:00:00")  # MP requires ~30min
 del best_known_case  # sanity check
 for dataset in DATASETS:
     jobname = f"rlm_submission_{dataset.name}"
