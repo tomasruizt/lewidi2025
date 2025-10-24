@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import os
 from pathlib import Path
 from itertools import product
@@ -124,11 +124,13 @@ for case, dataset in combinations:
         os.system(f"sbatch {script_path}")
 
 # Submission
+submit_case = replace(best_known_case, time="00:30:00")
+del best_known_case  # sanity check
 for dataset in DATASETS:
     jobname = f"rlm_submission_{dataset.name}"
-    tgt_dir, model_dir = submission_folders(best_known_case, dataset)
+    tgt_dir, model_dir = submission_folders(submit_case, dataset)
     filled = fill_template(
-        case=best_known_case,
+        case=submit_case,
         dataset=dataset,
         do_train=False,
         tgt_dir=tgt_dir,
