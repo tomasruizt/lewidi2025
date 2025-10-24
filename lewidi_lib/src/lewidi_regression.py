@@ -140,7 +140,7 @@ def eval_and_save_steps(datasets: list[Dataset]) -> int:
 
 def training_args(logging_steps: int | None, **kwars) -> TrainingArguments:
     if logging_steps is None:
-        logging_steps = kwars.get("eval_steps", 100) * 5
+        logging_steps = kwars.get("eval_steps", 100) // 5
     batch_size = kwars["batch_size"]  # must be defined
     return TrainingArguments(
         output_dir=kwars["output_dir"],
