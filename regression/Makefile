@@ -7,14 +7,15 @@
 
 # Usage: make train DATASET=CSC or make train CSC
 MODEL_ID ?= google/t5gemma-s-s-prefixlm
-DATASET ?= CSC
+DATASET ?= Paraphrase
+SAVED_MODELS_DIR ?= ./saved_models/$(MODEL_ID)
 
 train:
 	@mkdir -p logs/$(MODEL_ID)
 
 	python regression.py \
 	--model_id $(MODEL_ID) \
-	--saved_models_dir ./saved_models/$(MODEL_ID) \
+	--saved_models_dir $(SAVED_MODELS_DIR) \
 	--datasets $(DATASET) \
 	--train True \
 	--logging_steps 10 \
@@ -25,9 +26,9 @@ train:
 
 all-datasets-train:
 	python regression.py \
-	--model_id google/t5gemma-2b-2b-prefixlm \
-	--saved_models_dir ./saved_models \
-	--preds_file ./saved_models/all_datasets/preds.parquet \
+	--model_id $(MODEL_ID) \
+	--saved_models_dir $(SAVED_MODELS_DIR) \
+	--preds_file ./saved_preds/all_datasets/preds.parquet \
 	--datasets CSC,MP,Paraphrase \
 	--train True \
 	--train_include_no_persona False \
@@ -35,8 +36,8 @@ all-datasets-train:
 
 profile:
 	python regression.py \
-	--model_id google/t5gemma-s-s-prefixlm \
-	--saved_models_dir ./saved_models \
+	--model_id $(MODEL_ID) \
+	--saved_models_dir $(SAVED_MODELS_DIR) \
 	--datasets CSC,MP,Paraphrase \
 	--train True \
 	--n_exs_by_dataset_train 5 \
@@ -50,26 +51,23 @@ profile:
 # Usage: make inference DATASET=CSC or make inference CSC  
 inference:
 	python regression.py \
-	--model_id google/t5gemma-s-s-prefixlm \
-	--saved_models_dir ./saved_models \
-	--datasets $(or $(DATASET),$(filter-out inference,$(MAKECMDGOALS)),CSC) \
+	--model_id $(MODEL_ID) \
+	--saved_models_dir $(SAVED_MODELS_DIR) \
+	--datasets $(DATASET) \
 	--train False \
 	--train_include_no_persona False \
-	--num_preds_per_problem 11 \
 	--n_exs_by_dataset_full_eval 50 \
 	--full_eval_split dev
 
 submission:
 	python regression.py \
-	--model_id google/t5gemma-s-s-prefixlm \
-	--saved_models_dir ./saved_models \
-	--datasets $(or $(DATASET),$(filter-out inference,$(MAKECMDGOALS)),CSC) \
+	--model_id $(MODEL_ID) \
+	--saved_models_dir $(SAVED_MODELS_DIR) \
+	--datasets $(DATASET) \
 	--train False \
 	--train_include_no_persona False \
-	--num_preds_per_problem 11 \
-	--n_exs_by_dataset_full_eval 5000 \
 	--full_eval_split test_clear \
-	--preds_file ./saved_preds/$(or $(DATASET),$(filter-out submission,$(MAKECMDGOALS)),CSC)-test_clear-preds.parquet
+	--preds_file ./saved_preds/$(MODEL_ID)/$(DATASET)-test_clear-preds.parquet
 
 copy-data:
 	rsync -avH login.ai.lrz.de:/dss/dssfs02/lwp-dss-0001/pn76je/pn76je-dss-0000/lewidi-data/rlm/ /mnt/md0/tomasruiz/dss_home/lewidi-data/rlm/

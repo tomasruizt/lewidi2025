@@ -29,7 +29,7 @@ enroot start --rw --root \
     $CONTAINER_NAME bash -c "source /root/ptvenv/bin/activate && python /workspace/code/lewidi2025/regression/regression.py \
     --model_id {MODEL_ID} \
     --datasets {DATASETS} \
-    --train True \
+    --train {DO_TRAIN} \
     --full_eval_split {FULL_EVAL_SPLIT} \
     --preds_file {PREDS_FILE} \
     --saved_models_dir {SAVED_MODELS_DIR} \
